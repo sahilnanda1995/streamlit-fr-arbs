@@ -1,0 +1,2194 @@
+{
+  "data": [
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 10,
+      "symbol": "WIF",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.8652,
+      "pricePercentChange": 18.328710124826625,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 1053509675,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 7,
+      "symbol": "PYTH",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.1195,
+      "pricePercentChange": 7.478661087866109,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 755663177,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 8,
+      "symbol": "bSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 223.37626,
+      "pricePercentChange": 0.9220357615442191,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 1,
+      "symbol": "SOL",
+      "baseVolume": 2482727900000,
+      "quoteVolume": 459065.769101,
+      "baseVolume30D": 172577932800000,
+      "quoteVolume30D": 29659215.566063,
+      "price24hAgo": 192.615,
+      "pricePercentChange": -5.326558160060222,
+      "priceHigh": 193,
+      "priceLow": 180.879,
+      "marketCap": 99291281250,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 13,
+      "symbol": "W",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.1592,
+      "pricePercentChange": -46.720477386934675,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 402528039,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 6,
+      "symbol": "jitoSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 9000000,
+      "quoteVolume30D": 1.746,
+      "price24hAgo": 180,
+      "pricePercentChange": 23.600313888888895,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 11,
+      "symbol": "JUP",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.4368,
+      "pricePercentChange": 26.71886446886446,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 1695961129,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 23,
+      "symbol": "USDe",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 1.02,
+      "pricePercentChange": -1.8869607843137268,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 4,
+      "symbol": "wETH",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 1585.01,
+      "pricePercentChange": 141.43078378054395,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 3,
+      "symbol": "wBTC",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 91303.45,
+      "pricePercentChange": 29.494447628211205,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 15,
+      "symbol": "DRIFT",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 443067250000,
+      "quoteVolume30D": 227841.784784,
+      "price24hAgo": 0.630214,
+      "pricePercentChange": -8.088680987727981,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 203246872,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 18,
+      "symbol": "USDY",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 1.05,
+      "pricePercentChange": 4.6640000000000015,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 2,
+      "symbol": "mSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 276.224,
+      "pricePercentChange": -13.436589145041705,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 19,
+      "symbol": "JLP",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 4.1369,
+      "pricePercentChange": 22.49019797432861,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 5,
+      "symbol": "USDT",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.9987,
+      "pricePercentChange": 0.13016921998597855,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 9,
+      "symbol": "JTO",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 2.9599,
+      "pricePercentChange": -35.35389709111795,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 701110707,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 14,
+      "symbol": "TNSR",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.38,
+      "pricePercentChange": -63.41105263157895,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 47673373,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 26,
+      "symbol": "MOTHER",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.0718,
+      "pricePercentChange": -90.77715877437326,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 6519087,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 29,
+      "symbol": "META",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 2018.13,
+      "pricePercentChange": -53.323688860479756,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 32,
+      "symbol": "BONK",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.000031,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 2477031792,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 16,
+      "symbol": "INF",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 200,
+      "pricePercentChange": 22.796018000000004,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 17,
+      "symbol": "dSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 171,
+      "pricePercentChange": 21.048395321637436,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 25,
+      "symbol": "BNSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 135.26039,
+      "pricePercentChange": 43.464024464220465,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 27,
+      "symbol": "cbBTC",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 99627,
+      "pricePercentChange": 18.84148736386723,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 22,
+      "symbol": "PYUSD",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.9957,
+      "pricePercentChange": 0.3910816510997241,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 21,
+      "symbol": "CLOUD",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.1987,
+      "pricePercentChange": -54.47659788626069,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 41883736,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 12,
+      "symbol": "RENDER",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 3.002,
+      "pricePercentChange": 33.489473684210544,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 2129643057,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 20,
+      "symbol": "POPCAT",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.2071,
+      "pricePercentChange": 67.07532592950265,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 346626924,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 7,
+      "symbol": "DOGE-PERP",
+      "baseVolume": 4080368000000000,
+      "quoteVolume": 643858.337715,
+      "baseVolume30D": 45356908000000000,
+      "quoteVolume30D": 10232694.361556,
+      "price24hAgo": 0.241122,
+      "pricePercentChange": -6.395102893970682,
+      "priceHigh": 0.242246,
+      "priceLow": 0.222715,
+      "avgFunding": 0.004647336,
+      "avgLongFunding": 0.004647336,
+      "avgShortFunding": 0.004647336,
+      "marketCap": 34375079697,
+      "dailyVolumeIncreaseZScore": 2.0252671710980903
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 1,
+      "symbol": "BTC-PERP",
+      "baseVolume": 2308556900000,
+      "quoteVolume": 197281474.241059,
+      "baseVolume30D": 42796033200000,
+      "quoteVolume30D": 5004703193.090642,
+      "price24hAgo": 118827.585073,
+      "pricePercentChange": -0.43228886936011285,
+      "priceHigh": 119281.2,
+      "priceLow": 117439.319295,
+      "avgFunding": 0.002441945,
+      "avgLongFunding": 0.002441945,
+      "avgShortFunding": 0.002441945,
+      "marketCap": 2364188621123,
+      "dailyVolumeIncreaseZScore": 0.9109427196009363
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 4,
+      "symbol": "1MBONK-PERP",
+      "baseVolume": 126346800000000,
+      "quoteVolume": 2792159.636074,
+      "baseVolume30D": 1786505300000000,
+      "quoteVolume30D": 53270268.751509,
+      "price24hAgo": 34.787244,
+      "pricePercentChange": -9.900022548495082,
+      "priceHigh": 36.768,
+      "priceLow": 30.923057,
+      "avgFunding": 0.002360066,
+      "avgLongFunding": 0.002360066,
+      "avgShortFunding": 0.002360066,
+      "marketCap": 2477031792,
+      "dailyVolumeIncreaseZScore": 2.1996789764373608
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 2,
+      "symbol": "ETH-PERP",
+      "baseVolume": 91461870000000,
+      "quoteVolume": 266913025.25142,
+      "baseVolume30D": 945797618000000,
+      "quoteVolume30D": 3247028086.06121,
+      "price24hAgo": 3892.172099,
+      "pricePercentChange": -1.6364896612964481,
+      "priceHigh": 3894.966409,
+      "priceLow": 3729.39,
+      "avgFunding": 0.002575223,
+      "avgLongFunding": 0.002575223,
+      "avgShortFunding": 0.002575223,
+      "marketCap": 467493090589,
+      "dailyVolumeIncreaseZScore": 2.604188515987552
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 6,
+      "symbol": "ARB-PERP",
+      "baseVolume": 55560000000000,
+      "quoteVolume": 20645.066834,
+      "baseVolume30D": 1568750000000000,
+      "quoteVolume30D": 625410.110454,
+      "price24hAgo": 0.472956,
+      "pricePercentChange": -8.319378546841559,
+      "priceHigh": 0.471191,
+      "priceLow": 0.4235,
+      "avgFunding": 0.004802694,
+      "avgLongFunding": 0.004802694,
+      "avgShortFunding": 0.004802694,
+      "marketCap": 2284326391,
+      "dailyVolumeIncreaseZScore": 0.20840800489391742
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 12,
+      "symbol": "RENDER-PERP",
+      "baseVolume": 41193000000000,
+      "quoteVolume": 113981.583064,
+      "baseVolume30D": 858739000000000,
+      "quoteVolume30D": 3316725.209344,
+      "price24hAgo": 4.36052,
+      "pricePercentChange": -8.099194591470741,
+      "priceHigh": 4.386509,
+      "priceLow": 3.986298,
+      "avgFunding": 0.001269517,
+      "avgLongFunding": 0.001269517,
+      "avgShortFunding": 0.001269517,
+      "marketCap": 2129643057,
+      "dailyVolumeIncreaseZScore": 0.7360819834858409
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 5,
+      "symbol": "POL-PERP",
+      "baseVolume": 11530000000000,
+      "quoteVolume": 1955.605245,
+      "baseVolume30D": 682195000000000,
+      "quoteVolume30D": 154287.445312,
+      "price24hAgo": 0.240043,
+      "pricePercentChange": -4.878292639235469,
+      "priceHigh": 0.241327,
+      "priceLow": 0.230078,
+      "avgFunding": 0.012793459,
+      "avgLongFunding": 0.012793459,
+      "avgShortFunding": 0.012793459,
+      "marketCap": 2092601981,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 8,
+      "symbol": "BNB-PERP",
+      "baseVolume": 193630000000,
+      "quoteVolume": 366477.436593,
+      "baseVolume30D": 19347590000000,
+      "quoteVolume30D": 13934955.708043,
+      "price24hAgo": 847.015616,
+      "pricePercentChange": -2.9801245128401503,
+      "priceHigh": 855.063222,
+      "priceLow": 816.0904,
+      "avgFunding": -0.003017594,
+      "avgLongFunding": -0.003017594,
+      "avgShortFunding": -0.003017594,
+      "marketCap": 115649117233,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 3,
+      "symbol": "APT-PERP",
+      "baseVolume": 3671900000000,
+      "quoteVolume": 24475.738199,
+      "baseVolume30D": 261801900000000,
+      "quoteVolume30D": 1310244.035978,
+      "price24hAgo": 4.962957,
+      "pricePercentChange": -6.341018066447089,
+      "priceHigh": 4.940903,
+      "priceLow": 4.62044,
+      "avgFunding": 0.001789355,
+      "avgLongFunding": 0.001789355,
+      "avgShortFunding": 0.001789355,
+      "marketCap": 2620089866,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 0,
+      "symbol": "SOL-PERP",
+      "baseVolume": 1336054780000000,
+      "quoteVolume": 207037327.73047,
+      "baseVolume30D": 27754394730000000,
+      "quoteVolume30D": 4825143874.734845,
+      "price24hAgo": 192.159602,
+      "pricePercentChange": -5.1021926034172465,
+      "priceHigh": 193.5612,
+      "priceLow": 180.6152,
+      "avgFunding": 0.001741432,
+      "avgLongFunding": 0.001741432,
+      "avgShortFunding": 0.001741432,
+      "marketCap": 99291281250,
+      "dailyVolumeIncreaseZScore": 1.045321440710156
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 9,
+      "symbol": "SUI-PERP",
+      "baseVolume": 1179713000000000,
+      "quoteVolume": 4538180.512189,
+      "baseVolume30D": 27649822000000000,
+      "quoteVolume30D": 102052371.378223,
+      "price24hAgo": 4.2313,
+      "pricePercentChange": -8.297237255689744,
+      "priceHigh": 4.255263,
+      "priceLow": 3.874417,
+      "avgFunding": 0.001416806,
+      "avgLongFunding": 0.001416806,
+      "avgShortFunding": 0.001416806,
+      "marketCap": 13623540202,
+      "dailyVolumeIncreaseZScore": 0.40975379318761973
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 10,
+      "symbol": "1MPEPE-PERP",
+      "baseVolume": 29303000000000,
+      "quoteVolume": 240537.39989,
+      "baseVolume30D": 1055723000000000,
+      "quoteVolume30D": 12594973.439598,
+      "price24hAgo": 12.902329,
+      "pricePercentChange": -9.056736965860972,
+      "priceHigh": 12.963325,
+      "priceLow": 11.742879,
+      "avgFunding": 0.003104693,
+      "avgLongFunding": 0.003104693,
+      "avgShortFunding": 0.003104693,
+      "marketCap": 5032503528,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 13,
+      "symbol": "XRP-PERP",
+      "baseVolume": 340109000000000,
+      "quoteVolume": 857755.404809,
+      "baseVolume30D": 13724667000000000,
+      "quoteVolume30D": 38030894.979613,
+      "price24hAgo": 3.24,
+      "pricePercentChange": -3.8320987654321073,
+      "priceHigh": 3.247073,
+      "priceLow": 3.09745,
+      "avgFunding": 0.002657917,
+      "avgLongFunding": 0.002657917,
+      "avgShortFunding": 0.002657917,
+      "marketCap": 186998083392,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 25,
+      "symbol": "DYM-PERP",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 274311000000000,
+      "quoteVolume30D": 76581.352538,
+      "price24hAgo": 0.270562,
+      "pricePercentChange": 4.78115921674145,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "avgFunding": -0.000273681,
+      "avgLongFunding": -0.000273681,
+      "avgShortFunding": -0.000273681,
+      "marketCap": 97847396,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 19,
+      "symbol": "TIA-PERP",
+      "baseVolume": 44020000000000,
+      "quoteVolume": 85179.678096,
+      "baseVolume30D": 839075500000000,
+      "quoteVolume30D": 1602593.814463,
+      "price24hAgo": 2.04418,
+      "pricePercentChange": -4.9922707393673695,
+      "priceHigh": 2.068045,
+      "priceLow": 1.88,
+      "avgFunding": 0.003068909,
+      "avgLongFunding": 0.003068909,
+      "avgShortFunding": 0.003068909,
+      "marketCap": 1454341210,
+      "dailyVolumeIncreaseZScore": 0.6979753048246038
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 14,
+      "symbol": "HNT-PERP",
+      "baseVolume": 2906000000000,
+      "quoteVolume": 11178.462113,
+      "baseVolume30D": 143173000000000,
+      "quoteVolume30D": 456163.600152,
+      "price24hAgo": 3.465006,
+      "pricePercentChange": -1.8690588125965635,
+      "priceHigh": 3.680661,
+      "priceLow": 3.449375,
+      "avgFunding": 0.011398813,
+      "avgLongFunding": 0.011398813,
+      "avgShortFunding": 0.011398813,
+      "marketCap": 635180421,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 18,
+      "symbol": "PYTH-PERP",
+      "baseVolume": 105152000000000,
+      "quoteVolume": 15429.430469,
+      "baseVolume30D": 7469252000000000,
+      "quoteVolume30D": 943145.580956,
+      "price24hAgo": 0.140112,
+      "pricePercentChange": -8.333333333333329,
+      "priceHigh": 0.1398,
+      "priceLow": 0.1261,
+      "avgFunding": 0.001631684,
+      "avgLongFunding": 0.001631684,
+      "avgShortFunding": 0.001631684,
+      "marketCap": 755663177,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 20,
+      "symbol": "JTO-PERP",
+      "baseVolume": 165420000000000,
+      "quoteVolume": 250909.732566,
+      "baseVolume30D": 3844530000000000,
+      "quoteVolume30D": 7723836.695814,
+      "price24hAgo": 2.083892,
+      "pricePercentChange": -8.178590829083275,
+      "priceHigh": 2.08586,
+      "priceLow": 1.878964,
+      "avgFunding": 0.004626048,
+      "avgLongFunding": 0.004626048,
+      "avgShortFunding": 0.004626048,
+      "marketCap": 701110707,
+      "dailyVolumeIncreaseZScore": 0.2824997208482405
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 26,
+      "symbol": "TAO-PERP",
+      "baseVolume": 686380000000,
+      "quoteVolume": 287826.235975,
+      "baseVolume30D": 41889490000000,
+      "quoteVolume30D": 15790944.548256,
+      "price24hAgo": 430.638072,
+      "pricePercentChange": -7.43776713731898,
+      "priceHigh": 431.58,
+      "priceLow": 393.32,
+      "avgFunding": 0.002135983,
+      "avgLongFunding": 0.002135983,
+      "avgShortFunding": 0.002135983,
+      "marketCap": 3870375511,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 15,
+      "symbol": "INJ-PERP",
+      "baseVolume": 41523000000000,
+      "quoteVolume": 489282.707903,
+      "baseVolume30D": 340151500000000,
+      "quoteVolume30D": 4464492.111653,
+      "price24hAgo": 16.239126,
+      "pricePercentChange": -9.623048678851303,
+      "priceHigh": 16.231303,
+      "priceLow": 14.25,
+      "avgFunding": 0.006955365,
+      "avgLongFunding": 0.006955365,
+      "avgShortFunding": 0.006955365,
+      "marketCap": 1461618322,
+      "dailyVolumeIncreaseZScore": 5.880824773034879
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 21,
+      "symbol": "SEI-PERP",
+      "baseVolume": 517926000000000,
+      "quoteVolume": 154214.474496,
+      "baseVolume30D": 18729962000000000,
+      "quoteVolume30D": 6285500.370564,
+      "price24hAgo": 0.344947,
+      "pricePercentChange": -5.043673375909929,
+      "priceHigh": 0.345981,
+      "priceLow": 0.31591,
+      "avgFunding": -0.000078046,
+      "avgLongFunding": -0.000078046,
+      "avgShortFunding": -0.000078046,
+      "marketCap": 1941234551,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 16,
+      "symbol": "LINK-PERP",
+      "baseVolume": 26389000000000,
+      "quoteVolume": 298813.761663,
+      "baseVolume30D": 366446500000000,
+      "quoteVolume30D": 6067690.118442,
+      "price24hAgo": 19.146239,
+      "pricePercentChange": -5.908408434680042,
+      "priceHigh": 19.20438,
+      "priceLow": 17.922694,
+      "avgFunding": 0.003507702,
+      "avgLongFunding": 0.003507702,
+      "avgShortFunding": 0.003507702,
+      "marketCap": 12426882060,
+      "dailyVolumeIncreaseZScore": 1.665762208611511
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 11,
+      "symbol": "OP-PERP",
+      "baseVolume": 213002000000000,
+      "quoteVolume": 152977.736407,
+      "baseVolume30D": 3234651000000000,
+      "quoteVolume30D": 2293061.373781,
+      "price24hAgo": 0.829338,
+      "pricePercentChange": -9.16272979171339,
+      "priceHigh": 0.831001,
+      "priceLow": 0.728967,
+      "avgFunding": 0.003485093,
+      "avgLongFunding": 0.003485093,
+      "avgShortFunding": 0.003485093,
+      "marketCap": 1342530588,
+      "dailyVolumeIncreaseZScore": 1.558905943531382
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 29,
+      "symbol": "TNSR-PERP",
+      "baseVolume": 826876000000000,
+      "quoteVolume": 106179.358891,
+      "baseVolume30D": 24313578000000000,
+      "quoteVolume30D": 3437780.825106,
+      "price24hAgo": 0.151254,
+      "pricePercentChange": -8.077141761540195,
+      "priceHigh": 0.151715,
+      "priceLow": 0.135718,
+      "avgFunding": 0.005455039,
+      "avgLongFunding": 0.005455039,
+      "avgShortFunding": 0.005455039,
+      "marketCap": 47673373,
+      "dailyVolumeIncreaseZScore": 0.05103223894476544
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 23,
+      "symbol": "WIF-PERP",
+      "baseVolume": 1028563000000000,
+      "quoteVolume": 986769.032048,
+      "baseVolume30D": 73755021000000000,
+      "quoteVolume30D": 77101330.430499,
+      "price24hAgo": 1.1503,
+      "pricePercentChange": -10.998956793879866,
+      "priceHigh": 1.238431,
+      "priceLow": 1.019652,
+      "avgFunding": 0.00218202,
+      "avgLongFunding": 0.00218202,
+      "avgShortFunding": 0.002181466,
+      "marketCap": 1053509675,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 32,
+      "symbol": "IO-PERP",
+      "baseVolume": 2384000000000,
+      "quoteVolume": 1867.571979,
+      "baseVolume30D": 98262000000000,
+      "quoteVolume30D": 78254.060667,
+      "price24hAgo": 0.750098,
+      "pricePercentChange": -7.150532330442158,
+      "priceHigh": 0.750147,
+      "priceLow": 0.682011,
+      "avgFunding": 0.012740128,
+      "avgLongFunding": 0.012740128,
+      "avgShortFunding": 0.012740128,
+      "marketCap": 122738412,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 44,
+      "symbol": "MOTHER-PERP",
+      "baseVolume": 165000000000000,
+      "quoteVolume": 2748.676642,
+      "baseVolume30D": 37420710000000000,
+      "quoteVolume30D": 254643.601633,
+      "price24hAgo": 0.007373,
+      "pricePercentChange": -10.19937610199376,
+      "priceHigh": 0.007373,
+      "priceLow": 0.006652,
+      "avgFunding": 0.015891984,
+      "avgLongFunding": 0.015891984,
+      "avgShortFunding": 0.015891984,
+      "marketCap": 6519087,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 31,
+      "symbol": "CLOUD-PERP",
+      "baseVolume": 60276000000000,
+      "quoteVolume": 2578.689974,
+      "baseVolume30D": 3388056000000000,
+      "quoteVolume30D": 292262.068384,
+      "price24hAgo": 0.087461,
+      "pricePercentChange": 3.422096705960382,
+      "priceHigh": 0.094469,
+      "priceLow": 0.08897,
+      "avgFunding": 0.003837959,
+      "avgLongFunding": 0.003837959,
+      "avgShortFunding": 0.003837959,
+      "marketCap": 41883736,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 17,
+      "symbol": "RLB-PERP",
+      "baseVolume": 2332000000000,
+      "quoteVolume": 162.146203,
+      "baseVolume30D": 4474170000000000,
+      "quoteVolume30D": 206010.110872,
+      "price24hAgo": 0.059509,
+      "pricePercentChange": -6.827538691626472,
+      "priceHigh": 0.058982,
+      "priceLow": 0.054811,
+      "avgFunding": 0.000972398,
+      "avgLongFunding": 0.000972398,
+      "avgShortFunding": 0.000972398,
+      "marketCap": 110106778,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 27,
+      "symbol": "W-PERP",
+      "baseVolume": 100033000000000,
+      "quoteVolume": 8816.474411,
+      "baseVolume30D": 8051758000000000,
+      "quoteVolume30D": 692815.665991,
+      "price24hAgo": 0.089881,
+      "pricePercentChange": -5.630778473759745,
+      "priceHigh": 0.089063,
+      "priceLow": 0.085209,
+      "avgFunding": 0.003292987,
+      "avgLongFunding": 0.003292987,
+      "avgShortFunding": 0.003292987,
+      "marketCap": 402528039,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 42,
+      "symbol": "TON-PERP",
+      "baseVolume": 10032000000000,
+      "quoteVolume": 21112.228044,
+      "baseVolume30D": 234643000000000,
+      "quoteVolume30D": 735249.875163,
+      "price24hAgo": 3.334512,
+      "pricePercentChange": -2.9444188534934046,
+      "priceHigh": 3.367261,
+      "priceLow": 3.20564,
+      "avgFunding": 0.006753344,
+      "avgLongFunding": 0.006753344,
+      "avgShortFunding": 0.006753344,
+      "marketCap": 8065418057,
+      "dailyVolumeIncreaseZScore": 0.3114806566850016
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 30,
+      "symbol": "DRIFT-PERP",
+      "baseVolume": 607190000000000,
+      "quoteVolume": 432995.727608,
+      "baseVolume30D": 29391278000000000,
+      "quoteVolume30D": 15247223.536399,
+      "price24hAgo": 0.5995,
+      "pricePercentChange": -3.3799833194328657,
+      "priceHigh": 0.601743,
+      "priceLow": 0.556902,
+      "avgFunding": 0.007440926,
+      "avgLongFunding": 0.007440926,
+      "avgShortFunding": 0.007440926,
+      "marketCap": 203246872,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 28,
+      "symbol": "KMNO-PERP",
+      "baseVolume": 219414000000000,
+      "quoteVolume": 12856.348916,
+      "baseVolume30D": 14247424000000000,
+      "quoteVolume30D": 896887.863496,
+      "price24hAgo": 0.062,
+      "pricePercentChange": -8.211290322580643,
+      "priceHigh": 0.061332,
+      "priceLow": 0.056343,
+      "avgFunding": 0.012159515,
+      "avgLongFunding": 0.012159515,
+      "avgShortFunding": 0.012159515,
+      "marketCap": 139893837,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 22,
+      "symbol": "AVAX-PERP",
+      "baseVolume": 40286400000000,
+      "quoteVolume": 750714.831931,
+      "baseVolume30D": 357914600000000,
+      "quoteVolume30D": 8304320.823161,
+      "price24hAgo": 27.17,
+      "pricePercentChange": -9.66138755980862,
+      "priceHigh": 27.33495,
+      "priceLow": 24.497,
+      "avgFunding": 0.005497728,
+      "avgLongFunding": 0.005497728,
+      "avgShortFunding": 0.005497728,
+      "marketCap": 10562431306,
+      "dailyVolumeIncreaseZScore": 3.2390631938135397
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 24,
+      "symbol": "JUP-PERP",
+      "baseVolume": 2516793000000000,
+      "quoteVolume": 1367755.924265,
+      "baseVolume30D": 33804300000000000,
+      "quoteVolume30D": 18146120.767949,
+      "price24hAgo": 0.604888,
+      "pricePercentChange": -8.494299771197314,
+      "priceHigh": 0.6114,
+      "priceLow": 0.536575,
+      "avgFunding": 0.002449168,
+      "avgLongFunding": 0.002449168,
+      "avgShortFunding": 0.002449168,
+      "marketCap": 1695961129,
+      "dailyVolumeIncreaseZScore": 0.8463783994907235
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 47,
+      "symbol": "DBR-PERP",
+      "baseVolume": 26084000000000,
+      "quoteVolume": 1372.868879,
+      "baseVolume30D": 770250000000000,
+      "quoteVolume30D": 19048.071642,
+      "price24hAgo": 0.029886,
+      "pricePercentChange": -10.255638091414035,
+      "priceHigh": 0.03065,
+      "priceLow": 0.02727,
+      "avgFunding": -0.004745073,
+      "avgLongFunding": -0.004745073,
+      "avgShortFunding": -0.004745073,
+      "marketCap": 96095400,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 48,
+      "symbol": "WLF-5B-1W-BET",
+      "baseVolume": 0,
+      "quoteVolume": 0.85,
+      "baseVolume30D": 1258000000000,
+      "quoteVolume30D": 617.294,
+      "price24hAgo": 0.755,
+      "pricePercentChange": -10.80291390728477,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "avgFunding": 0,
+      "avgLongFunding": 0,
+      "avgShortFunding": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 45,
+      "symbol": "MOODENG-PERP",
+      "baseVolume": 37221000000000,
+      "quoteVolume": 5829.220788,
+      "baseVolume30D": 2956272000000000,
+      "quoteVolume30D": 595367.627125,
+      "price24hAgo": 0.218321,
+      "pricePercentChange": -12.949739145570053,
+      "priceHigh": 0.205073,
+      "priceLow": 0.191249,
+      "avgFunding": 0.004506029,
+      "avgLongFunding": 0.004506029,
+      "avgShortFunding": 0.004506029,
+      "marketCap": 191512019,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 51,
+      "symbol": "1KMEW-PERP",
+      "baseVolume": 2865000000000,
+      "quoteVolume": 16942.306972,
+      "baseVolume30D": 158554500000000,
+      "quoteVolume30D": 561218.873885,
+      "price24hAgo": 3.696941,
+      "pricePercentChange": -8.420258803156445,
+      "priceHigh": 3.696913,
+      "priceLow": 3.344,
+      "avgFunding": 0.003177923,
+      "avgLongFunding": 0.003177923,
+      "avgShortFunding": 0.003177923,
+      "dailyVolumeIncreaseZScore": 0.11324524432118027
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 60,
+      "symbol": "LTC-PERP",
+      "baseVolume": 816020000000,
+      "quoteVolume": 99317.217109,
+      "baseVolume30D": 23966560000000,
+      "quoteVolume30D": 2627672.031432,
+      "price24hAgo": 114.782,
+      "pricePercentChange": -5.58248592984962,
+      "priceHigh": 115.057462,
+      "priceLow": 108.07,
+      "avgFunding": 0.002308849,
+      "avgLongFunding": 0.002308849,
+      "avgShortFunding": 0.002308849,
+      "marketCap": 8379530303,
+      "dailyVolumeIncreaseZScore": 0.05549770197573235
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 61,
+      "symbol": "ME-PERP",
+      "baseVolume": 4572000000000,
+      "quoteVolume": 3933.582863,
+      "baseVolume30D": 92853000000000,
+      "quoteVolume30D": 81083.794184,
+      "price24hAgo": 0.899,
+      "pricePercentChange": -8.296774193548385,
+      "priceHigh": 0.898,
+      "priceLow": 0.828274,
+      "avgFunding": 0.009450633,
+      "avgLongFunding": 0.009450633,
+      "avgShortFunding": 0.009450633,
+      "marketCap": 127448565,
+      "dailyVolumeIncreaseZScore": 0.2822093625330583
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 35,
+      "symbol": "1KWEN-PERP",
+      "baseVolume": 0,
+      "quoteVolume": 409.018372,
+      "baseVolume30D": 583412000000000,
+      "quoteVolume30D": 22101.068954,
+      "price24hAgo": 0.04369,
+      "pricePercentChange": -5.772487983520248,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "avgFunding": 0.000324822,
+      "avgLongFunding": 0.000324822,
+      "avgShortFunding": 0.000324822,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 33,
+      "symbol": "ZEX-PERP",
+      "baseVolume": 9519000000000,
+      "quoteVolume": 969.221631,
+      "baseVolume30D": 1117552000000000,
+      "quoteVolume30D": 119156.80954,
+      "price24hAgo": 0.09331,
+      "pricePercentChange": -10.33865609259458,
+      "priceHigh": 0.094741,
+      "priceLow": 0.084384,
+      "avgFunding": 0.017969155,
+      "avgLongFunding": 0.017969155,
+      "avgShortFunding": 0.017969155,
+      "marketCap": 15803353,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 52,
+      "symbol": "MICHI-PERP",
+      "baseVolume": 4884000000000,
+      "quoteVolume": 256.15257,
+      "baseVolume30D": 2057195000000000,
+      "quoteVolume30D": 59429.133949,
+      "price24hAgo": 0.028227,
+      "pricePercentChange": -3.259290749991133,
+      "priceHigh": 0.029409,
+      "priceLow": 0.027672,
+      "avgFunding": 0.015650402,
+      "avgLongFunding": 0.015650402,
+      "avgShortFunding": 0.015650402,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 53,
+      "symbol": "GOAT-PERP",
+      "baseVolume": 19930000000000,
+      "quoteVolume": 3040.105998,
+      "baseVolume30D": 2307907000000000,
+      "quoteVolume30D": 299892.300716,
+      "price24hAgo": 0.126387,
+      "pricePercentChange": -13.264813627983893,
+      "priceHigh": 0.12492,
+      "priceLow": 0.107453,
+      "avgFunding": 0.002173457,
+      "avgLongFunding": 0.002173457,
+      "avgShortFunding": 0.002173457,
+      "marketCap": 112207096,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 54,
+      "symbol": "FWOG-PERP",
+      "baseVolume": 100891000000000,
+      "quoteVolume": 6129.571832,
+      "baseVolume30D": 16972512000000000,
+      "quoteVolume30D": 834454.769763,
+      "price24hAgo": 0.048958,
+      "pricePercentChange": -12.447403897218027,
+      "priceHigh": 0.048891,
+      "priceLow": 0.042782,
+      "avgFunding": -0.000150116,
+      "avgLongFunding": -0.000150116,
+      "avgShortFunding": -0.000150116,
+      "marketCap": 43033517,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 56,
+      "symbol": "RAY-PERP",
+      "baseVolume": 51940000000000,
+      "quoteVolume": 169256.755851,
+      "baseVolume30D": 2796574000000000,
+      "quoteVolume30D": 7987523.885978,
+      "price24hAgo": 3.3937,
+      "pricePercentChange": -8.524088752688808,
+      "priceHigh": 3.3859,
+      "priceLow": 3.0576,
+      "avgFunding": 0.007809698,
+      "avgLongFunding": 0.007809698,
+      "avgShortFunding": 0.007809698,
+      "marketCap": 846250841,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 62,
+      "symbol": "PENGU-PERP",
+      "baseVolume": 32586368000000000,
+      "quoteVolume": 1097190.539957,
+      "baseVolume30D": 351417922000000000,
+      "quoteVolume30D": 11174302.648254,
+      "price24hAgo": 0.041881,
+      "pricePercentChange": -5.46309782478928,
+      "priceHigh": 0.042444,
+      "priceLow": 0.039578,
+      "avgFunding": 0.005487433,
+      "avgLongFunding": 0.005487433,
+      "avgShortFunding": 0.005487433,
+      "marketCap": 2549946332,
+      "dailyVolumeIncreaseZScore": 2.809899803694148
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 63,
+      "symbol": "AI16Z-PERP",
+      "baseVolume": 506334000000000,
+      "quoteVolume": 52686.456445,
+      "baseVolume30D": 14089224000000000,
+      "quoteVolume30D": 2406870.123777,
+      "price24hAgo": 0.159851,
+      "pricePercentChange": -6.928327004522964,
+      "priceHigh": 0.1611,
+      "priceLow": 0.14138,
+      "avgFunding": 0.003665037,
+      "avgLongFunding": 0.003665037,
+      "avgShortFunding": 0.003665037,
+      "marketCap": 166797731,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 34,
+      "symbol": "POPCAT-PERP",
+      "baseVolume": 1049860000000000,
+      "quoteVolume": 283960.026362,
+      "baseVolume30D": 14033424000000000,
+      "quoteVolume30D": 5250774.195142,
+      "price24hAgo": 0.3884,
+      "pricePercentChange": -10.913491246138012,
+      "priceHigh": 0.388468,
+      "priceLow": 0.337949,
+      "avgFunding": 0.005209613,
+      "avgLongFunding": 0.005209613,
+      "avgShortFunding": 0.005209613,
+      "marketCap": 346626924,
+      "dailyVolumeIncreaseZScore": 1.551629740606795
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 68,
+      "symbol": "NBAFINALS25-BOS-BET",
+      "baseVolume": 0,
+      "quoteVolume": 1.971608,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.025,
+      "pricePercentChange": -99.996,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "avgFunding": 0,
+      "avgLongFunding": 0,
+      "avgShortFunding": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 72,
+      "symbol": "ADA-PERP",
+      "baseVolume": 207100000000000,
+      "quoteVolume": 138637.172475,
+      "baseVolume30D": 10170193000000000,
+      "quoteVolume30D": 7753429.898123,
+      "price24hAgo": 0.829654,
+      "pricePercentChange": -4.72510227154934,
+      "priceHigh": 0.829917,
+      "priceLow": 0.782834,
+      "avgFunding": 0.004459739,
+      "avgLongFunding": 0.004459739,
+      "avgShortFunding": 0.004459739,
+      "marketCap": 28980277658,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 64,
+      "symbol": "TRUMP-PERP",
+      "baseVolume": 53099200000000,
+      "quoteVolume": 347413.839931,
+      "baseVolume30D": 796068400000000,
+      "quoteVolume30D": 7902706.987025,
+      "price24hAgo": 10.338591,
+      "pricePercentChange": -7.605959071211924,
+      "priceHigh": 10.346526,
+      "priceLow": 9.511497,
+      "avgFunding": 0.002489797,
+      "avgLongFunding": 0.002489797,
+      "avgShortFunding": 0.002489797,
+      "marketCap": 1938467053,
+      "dailyVolumeIncreaseZScore": 1.0275574529280649
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 75,
+      "symbol": "PUMP-PERP",
+      "baseVolume": 269413624000000000,
+      "quoteVolume": 841625.021691,
+      "baseVolume30D": 4063626892000000000,
+      "quoteVolume30D": 15920462.745315,
+      "price24hAgo": 0.002859,
+      "pricePercentChange": -19.657222805176637,
+      "priceHigh": 0.002871,
+      "priceLow": 0.002286,
+      "avgFunding": 0.003856196,
+      "avgLongFunding": 0.003856196,
+      "avgShortFunding": 0.003856196,
+      "marketCap": 856042155,
+      "dailyVolumeIncreaseZScore": 0.27017262229681194
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 67,
+      "symbol": "NBAFINALS25-OKC-BET",
+      "baseVolume": 0,
+      "quoteVolume": 1439.398655,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0.89,
+      "pricePercentChange": 8.819662921348312,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "avgFunding": 0,
+      "avgLongFunding": 0,
+      "avgShortFunding": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 55,
+      "symbol": "PNUT-PERP",
+      "baseVolume": 26065000000000,
+      "quoteVolume": 4410.632516,
+      "baseVolume30D": 1270958000000000,
+      "quoteVolume30D": 361950.02792,
+      "price24hAgo": 0.288553,
+      "pricePercentChange": -9.954843650906419,
+      "priceHigh": 0.291214,
+      "priceLow": 0.261625,
+      "avgFunding": 0.002771791,
+      "avgLongFunding": 0.002771791,
+      "avgShortFunding": 0.002771791,
+      "marketCap": 265326215,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 73,
+      "symbol": "PAXG-PERP",
+      "baseVolume": 8132000000,
+      "quoteVolume": 28278.427246,
+      "baseVolume30D": 437523000000,
+      "quoteVolume30D": 1462580.088975,
+      "price24hAgo": 3347.729326,
+      "pricePercentChange": -0.5737351538796444,
+      "priceHigh": 3349.119769,
+      "priceLow": 3319.200428,
+      "avgFunding": 0.000326334,
+      "avgLongFunding": 0.000326334,
+      "avgShortFunding": 0.000326334,
+      "marketCap": 939727818,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 65,
+      "symbol": "MELANIA-PERP",
+      "baseVolume": 165327500000000,
+      "quoteVolume": 30632.626189,
+      "baseVolume30D": 3373995700000000,
+      "quoteVolume30D": 783090.525151,
+      "price24hAgo": 0.2397,
+      "pricePercentChange": -2.9311639549436816,
+      "priceHigh": 0.244093,
+      "priceLow": 0.227344,
+      "avgFunding": -0.007094256,
+      "avgLongFunding": -0.007094256,
+      "avgShortFunding": -0.007094256,
+      "marketCap": 157073923,
+      "dailyVolumeIncreaseZScore": 0.370062707033654
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 66,
+      "symbol": "BERA-PERP",
+      "baseVolume": 22184400000000,
+      "quoteVolume": 85183.574453,
+      "baseVolume30D": 1352518900000000,
+      "quoteVolume30D": 2994976.990664,
+      "price24hAgo": 2.318784,
+      "pricePercentChange": -10.027022784355927,
+      "priceHigh": 2.282054,
+      "priceLow": 2.067112,
+      "avgFunding": -0.003374094,
+      "avgLongFunding": -0.003374094,
+      "avgShortFunding": -0.003374094,
+      "marketCap": 258668006,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 59,
+      "symbol": "HYPE-PERP",
+      "baseVolume": 46673200000000,
+      "quoteVolume": 1485766.883001,
+      "baseVolume30D": 768809000000000,
+      "quoteVolume30D": 33818634.570388,
+      "price24hAgo": 44.353433,
+      "pricePercentChange": -0.5683122657044365,
+      "priceHigh": 46.172733,
+      "priceLow": 42.97179,
+      "avgFunding": 0.005592896,
+      "avgLongFunding": 0.005592896,
+      "avgShortFunding": 0.005592896,
+      "marketCap": 15031774354,
+      "dailyVolumeIncreaseZScore": 1.1590080700124479
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 71,
+      "symbol": "FARTCOIN-PERP",
+      "baseVolume": 1259983000000000,
+      "quoteVolume": 995806.036923,
+      "baseVolume30D": 12236926000000000,
+      "quoteVolume30D": 16472263.990689,
+      "price24hAgo": 1.3823,
+      "pricePercentChange": -16.709469724372433,
+      "priceHigh": 1.389262,
+      "priceLow": 1.113754,
+      "avgFunding": 0.003399128,
+      "avgLongFunding": 0.003399128,
+      "avgShortFunding": 0.003399128,
+      "marketCap": 1173177858,
+      "dailyVolumeIncreaseZScore": 2.27750747833615
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 30,
+      "symbol": "ME",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 127448565,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 28,
+      "symbol": "USDS",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 24,
+      "symbol": "sUSDe",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 35,
+      "symbol": "AI16Z",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 166797731,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 37,
+      "symbol": "MELANIA",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 157073923,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 33,
+      "symbol": "JLP-1",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 36,
+      "symbol": "TRUMP",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 1938467053,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 38,
+      "symbol": "AUSD",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 34,
+      "symbol": "USDC-1",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 31,
+      "symbol": "PENGU",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 2549946332,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 43,
+      "symbol": "PT-dSOL-30JUN25-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 46,
+      "symbol": "ZEUS",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 39,
+      "symbol": "FARTCOIN",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 1173177858,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 40,
+      "symbol": "JitoSOL-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 49,
+      "symbol": "SOL-2",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 48,
+      "symbol": "USDT-4",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 50,
+      "symbol": "JitoSOL-2",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 45,
+      "symbol": "zBTC",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 42,
+      "symbol": "PT-kySOL-15JUN25-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 44,
+      "symbol": "JTO-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 47,
+      "symbol": "USDC-4",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": null
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 55,
+      "symbol": "PT-fragSOL-31OCT25-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 51,
+      "symbol": "JTO-2",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 56,
+      "symbol": "PUMP",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "marketCap": 856042155,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 52,
+      "symbol": "dfdvSOL",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 53,
+      "symbol": "sACRED",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 54,
+      "symbol": "EURC",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "spot": {}
+      },
+      "marketIndex": 41,
+      "symbol": "PT-fragSOL-10JUL25-3",
+      "baseVolume": 0,
+      "quoteVolume": 0,
+      "baseVolume30D": 0,
+      "quoteVolume30D": 0,
+      "price24hAgo": 0,
+      "pricePercentChange": 0,
+      "priceHigh": 0,
+      "priceLow": 0,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 69,
+      "symbol": "KAITO-PERP",
+      "baseVolume": 1297000000000,
+      "quoteVolume": 1281.605662,
+      "baseVolume30D": 30231000000000,
+      "quoteVolume30D": 46213.998455,
+      "price24hAgo": 1.353746,
+      "pricePercentChange": -5.3504867235064655,
+      "priceHigh": 1.359912,
+      "priceLow": 1.287976,
+      "avgFunding": 0.004319937,
+      "avgLongFunding": 0.004319937,
+      "avgShortFunding": 0.004319937,
+      "marketCap": 314710407,
+      "dailyVolumeIncreaseZScore": 0.07625440797797661
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 74,
+      "symbol": "LAUNCHCOIN-PERP",
+      "baseVolume": 20710000000000,
+      "quoteVolume": 2833.587095,
+      "baseVolume30D": 1478230000000000,
+      "quoteVolume30D": 174819.793134,
+      "price24hAgo": 0.082459,
+      "pricePercentChange": 1.9682508883202554,
+      "priceHigh": 0.095593,
+      "priceLow": 0.082128,
+      "avgFunding": -0.004684675,
+      "avgLongFunding": -0.004684675,
+      "avgShortFunding": -0.004684675,
+      "marketCap": 89853002,
+      "dailyVolumeIncreaseZScore": 0
+    },
+    {
+      "marketType": {
+        "perp": {}
+      },
+      "marketIndex": 70,
+      "symbol": "IP-PERP",
+      "baseVolume": 82923200000000,
+      "quoteVolume": 400155.081892,
+      "baseVolume30D": 829102500000000,
+      "quoteVolume30D": 3909057.932894,
+      "price24hAgo": 5.665985,
+      "pricePercentChange": 0.44276502673409973,
+      "priceHigh": 5.877201,
+      "priceLow": 5.477739,
+      "avgFunding": -0.002475354,
+      "avgLongFunding": -0.002475354,
+      "avgShortFunding": -0.002475354,
+      "marketCap": 1688751940,
+      "dailyVolumeIncreaseZScore": 1.938175168818242
+    }
+  ]
+}
