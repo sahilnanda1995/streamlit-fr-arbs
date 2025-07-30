@@ -18,7 +18,7 @@ from config.constants import (
 session = requests.Session()
 
 
-@st.cache_data(ttl=3)  # Cache for 5 minutes
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
     """
     Fetch predicted funding rates from Hyperliquid API.
@@ -31,13 +31,13 @@ def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
             url=HYPERLIQUID_API_URL,
             headers=HYPERLIQUID_HEADERS,
             json=HYPERLIQUID_REQUEST_BODY,
-            timeout=30
+            timeout=5
         )
         response.raise_for_status()
         return response.json()
 
     except requests.exceptions.Timeout:
-        st.error("Hyperliquid API request timed out after 30 seconds")
+        st.error("Hyperliquid API request timed out after 5 seconds")
         return []
 
     except requests.exceptions.ConnectionError:
@@ -57,7 +57,7 @@ def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
         return []
 
 
-@st.cache_data(ttl=3)  # Cache for 5 minutes
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_drift_markets_24h() -> Dict[str, Any]:
     """
     Fetch 24h market data from Drift API.
@@ -66,12 +66,12 @@ def fetch_drift_markets_24h() -> Dict[str, Any]:
         Market data dictionary or empty dict if request failed
     """
     try:
-        response = session.get(url=DRIFT_API_URL, timeout=30)
+        response = session.get(url=DRIFT_API_URL, timeout=5)
         response.raise_for_status()
         return response.json()
 
     except requests.exceptions.Timeout:
-        st.error("Drift API request timed out after 30 seconds")
+        st.error("Drift API request timed out after 5 seconds")
         return {}
 
     except requests.exceptions.ConnectionError:
@@ -102,7 +102,7 @@ def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
         List of rates data or empty list if request failed
     """
     try:
-        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=30)
+        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=5)
         response.raise_for_status()
         response_data = response.json()
 
@@ -111,7 +111,7 @@ def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
         return []
 
     except requests.exceptions.Timeout:
-        st.error("Asgard current rates API request timed out after 30 seconds")
+        st.error("Asgard current rates API request timed out after 5 seconds")
         return []
 
     except requests.exceptions.ConnectionError:
@@ -131,7 +131,7 @@ def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
         return []
 
 
-@st.cache_data(ttl=3)  # Cache for 5 minutes
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
     """
     Fetch current staking rates from Asgard API.
@@ -140,7 +140,7 @@ def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
         List of staking data or empty list if request failed
     """
     try:
-        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=30)
+        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=5)
         response.raise_for_status()
         response_data = response.json()
 
@@ -150,7 +150,7 @@ def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
         return []
 
     except requests.exceptions.Timeout:
-        st.error("Asgard staking rates API request timed out after 30 seconds")
+        st.error("Asgard staking rates API request timed out after 5 seconds")
         return []
 
     except requests.exceptions.ConnectionError:

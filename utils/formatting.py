@@ -234,8 +234,10 @@ def process_money_markets_for_display(
             "Token": entry.token,
             "Protocol": entry.protocol,
             "Market Key": entry.market_key,
-            "Lending Rate": convert_to_display_percentage(entry.lending_rate) if entry.lending_rate is not None else None,
-            "Borrow Rate": convert_to_display_percentage(entry.borrow_rate) if entry.borrow_rate is not None else None,
+            # Lending and Borrow rates are already in percentage, so just use as-is
+            "Lending Rate": entry.lending_rate if entry.lending_rate is not None else None,
+            "Borrow Rate": entry.borrow_rate if entry.borrow_rate is not None else None,
+            # Staking rate is in decimal, so convert to percentage
             "Staking Rate": convert_to_display_percentage(entry.staking_rate) if entry.staking_rate is not None else None
         }
         formatted_data.append(formatted_entry)
