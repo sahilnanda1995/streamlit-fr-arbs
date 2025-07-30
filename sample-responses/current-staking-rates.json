@@ -1,0 +1,412 @@
+{
+  "success": true,
+  "data": [
+    {
+      "address": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+      "apy": 0.3043,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "2LuXDpkn7ZWMqufwgUv7ZisggGkSE5FpeHCHBsRgLg3m",
+      "apy": 0.07126246953525883,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "3bfv2scCdbvumVBc3Sar5QhYXx7Ecsi8EFF2akjxe329",
+      "apy": 0.09263073452006565,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "43CXsrQV7WyMvBsUiiZQMNU5Sdp28Jy61YMtx4J3RT7T",
+      "apy": 0.0722201045371013,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "4yCLi5yWGzpTWMQ1iWHG5CrGYAdBkhyEdsuSugjDUqwj",
+      "apy": 0.55923624573743,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "apy": 0.09642660768483695,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+      "apy": 0,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn",
+      "apy": 0.06906942142826915,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "9zecJ6ryY3PXfW1wTd1Nz1GR9hzWhMYw62KDbvSyEJAj",
+      "apy": 3.164018499054085e-8,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "aeroXvCT6tjGVNyTvZy86tFDwE4sYsKCh7FbNDcrcxF",
+      "apy": 0.07008859395984841,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "apySoLhdVa6QbvNyEjXCbET3FdUm9cCdEvYyjCU7icM",
+      "apy": 1.1251962324839345e-11,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj",
+      "apy": 0.06972137613,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "AxM7a5HNmRNHbND6h5ZMSsU8n3NLa1tskoN6m5mAgVvL",
+      "apy": 1.0520860849183578e-8,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "B5GgNAZQDN8vPrQ15jPrXmJxVtManHLqHogj9B9i4zSs",
+      "apy": 2.596453422635629e-10,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "BANXyWgPpa519e2MtQF1ecRbKYKKDMXPF1dyBxUq9NQG",
+      "apy": 0.000017794340019472443,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "BgYgFYq4A9a2o5S1QbWkmYVFBh7LBQL8YvugdhieFg38",
+      "apy": 1.081579155126633e-7,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "BNso1VUJnh4zcfpZa6986Ea66P6TCp59hvtNJ8b1X85",
+      "apy": 0.060719928894166,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "BonK1YhkXEGLZzwtcvRTip3gAL9nCeQD7ppZBLXhtTs",
+      "apy": 0.066246137676183,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+      "apy": 0.07050422018080578,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "Bybit2vBJGhPF52GBdNaQfUJ6ZpThSgHBobjWZpLPb4B",
+      "apy": 0.06621035092106993,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "camaK1kryp4KJ2jS1HDiZuxmK7S6dyEtr9DA7NsuAAB",
+      "apy": 0.07048622657384596,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "CgnTSoL3DgY9SFHxcLj6CgCgKKoTBr6tp4CPAEWy25DE",
+      "apy": 0.08231307130240835,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "Comp4ssDzXcLeu2MnLuGNNFC4cmLPMng8qWHPvzAMU1h",
+      "apy": 0.06915012541493588,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "D1gittVxgtszzY4fMwiTfM4Hp7uL5Tdi1S9LYaepAUUm",
+      "apy": 0.09160419316635833,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "DLGToUUnqy9hXxpJTm5VaiBKqnw9Zt1qzvrpwKwUmuuZ",
+      "apy": 0.07056229160662768,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "Dso1bDeDjCQxTrWHqUUi63oBvV7Mdm6WaobLbQ7gnPQ",
+      "apy": 0.08241945714096251,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "DUAL6T9pATmQUFPYmrWq2BkkGdRxLtERySGScYmbHMER",
+      "apy": 0.06892217235533926,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "edge86g9cVz87xcpKpy3J77vbp4wYd9idEV562CCntt",
+      "apy": 0.07307917801179468,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "ELSoL1owwMWQ9foMsutweCsMKbTPVBD9pFqxQGidTaMC",
+      "apy": 0.06866733170237686,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "eon5tgYNk5FjJUcBUcLno49t2GfpmWZDzJHeYkbh9Zo",
+      "apy": 0.07699172366869582,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "EPCz5LK372vmvCkZH3HgSuGNKACJJwwxsofW6fypCPZL",
+      "apy": 0.08148313287194942,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "ezSoL6fY1PVdJcJsUpe5CM3xkfmy3zoVCABybm5WtiC",
+      "apy": 0.07568747619141049,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "Fi5GayacZzUrfaCRCJtBz2vSYkGF56xjgCceZx5SbXwq",
+      "apy": 6.743591611050684e-10,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "fmSoLKzBY6h9b5RQ67UVs7xE3Ym6mx2ChpPxHdoaVho",
+      "apy": 0,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "fpSoL8EJ7UA5yJxFKWk1MFiWi35w8CbH36G5B9d7DsV",
+      "apy": 3.5077235930695374e-9,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "fuseYvhNJbSzdDByyTCrLcogsoNwAviB1WeewhbqgFc",
+      "apy": 0.06794756757947822,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "gangqfNY8fA7eQY3tHyjrevxHCLnhKRrLGRwUMBR4y6",
+      "apy": 0.07880326674889256,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "GEJpt3Wjmr628FqXxTgxMce1pLntcPV4uFi8ksxMyPQh",
+      "apy": 0.07088563421140859,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "GRJQtWwdJmp5LLpy8JWjPgn5FnLyqSJGNhn5ZnCTFUwM",
+      "apy": 0.07617602803249324,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "gSvP9zBJ33pX7W2finzAYJZp6Q9ipNAQ19xU9PrCirz",
+      "apy": 0.08497080744175751,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "haSo1Vz5aTsqEnz8nisfnEsipvbAAWpgzRDh2WhhMEh",
+      "apy": 0.08402504411065026,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "HausGKcq9G9zM3azwNmgZyzUvYeeqR8h8663PmZpxuDj",
+      "apy": 0.06817163348295134,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A",
+      "apy": 0.07163763487166556,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "HEALfPnLU31roNrnhB8bHWQVszMMAKro4KJRrnkQyVpZ",
+      "apy": 0,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "HUBsveNpjo5pWqNkH57QzxjQASdTVXcSK7bVKTSZtcSX",
+      "apy": 0.06950155462487917,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "iceSdwqztAQFuH6En49HWwMxwthKMnGzLFQcMN3Bqhj",
+      "apy": 0.08919658376539392,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      "apy": 0.07165098178764488,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "jucy5XJ76pHVvtPZb5TKRcGQExkwit2P5s4vY8UzmpC",
+      "apy": 0.06402382763421037,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
+      "apy": 0.08008914709891735,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "KUMAgSzADhUmwXwNiUbNHYnMBnd89u4t9obZThJ4dqg",
+      "apy": 0.07461245755426053,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "kySo1nETpsZE2NWe5vj2C64mPSciH1SppmHb4XieQ7B",
+      "apy": 0.07882322378532414,
+      "lastUpdated": "2025-07-30T04:31:43.102Z"
+    },
+    {
+      "address": "LAinEtNLgpmCP9Rvsf5Hn8W6EhNiKLZQti1xfWMLy6X",
+      "apy": 0.07364808772616797,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "LnTRntk2kTfWEY6cVB8K9649pgJbt6dJLS1Ns1GZCWg",
+      "apy": 0.07639721952446739,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "LSoLi4A4Pk4i8DPFYcfHziRdEbH9otvSJcSrkMVq99c",
+      "apy": 0.07136392190122698,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "LSTxxxnJzKDFSLr4dUkPcmCf5VyryEqzPLz5j4bpxFp",
+      "apy": 0.08228347065798387,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "MangmsBgFqJhW4cLUR9LxfVgMboY1xAoP8UUBiWwwuY",
+      "apy": 0.07095156456069567,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "MLLWWq9TLHK3oQznWqwPyqD7kH4LXTHSKXK4yLz7LjD",
+      "apy": 4.607877013285133e-8,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "apy": 0.07399864610499225,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "nordEhq2BnR6weCyrdezNVk7TwC3Ej94znPZxdBnfLM",
+      "apy": 0.07071285051728544,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "pathdXw4He1Xk3eX84pDdDZnGKEme3GivBamGCVPZ5a",
+      "apy": 1.4788380150084397e-9,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "phaseZSfPxTDBpiVb96H4XFSD8xHeHxZre5HerehBJG",
+      "apy": 0.06928530887484323,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "picobAEvs6w7QEknPce34wAE4gknZA9v5tTonnmHYdX",
+      "apy": 0.07539772165107379,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "PoLaRbHgtHnmeSohWQN83LkwA4xnQt91VUqL5hx5VTc",
+      "apy": 0.08667945411151634,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "pumpkinsEq8xENVZE6QgTS93EN4r9iKvNxNALS1ooyp",
+      "apy": 0.07347075814154487,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "pWrSoLAhue6jUxUkbWgmEy5rD9VJzkFmvfTDV5KgNuu",
+      "apy": 0.07171233631564615,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "RSoLp7kddnNwvvvaz4b1isQy8vcqdSwXjgm1wXaMhD8",
+      "apy": 0.07222278321500657,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "rug3uop5ibttn6FoQe5WLiZ1cW6wTUymnSECB6GXvta",
+      "apy": 0.06685345823458877,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "SnKAf8aNjeYz8pY8itYn3VxFhT6Q8WNdPwy17s9USgC",
+      "apy": 2.3413730954047196e-9,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "spkyB5SzVaz2x3nNzSBuhpLSEF8otbRDbufc73fuLXg",
+      "apy": 0.0666567534879529,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "sSo14endRuUbvQaJS3dq36Q829a3A6BEfoeeRGJywEh",
+      "apy": 0.0753,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "st8QujHLPsX3d6HG9uQg9kJ91jFxUgruwsb1hyYXSNd",
+      "apy": 1.9209323021129876e-10,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "stkrHcjQGytQggswj3tCF77yriaJYYhrRxisRqe9AiZ",
+      "apy": 0.07407312916280435,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "StPsoHokZryePePFV8N7iXvfEmgUoJ87rivABX7gaW6",
+      "apy": 0.06206457518568861,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "strng7mqqc1MBJJV6vMzYbEqnwVGvKKGKedeCvtktWA",
+      "apy": 0.07952045577033136,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "suPer8CPwxoJPQ7zksGMwFvjBQhjAHwUMmPV4FVatBw",
+      "apy": 0.07117152248539423,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "ThUGsoLWtoTCfb24AmQTKDVjTTUBbNrUrozupJeyPsy",
+      "apy": 0.07257664941552489,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "uPtSoL2qszk4SuPHNE2zqk1gDtqCq21ZE1yZCqvFTqq",
+      "apy": 2.500277762607084e-10,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "uSo1ynGWS3qc2B1nN2MmEHN5cYaNbT7vJp87LtgkpV8",
+      "apy": 0,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "vSoLxydx6akxyMD9XEcPvGYNGq6Nn66oqVb3UkGkei7",
+      "apy": 0.06850239950477695,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "WensoLXxZJnev2YvihHFchn1dVVFnFLYvgomXWvvwRu",
+      "apy": 0.07364184850910223,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    },
+    {
+      "address": "Zippybh3S5xYYam2nvL6hVJKz1got6ShgV4DyD1XQYF",
+      "apy": 0.06973672224084367,
+      "lastUpdated": "2025-07-30T05:46:37.518Z"
+    }
+  ],
+  "executionTime": "7.37ms",
+  "count": 81
+}

@@ -114,6 +114,22 @@ The application follows a clean, modular architecture with clear separation of c
 - **Purpose**: Historical average funding rate statistics
 - **Sample Response**: `sample-responses/drift-avg-endpoints.json`
 
+### Asgard API
+
+#### Current ledning and borrowing rates
+
+- **Endpoint**: `https://historical-apy.asgard.finance/current-rates`
+- **Method**: `GET`
+- **Purpose**: Provides ongoing lending and borrowing rates
+- **Sample Response**: `sample-responses/current-rates.json`
+
+#### Current staking rates
+
+- **Endpoint**: `https://historical-apy.asgard.finance/current-staking-rates`
+- **Method**: `GET`
+- **Purpose**: Provides current staking rates for different tokens
+- **Sample Response**: `sample-responses/current-staking-rates.json`
+
 ## 🧪 Development
 
 ### Code Organization

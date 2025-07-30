@@ -1,0 +1,357 @@
+{
+  "success": true,
+  "data": [
+    {
+      "protocol": "drift",
+      "address": "0",
+      "lendingRate": 6.254600000000001,
+      "borrowingRate": 8.2478,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "1",
+      "lendingRate": 1.82,
+      "borrowingRate": 5.3328,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "17",
+      "lendingRate": 0,
+      "borrowingRate": 0.018000000000000002,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "22",
+      "lendingRate": 4.0191,
+      "borrowingRate": 7.716399999999999,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "27",
+      "lendingRate": 0.1335,
+      "borrowingRate": 1.1738,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "28",
+      "lendingRate": 5.9962,
+      "borrowingRate": 8.4136,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "3",
+      "lendingRate": 0.18359999999999999,
+      "borrowingRate": 1.355,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "33",
+      "lendingRate": 0,
+      "borrowingRate": 0.053700000000000005,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "34",
+      "lendingRate": 6.4887,
+      "borrowingRate": 8.5147,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "4",
+      "lendingRate": 0.06570000000000001,
+      "borrowingRate": 0.8109,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "49",
+      "lendingRate": 2.3547,
+      "borrowingRate": 4.429799999999999,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "5",
+      "lendingRate": 4.7225,
+      "borrowingRate": 7.4666999999999994,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "drift",
+      "address": "50",
+      "lendingRate": 0.2581,
+      "borrowingRate": 1.4668,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "2gc9Dm1eB6UgVYFBUN9bWks6Kes9PbWSaPaa9DqyvEiN",
+      "lendingRate": 3.7618487766267306,
+      "borrowingRate": 6.898046071692776,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK",
+      "lendingRate": 0.002610528294488823,
+      "borrowingRate": 0.1388642619920999,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb",
+      "lendingRate": 0.1801755848335418,
+      "borrowingRate": 1.1112758692782387,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "4pDCUGYftuPG1sV3xcqsn2YGfHC6Q3eZVfDyzQm8SK5A",
+      "lendingRate": 0,
+      "borrowingRate": 1.27692842654612,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "6gTJfuPHEg6uRAijRkMqNc9kan4sVZejKMxmvx2grT1p",
+      "lendingRate": 5.429556128371105,
+      "borrowingRate": 7.033684158071085,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "9TdUdZpnXoLQbqt5guR8fVdZZDgcQsLkUV2nr3SGRSJ8",
+      "lendingRate": 0,
+      "borrowingRate": 1.27692842654612,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "BHUi32TrEsfN2U821G4FprKrR4hTeK4LCWtA3BFetuqA",
+      "lendingRate": 3.9765080598861413,
+      "borrowingRate": 7.531124989138549,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "Bpc4kAh29J3YDQUMJJdGdr1zBAhTQjC48R1B8YTWudsi",
+      "lendingRate": 5.183277270416253,
+      "borrowingRate": 8.810623738359503,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "BvafE5Sm6rLrBbVRtJ2FkCzfNJQ2TjcL8bvPZULUDYrt",
+      "lendingRate": 0,
+      "borrowingRate": 1.2773440077154863,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+      "lendingRate": 5.734873555977771,
+      "borrowingRate": 7.617816889463125,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59",
+      "lendingRate": 4.3261253578895875,
+      "borrowingRate": 5.587295428783556,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP",
+      "lendingRate": 0,
+      "borrowingRate": 0,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp",
+      "lendingRate": 0.000018206238183715584,
+      "borrowingRate": 1.284868733063771,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+      "lendingRate": 0.0002352808717853705,
+      "borrowingRate": 1.3163708474786873,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "F9HdecRG8GPs9LEn4S5VfeJVEZVqrDJFR6bvmQTi22na",
+      "lendingRate": 0.006936816699498749,
+      "borrowingRate": 0.03606465339736076,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "FBSyPnxtHKLBZ4UeeUyAnbtFuAmTHLtso9YtsqRDRWpM",
+      "lendingRate": 0.0006652300854392834,
+      "borrowingRate": 1.3471702453480283,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "febGYTnFX4GbSGoFHFeJXUHgNaK53fB23uDins9Jp1E",
+      "lendingRate": 0.13879414079174257,
+      "borrowingRate": 0.9755699188574107,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+      "lendingRate": 4.314937112596762,
+      "borrowingRate": 6.400207889555665,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "kamino",
+      "address": "H3t6qZ1JkguCNTi9uzVKqQ7dvt2cum4XiXWom6Gn5e5S",
+      "lendingRate": 4.283002136369762,
+      "borrowingRate": 7.65409294495587,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "22DcjMZrMwC5Bpa5AGBsmjc5V9VuQrXG6N9ZtdUNyYGE",
+      "lendingRate": 0.09704029499115077,
+      "borrowingRate": 2.250048669127569,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "2s37akK2eyBbp8DZgCm7RtsaEz8eJP3Nxd4urLHQv7yB",
+      "lendingRate": 4.210365095546313,
+      "borrowingRate": 7.470299805800155,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "8LaUZadNqtzuCG7iCvZd7d5cbquuYfv19KjAg6GPuuCb",
+      "lendingRate": 0.03464365680728809,
+      "borrowingRate": 1.7469004685246565,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "8UEiPmgZHXXEDrqLS3oiTxQxTbeYTtPbeMBxAd2XGbpu",
+      "lendingRate": 3.964656900896639,
+      "borrowingRate": 8.391747284335748,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "BKsfDJCMbYep6gr9pq8PsmJbb5XGLHbAJzUV8vmorz7a",
+      "lendingRate": 0.11866668375731622,
+      "borrowingRate": 2.278817905540479,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "BkUyfXjbBBALcfZvw76WAFRvYQ21xxMWWeoPtJrUqG3z",
+      "lendingRate": 0.5080258627483549,
+      "borrowingRate": 3.6459840175257474,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "Bohoc1ikHLD7xKJuzTyiTyCwzaL5N7ggJQu75A8mKYM8",
+      "lendingRate": 0.036720558645798734,
+      "borrowingRate": 1.7689631140495625,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "CCKtUs6Cgwo4aaQUmBPmyoApH2gUDErxNZCAntD6LYGh",
+      "lendingRate": 4.272471430703016,
+      "borrowingRate": 6.21557887405109,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "FDsf8sj6SoV313qrA91yms3u5b3P4hBxEPvanVs8LtJV",
+      "lendingRate": 2.553776719639016,
+      "borrowingRate": 7.4127207707193055,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "marginfi",
+      "address": "HmpMfL8942u22htC4EMiWgLX931g3sacXFR6KjuLgKLV",
+      "lendingRate": 3.732631125333774,
+      "borrowingRate": 10.24960977335682,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "7ED1Yofz9n2E3kGHfineuqxUDrN38EKbpSfiRJ5HPJh2",
+      "lendingRate": 0,
+      "borrowingRate": 0,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "8K9WC8xoh2rtQNY7iEGXtPvfbDCi563SdWhCAhuMP2xE",
+      "lendingRate": 4.349562225157219,
+      "borrowingRate": 7.9716880224120015,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36",
+      "lendingRate": 2.0981475937896104,
+      "borrowingRate": 5.3310542422574585,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "Ag7UiqS5kqcsjNFWQfeUAiEXo27auFvdwLVJQwzYCBkZ",
+      "lendingRate": 0.02099992440056351,
+      "borrowingRate": 1.458765145658909,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "BgxfHJDzm44T7XG68MYKx7YisTjZu73tVovyZSjJMpmw",
+      "lendingRate": 3.425859810492039,
+      "borrowingRate": 6.939570311040182,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "CPDiKagfozERtJ33p7HHhEfJERjvfk1VAjMXAFLrvrKP",
+      "lendingRate": 0.13058519825818707,
+      "borrowingRate": 1.2421488928531008,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "GhNvGen79cntgdZjUjLkj1LWSdZBiH8YFmDXhkdREX3q",
+      "lendingRate": 0.9372318820971292,
+      "borrowingRate": 7.7335477456700055,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    },
+    {
+      "protocol": "solend",
+      "address": "HUL7GeHECRMbBFwde6pBmCPwDZjoLQDX7Xis4d64jAya",
+      "lendingRate": 3.1670063820808587,
+      "borrowingRate": 7.354144526461695,
+      "lastUpdated": "2025-07-30T05:46:37.526Z"
+    }
+  ],
+  "executionTime": "9.76ms",
+  "count": 50
+}
