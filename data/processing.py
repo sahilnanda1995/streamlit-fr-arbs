@@ -22,19 +22,11 @@ def process_drift_data(drift_data: Dict[str, Any]) -> List[List]:
     """
     processed_data = []
 
-    # Handle the API response structure - data is in drift_data["data"]
-    data_array = drift_data.get("data", [])
+    # First, filter for perp markets only
+    perp_markets = get_perp_markets_from_drift_data(drift_data)
 
-    for item in data_array:
-        # Filter for perp markets only - check if "perp" key exists
-        market_type = item.get("marketType", {})
-        if "perp" not in market_type:
-            continue
-
+    for item in perp_markets:
         symbol = item.get("symbol", "")
-        # Filter for symbols ending with -PERP
-        if not symbol.endswith(PERP_SYMBOL_SUFFIX):
-            continue
 
         # Extract token name by removing -PERP suffix
         token_name = symbol.replace(PERP_SYMBOL_SUFFIX, "")
@@ -54,6 +46,34 @@ def process_drift_data(drift_data: Dict[str, Any]) -> List[List]:
         processed_data.append(drift_entry)
 
     return processed_data
+
+
+def get_perp_markets_from_drift_data(drift_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Extract perpetual markets from Drift API response data.
+
+    Args:
+        drift_data: Raw response from Drift API
+
+    Returns:
+        List of perpetual market data dictionaries
+    """
+    if not drift_data:
+        return []
+
+    # Handle the API response structure - data is in drift_data["data"]
+    data_array = drift_data.get("data", [])
+
+    perp_markets = []
+    for item in data_array:
+        market_type = item.get("marketType", {})
+        symbol = item.get("symbol", "")
+
+        # Filter for perp markets
+        if "perp" in market_type and symbol.endswith(PERP_SYMBOL_SUFFIX):
+            perp_markets.append(item)
+
+    return perp_markets
 
 
 def filter_perp_markets(market_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

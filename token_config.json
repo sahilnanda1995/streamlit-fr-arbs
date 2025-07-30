@@ -1,0 +1,300 @@
+{
+  "JUPSOL": {
+    "symbol": "JUPSOL",
+    "mint": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "8LaUZadNqtzuCG7iCvZd7d5cbquuYfv19KjAg6GPuuCb"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp"
+      }
+    ]
+  },
+  "SOL": {
+    "symbol": "SOL",
+    "mint": "So11111111111111111111111111111111111111112",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "CCKtUs6Cgwo4aaQUmBPmyoApH2gUDErxNZCAntD6LYGh"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Jito 10x Market",
+        "bank": "6gTJfuPHEg6uRAijRkMqNc9kan4sVZejKMxmvx2grT1p"
+      },
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "1"
+      },
+      {
+        "protocol": "solend",
+        "market": "Main Market",
+        "bank": "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
+      }
+    ]
+  },
+  "JitoSOL": {
+    "symbol": "JitoSOL",
+    "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "Bohoc1ikHLD7xKJuzTyiTyCwzaL5N7ggJQu75A8mKYM8"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Jito 10x Market",
+        "bank": "F9HdecRG8GPs9LEn4S5VfeJVEZVqrDJFR6bvmQTi22na"
+      }
+    ]
+  },
+  "mSOL": {
+    "symbol": "mSOL",
+    "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "22DcjMZrMwC5Bpa5AGBsmjc5V9VuQrXG6N9ZtdUNyYGE"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "FBSyPnxtHKLBZ4UeeUyAnbtFuAmTHLtso9YtsqRDRWpM"
+      }
+    ]
+  },
+  "CGNTSOL": {
+    "symbol": "CGNTSOL",
+    "mint": "CgnTSoL3DgY9SFHxcLj6CgCgKKoTBr6tp4CPAEWy25DE",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "BvafE5Sm6rLrBbVRtJ2FkCzfNJQ2TjcL8bvPZULUDYrt"
+      }
+    ]
+  },
+  "ezSOL": {
+    "symbol": "ezSOL",
+    "mint": "ezSoL6fY1PVdJcJsUpe5CM3xkfmy3zoVCABybm5WtiC",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Jito 10x Market",
+        "bank": "9TdUdZpnXoLQbqt5guR8fVdZZDgcQsLkUV2nr3SGRSJ8"
+      }
+    ]
+  },
+  "kySOL": {
+    "symbol": "kySOL",
+    "mint": "kySo1nETpsZE2NWe5vj2C64mPSciH1SppmHb4XieQ7B",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Jito 10x Market",
+        "bank": "4pDCUGYftuPG1sV3xcqsn2YGfHC6Q3eZVfDyzQm8SK5A"
+      }
+    ]
+  },
+  "JLP": {
+    "symbol": "JLP",
+    "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Isolated JLP Market",
+        "bank": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP"
+      },
+      {
+        "protocol": "drift",
+        "market": "Isolated JLP Market",
+        "bank": "33"
+      }
+    ]
+  },
+  "USDC": {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "2s37akK2eyBbp8DZgCm7RtsaEz8eJP3Nxd4urLHQv7yB"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Isolated JLP Market",
+        "bank": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp"
+      },
+      {
+        "protocol": "drift",
+        "market": "Isolated JLP Market",
+        "bank": "34"
+      },
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59"
+      },
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "0"
+      }
+    ]
+  },
+  "USDS": {
+    "symbol": "USDS",
+    "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "BHUi32TrEsfN2U821G4FprKrR4hTeK4LCWtA3BFetuqA"
+      }
+    ]
+  },
+  "USDT": {
+    "symbol": "USDT",
+    "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "H3t6qZ1JkguCNTi9uzVKqQ7dvt2cum4XiXWom6Gn5e5S"
+      }
+    ]
+  },
+  "FDUSD": {
+    "symbol": "FDUSD",
+    "mint": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "Bpc4kAh29J3YDQUMJJdGdr1zBAhTQjC48R1B8YTWudsi"
+      }
+    ]
+  },
+  "CBBTC": {
+    "symbol": "CBBTC",
+    "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK"
+      },
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "27"
+      }
+    ]
+  },
+  "xBTC": {
+    "symbol": "xBTC",
+    "mint": "CtzPWv73Sn1dMGVU3ZtLv9yWSyUAanBni19YWDaznnkn",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb"
+      }
+    ]
+  },
+  "USDG": {
+    "symbol": "USDG",
+    "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "ESCkPWKHmgNE7Msf77n9yzqJd5kQVWWGy3o5Mgxhvavp"
+      }
+    ]
+  },
+  "sSOL": {
+    "symbol": "sSOL",
+    "mint": "sSo14endRuUbvQaJS3dq36Q829a3A6BEfoeeRGJywEh",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "solend",
+        "market": "Main Market",
+        "bank": "7ED1Yofz9n2E3kGHfineuqxUDrN38EKbpSfiRJ5HPJh2"
+      }
+    ]
+  },
+  "dSOL": {
+    "symbol": "dSOL",
+    "mint": "Dso1bDeDjCQxTrWHqUUi63oBvV7Mdm6WaobLbQ7gnPQ",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "17"
+      }
+    ]
+  },
+  "wBTC": {
+    "symbol": "wBTC",
+    "mint": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "3"
+      }
+    ]
+  },
+  "wETH": {
+    "symbol": "wETH",
+    "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "4"
+      }
+    ]
+  }
+}

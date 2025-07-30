@@ -56,39 +56,26 @@ class FundingRateRow:
         }
 
 
-@dataclass
-class APIResponse:
-    """Base class for API response handling."""
-    success: bool
-    data: Optional[List] = None
-    error: Optional[str] = None
+# API response wrapper models have been removed in favor of direct functional approach
 
 
 @dataclass
-class HyperliquidResponse(APIResponse):
-    """Hyperliquid API response structure."""
-    pass
+class MoneyMarketEntry:
+    """A row in the money markets display table."""
+    token: str
+    protocol: str
+    market_key: str
+    lending_rate: Optional[float] = None
+    borrow_rate: Optional[float] = None
+    staking_rate: Optional[float] = None
 
-
-@dataclass
-class DriftResponse(APIResponse):
-    """Drift API response structure."""
-
-    def get_perp_markets(self) -> List[Dict]:
-        """Extract perpetual markets from Drift response."""
-        if not self.success or not self.data:
-            return []
-
-        # Drift API returns data in nested structure
-        market_data = self.data.get("data", []) if isinstance(self.data, dict) else self.data
-
-        perp_markets = []
-        for item in market_data:
-            market_type = item.get("marketType", {})
-            symbol = item.get("symbol", "")
-
-            # Filter for perp markets
-            if "perp" in market_type and symbol.endswith("-PERP"):
-                perp_markets.append(item)
-
-        return perp_markets
+    def to_dict(self) -> Dict[str, Union[str, Optional[float]]]:
+        """Convert to dictionary for DataFrame creation."""
+        return {
+            "Token": self.token,
+            "Protocol": self.protocol,
+            "Market Key": self.market_key,
+            "Lending Rate": self.lending_rate,
+            "Borrow Rate": self.borrow_rate,
+            "Staking Rate": self.staking_rate
+        }

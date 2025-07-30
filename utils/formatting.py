@@ -5,7 +5,7 @@ Utility functions for formatting and display operations.
 import pandas as pd
 from typing import Dict, List, Optional, Any
 from config.constants import EXCHANGE_NAME_MAPPING, DISPLAY_COLUMNS, PERCENTAGE_CONVERSION_FACTOR
-from data.models import FundingRateRow
+from data.models import FundingRateRow, MoneyMarketEntry
 
 
 def scale_funding_rate_to_percentage(
@@ -211,3 +211,80 @@ def create_exchange_summary(data: List[Dict[str, Optional[float]]]) -> Dict[str,
             }
 
     return summary
+
+
+# Money Markets formatting functions
+
+def process_money_markets_for_display(
+    money_markets_data: List[MoneyMarketEntry]
+) -> List[Dict[str, Optional[float]]]:
+    """
+    Process money markets data into display format.
+
+    Args:
+        money_markets_data: List of MoneyMarketEntry objects
+
+    Returns:
+        List of dictionaries ready for DataFrame creation
+    """
+    formatted_data = []
+
+    for entry in money_markets_data:
+        formatted_entry = {
+            "Token": entry.token,
+            "Protocol": entry.protocol,
+            "Market Key": entry.market_key,
+            "Lending Rate": convert_to_display_percentage(entry.lending_rate) if entry.lending_rate is not None else None,
+            "Borrow Rate": convert_to_display_percentage(entry.borrow_rate) if entry.borrow_rate is not None else None,
+            "Staking Rate": convert_to_display_percentage(entry.staking_rate) if entry.staking_rate is not None else None
+        }
+        formatted_data.append(formatted_entry)
+
+    return formatted_data
+
+
+def create_money_markets_dataframe(
+    data: List[Dict[str, Optional[float]]],
+    sort_by: str = "Token"
+) -> pd.DataFrame:
+    """
+    Create and style DataFrame for money markets display.
+
+    Args:
+        data: List of dictionaries with money markets data
+        sort_by: Column name to sort by
+
+    Returns:
+        Styled pandas DataFrame
+    """
+    df = pd.DataFrame(data)
+    df = df.sort_values(by=[sort_by, "Protocol"])
+
+    # Convert numeric columns to proper types, handling None values
+    numeric_columns = ["Lending Rate", "Borrow Rate", "Staking Rate"]
+    for col in numeric_columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
+
+
+def format_money_markets_for_display(df: pd.DataFrame) -> Any:
+    """
+    Apply styling and formatting to money markets DataFrame for Streamlit display.
+
+    Args:
+        df: DataFrame to format
+
+    Returns:
+        Styled DataFrame ready for st.dataframe()
+    """
+    # Create format dictionary for numeric columns
+    format_dict = {}
+    for col in df.columns:
+        if col in ["Lending Rate", "Borrow Rate", "Staking Rate"]:
+            format_dict[col] = "{:.4f}%"
+
+    # Apply formatting with None handling
+    styled_df = df.style.format(format_dict, na_rep="None")
+
+    return styled_df

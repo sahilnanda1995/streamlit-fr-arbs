@@ -20,22 +20,25 @@ fr-arbs/
 │   └── constants.py          # Configuration constants and settings
 ├── api/
 │   ├── __init__.py
-│   ├── base.py              # Base API client with error handling
-│   ├── hyperliquid.py       # Hyperliquid API client
-│   └── drift.py             # Drift API client
+│   ├── endpoints.py          # Functional API endpoints for external services
+│   └── http_utils.py         # HTTP utilities with error handling
 ├── data/
 │   ├── __init__.py
-│   ├── models.py            # Data models and type definitions
-│   ├── processing.py        # Data transformation functions
-│   └── merger.py            # Data merging logic
+│   ├── models.py             # Data models and type definitions
+│   ├── processing.py         # Data transformation functions
+│   ├── merger.py             # Data merging logic
+│   └── money_markets_processing.py  # Money markets data processing
 ├── utils/
 │   ├── __init__.py
-│   └── formatting.py        # Display formatting utilities
-├── sample-responses/        # Sample API responses for testing
+│   └── formatting.py         # Display formatting utilities
+├── sample-responses/         # Sample API responses for testing
+│   ├── current-rates.json
+│   ├── current-staking-rates.json
 │   ├── drift-market-index.json
 │   └── drift-avg-endpoints.json
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+├── token_config.json         # Token configuration for money markets
+├── requirements.txt          # Python dependencies
+└── README.md                # This file
 ```
 
 ## 🛠️ Installation
@@ -137,7 +140,7 @@ The application follows a clean, modular architecture with clear separation of c
 The codebase is organized for maintainability and testing:
 
 - **Type Safety**: Uses dataclasses and type hints throughout
-- **Error Handling**: Comprehensive error handling in API clients
+- **Error Handling**: Comprehensive error handling in HTTP utilities
 - **Caching**: Streamlit caching for API responses
 - **Documentation**: Docstrings for all functions and classes
 
@@ -145,19 +148,20 @@ The codebase is organized for maintainability and testing:
 
 To add support for a new exchange:
 
-1. Create a new client in `api/new_exchange.py`
-2. Extend the base client: `class NewExchangeClient(BaseAPIClient)`
-3. Add processing logic in `data/processing.py`
-4. Update constants in `config/constants.py`
-5. Modify display logic in `utils/formatting.py`
+1. Add a new function in `api/endpoints.py` with `@st.cache_data` decorator
+2. Add API configuration constants to `config/constants.py`
+3. Add processing logic in `data/processing.py` to handle the exchange data format
+4. Update exchange name mappings in `config/constants.py`
+5. Modify display logic in `utils/formatting.py` if needed
 
 ### Testing
 
-The modular structure makes testing easy:
+The functional structure makes testing easy:
 
 - **Unit Tests**: Each module can be tested independently
-- **API Mocking**: Base client supports easy mocking for tests
-- **Data Validation**: Models provide type safety and validation
+- **API Mocking**: HTTP utilities support easy mocking for tests
+- **Data Validation**: Business models provide type safety and validation
+- **Caching**: Function-level caching with Streamlit's `@st.cache_data`
 
 ## 📝 Configuration
 
