@@ -55,6 +55,6 @@ DEFAULT_FUNDING_INTERVAL_HOURS = 1
 PERP_SYMBOL_SUFFIX = "-PERP"
 
 # UI Configuration
-APP_TITLE = "📈 Funding Rate Comparison"
-APP_DESCRIPTION = "Compare predicted funding rates across exchanges for various tokens, scaled to your chosen interval."
-PAGE_TITLE = "Funding Rate Viewer"
+APP_TITLE = "📈 SPOT and Perps Arbitrage"
+APP_DESCRIPTION = "Calculate the arbitrage opportunities between Spot and Perps."
+PAGE_TITLE = "SPOT and Perps Arbitrage"
