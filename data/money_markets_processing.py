@@ -9,11 +9,11 @@ from data.models import MoneyMarketEntry
 
 def load_token_config() -> Dict:
     """Load token configuration from JSON file."""
-    try:
-        with open('token_config.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+    from config import get_token_config
+    # Return raw config (not uppercased) to maintain compatibility
+    token_config = get_token_config()
+    # Convert back to original case for backwards compatibility
+    return {k.lower(): v for k, v in token_config.items()}
 
 
 def get_rates_by_bank_address(rates_data: List[Dict], bank_address: str) -> Optional[Dict]:
