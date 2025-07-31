@@ -42,10 +42,10 @@ def main():
         hyperliquid_data = fetch_hyperliquid_funding_data()
         drift_data = fetch_drift_markets_24h()
 
-    # === Spot Hourly Rates ===
-    st.header("💰 Spot Hourly Rates")
-    # === SPOT Hourly RATES TABLE FOR SOL, JITOSOL, JUPSOL ===
-    st.subheader("SOL Spot Hourly Rates Table(SOL, JITOSOL, JUPSOL)")
+    # === Spot Hourly Fee Rates ===
+    st.header("💰 Spot Hourly Fee Rates")
+    # === SPOT Hourly FEE RATES TABLE FOR SOL, JITOSOL, JUPSOL ===
+    st.subheader("SOL Spot Hourly Fee Rates Table(SOL, JITOSOL, JUPSOL)")
 
     import pandas as pd
 
@@ -96,15 +96,15 @@ def main():
             # Net rates
             net_lend = lend_rate + asset_staking_rate
             net_borrow = borrow_rate + usdc_staking_rate
-            # Calculate hourly rates for 1x-5x
+            # Calculate hourly fee rates for 1x-5x
             row = {
                 "Asset": asset,
                 "Protocol": protocol,
                 "Market": market,
             }
             for lev in range(1, 6):
-                apy = net_borrow * (lev - 1) - net_lend * lev
-                hourly = apy / (365 * 24)
+                fee_rate = net_borrow * (lev - 1) - net_lend * lev
+                hourly = fee_rate / (365 * 24)
                 row[f"{lev}x (hr)"] = hourly
             rows.append(row)
     if rows:
@@ -113,8 +113,8 @@ def main():
     else:
         st.info("No valid protocol/market pairs with both lending and borrowing rates found for SOL, JITOSOL, JUPSOL.")
 
-    # === BTC SPOT Hourly RATES TABLE FOR CBBTC, WBTC, xBTC ===
-    st.subheader("BTC Spot Hourly Rates Table(CBBTC, WBTC, xBTC)")
+    # === BTC SPOT Hourly FEE RATES TABLE FOR CBBTC, WBTC, xBTC ===
+    st.subheader("BTC Spot Hourly Fee Rates Table(CBBTC, WBTC, xBTC)")
     btc_assets = ["CBBTC", "WBTC", "XBTC"]
     # Reuse token_config, rates_data, staking_data, etc.
     btc_rows = []
@@ -144,8 +144,8 @@ def main():
                 "Market": market,
             }
             for lev in range(1, 6):
-                apy = net_borrow * (lev - 1) - net_lend * lev
-                hourly = apy / (365 * 24)
+                fee_rate = net_borrow * (lev - 1) - net_lend * lev
+                hourly = fee_rate / (365 * 24)
                 row[f"{lev}x (hr)"] = hourly
             btc_rows.append(row)
     if btc_rows:
