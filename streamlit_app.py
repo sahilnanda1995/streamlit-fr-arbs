@@ -70,6 +70,43 @@ def main():
         banks = token_config.get(token, {}).get("banks", [])
         return sorted(set(b["market"] for b in banks if b["protocol"] == protocol))
 
+    def get_all_available_tokens():
+        """Get all available tokens from both spot and perp sources."""
+        all_tokens = set()
+
+        # Get spot tokens from token_config
+        spot_tokens = set(token_config.keys())
+        all_tokens.update(spot_tokens)
+
+        # Get perp tokens from merged data
+        processed_drift_data = process_drift_data(drift_data)
+        merged_data = merge_funding_data(hyperliquid_data, processed_drift_data)
+
+        for token_entry in merged_data:
+            if len(token_entry) >= 2:
+                all_tokens.add(token_entry[0].upper())
+
+        return sorted(list(all_tokens))
+
+    def get_available_market_types_for_token(token):
+        """Get available market types (Spot/Perp) for a given token."""
+        available = []
+
+        # Check spot availability
+        if token.upper() in token_config:
+            available.append("Spot")
+
+        # Check perp availability
+        processed_drift_data = process_drift_data(drift_data)
+        merged_data = merge_funding_data(hyperliquid_data, processed_drift_data)
+
+        for token_entry in merged_data:
+            if len(token_entry) >= 2 and token_entry[0].upper() == token.upper():
+                available.append("Perp")
+                break
+
+        return available
+
     def get_perp_exchanges_for_token(token):
         """Get available perp exchanges for a token based on merged data."""
         # Use the same merged data that's used in the funding rates table
@@ -95,11 +132,23 @@ def main():
                             exchanges.append("drift")
                 break
 
-        return sorted(set(exchanges)) if exchanges else ["drift"]  # Default to drift if no matches found
+        return sorted(set(exchanges)) if exchanges else []
 
     st.subheader("Long Side Configuration")
-    long_token = st.selectbox("Long Token", ["Select", "SOL", "JUPSOL", "JitoSOL", "CBBTC", "WBTC", "XBTC"])
-    long_market_type = st.selectbox("Long Market Type", ["Select", "Spot", "Perp"])
+    # Dynamic token selection
+    all_tokens = get_all_available_tokens()
+    long_token = st.selectbox("Long Token", ["Select"] + all_tokens)
+
+    # Dynamic market type selection based on selected token
+    if long_token != "Select":
+        available_market_types = get_available_market_types_for_token(long_token)
+        if available_market_types:
+            long_market_type = st.selectbox("Long Market Type", ["Select"] + available_market_types, key="long_market_type")
+        else:
+            long_market_type = st.selectbox("Long Market Type", ["Select"], disabled=True, key="long_market_type")
+            st.warning(f"No market types available for {long_token}")
+    else:
+        long_market_type = st.selectbox("Long Market Type", ["Select"], disabled=True, key="long_market_type")
 
     # Show available options for transparency, but use the first available for calculation
     long_protocol = long_market = long_exchange = None
@@ -122,8 +171,19 @@ def main():
     long_leverage = st.slider("Long Leverage", min_value=1, max_value=5, value=1)
 
     st.subheader("Short Side Configuration")
-    short_token = st.selectbox("Short Token", ["Select", "SOL", "JUPSOL", "JitoSOL", "CBBTC", "WBTC", "XBTC"])
-    short_market_type = st.selectbox("Short Market Type", ["Select", "Spot", "Perp"])
+    # Dynamic token selection
+    short_token = st.selectbox("Short Token", ["Select"] + all_tokens)
+
+    # Dynamic market type selection based on selected token
+    if short_token != "Select":
+        available_market_types_short = get_available_market_types_for_token(short_token)
+        if available_market_types_short:
+            short_market_type = st.selectbox("Short Market Type", ["Select"] + available_market_types_short, key="short_market_type")
+        else:
+            short_market_type = st.selectbox("Short Market Type", ["Select"], disabled=True, key="short_market_type")
+            st.warning(f"No market types available for {short_token}")
+    else:
+        short_market_type = st.selectbox("Short Market Type", ["Select"], disabled=True, key="short_market_type")
 
     # Show available options for transparency, but use the first available for calculation
     short_protocol = short_market = short_exchange = None
