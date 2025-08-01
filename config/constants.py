@@ -66,3 +66,16 @@ SPOT_ASSET_GROUPS = {
 }
 SPOT_BORROW_ASSET = "USDC"
 SPOT_LEVERAGE_LEVELS = [1, 2, 3, 4, 5]
+
+# Spot and Perps Arbitrage Configuration
+SPOT_PERPS_CONFIG = {
+    "BTC_ASSETS": ["CBBTC", "WBTC", "XBTC"],
+    "SOL_ASSETS": ["SOL", "JITOSOL", "JUPSOL"],
+    "PERPS_EXCHANGES": ["Hyperliquid", "Binance", "Drift", "Bybit"],
+    "DEFAULT_SPOT_LEVERAGE": 2,
+    "SPOT_DIRECTIONS": ["Long", "Short"],
+    "PERPS_ASSET_MAPPING": {
+        "BTC": "BTC",  # Use "BTC" to find funding rates for BTC assets
+        "SOL": "SOL"   # Use "SOL" to find funding rates for SOL assets
+    }
+}

@@ -23,6 +23,7 @@ from api.endpoints import (
 from data.processing import merge_funding_rate_data
 from data.money_markets_processing import process_money_markets_data
 from data.spot_arbitrage import display_spot_arbitrage_section
+from data.spot_perps_arbitrage import display_spot_perps_opportunities_section
 from utils.formatting import (
     process_raw_data_for_display,
     create_styled_dataframe,
@@ -54,7 +55,15 @@ def main():
     token_config = get_token_config()
 
     # Display spot arbitrage section with long and short positions
+    # Note: The hourly fee rates displayed are already in percentage format
     display_spot_arbitrage_section(token_config, rates_data, staking_data)
+
+    # === SPOT AND PERPS OPPORTUNITIES SECTION ===
+    # Note: The spot rates in this section are already in percentage format (hourly fee rates)
+    display_spot_perps_opportunities_section(
+        token_config, rates_data, staking_data,
+        hyperliquid_data, drift_data
+    )
 
     # === MONEY MARKETS SECTION ===
     st.header("💰 Money Markets")

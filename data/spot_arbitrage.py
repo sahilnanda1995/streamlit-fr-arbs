@@ -3,7 +3,7 @@ Spot arbitrage calculations for hourly fee rates.
 """
 
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from data.money_markets_processing import get_staking_rate_by_mint, get_rates_by_bank_address
 
 
@@ -13,9 +13,11 @@ def calculate_hourly_fee_rates(
     lend_staking_rate: float,  # Can be None/0 if not available
     borrow_staking_rate: float, # Can be None/0 if not available
     leverage: float,       # Should be >= 1
-) -> float:  # Returns hourly fee rate for the given leverage
+) -> float:  # Returns hourly fee rate in percentage format for the given leverage
     """
     Calculate hourly fee rate for a given leverage level.
+
+    Note: The returned rate is already in percentage format (e.g., 0.01 represents 0.01% per hour).
 
     Args:
         lend_rates: Dictionary containing lending rate
@@ -25,7 +27,7 @@ def calculate_hourly_fee_rates(
         leverage: Leverage level (should be >= 1)
 
     Returns:
-        Hourly fee rate as a float
+        Hourly fee rate as a float in percentage format (e.g., 0.01 = 0.01% per hour)
     """
     if leverage < 1:
         raise ValueError("Leverage must be >= 1")
@@ -45,7 +47,7 @@ def calculate_hourly_fee_rates(
     # Calculate fee rate: (borrow_rate + staking) * (leverage - 1) - (lend_rate + staking) * leverage
     fee_rate = net_borrow * (leverage - 1) - net_lend * leverage
 
-    # Convert to hourly rate
+    # Convert to hourly rate (result is already in percentage format)
     hourly_rate = fee_rate / (365 * 24)
 
     return hourly_rate
@@ -63,6 +65,8 @@ def create_spot_arbitrage_table(
     """
     Create a DataFrame with spot arbitrage calculations for given asset group.
 
+    Note: The hourly fee rates returned are already in percentage format (e.g., 0.01 represents 0.01% per hour).
+
     Args:
         token_config: Token configuration dictionary
         rates_data: Current rates data from API
@@ -73,7 +77,7 @@ def create_spot_arbitrage_table(
         position_type: "long" or "short" position
 
     Returns:
-        DataFrame with arbitrage calculations
+        DataFrame with arbitrage calculations (hourly fee rates in percentage format)
     """
     rows = []
 
@@ -120,6 +124,7 @@ def create_spot_arbitrage_table(
                 continue
 
             # Calculate hourly fee rates for all leverage levels
+            # Note: These rates are already in percentage format (e.g., 0.01 = 0.01% per hour)
             row = {
                 "Asset": asset,
                 "Protocol": protocol,
@@ -152,11 +157,14 @@ def display_spot_arbitrage_section(
 ) -> None:
     """
     Display the complete spot arbitrage section with long and short positions.
+
+    Note: The hourly fee rates displayed are already in percentage format and will be shown with % symbols.
     """
     import streamlit as st
     from config.constants import SPOT_ASSET_GROUPS, SPOT_BORROW_ASSET, SPOT_LEVERAGE_LEVELS
 
     st.header("💰 Spot Hourly Fee Rates")
+    st.caption("💡 Values shown are hourly fee rates in percentage format (e.g., 0.01% per hour)")
 
     # Asset groups configuration
     asset_groups = {
@@ -175,7 +183,9 @@ def display_spot_arbitrage_section(
             leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="long"
         )
         if not long_df.empty:
-            st.dataframe(long_df, use_container_width=True)
+            # Format leverage columns with % symbols
+            styled_long_df = format_spot_arbitrage_dataframe(long_df)
+            st.dataframe(styled_long_df, use_container_width=True)
         else:
             st.info(f"No valid protocol/market pairs found for {group_name} long positions.")
 
@@ -187,8 +197,34 @@ def display_spot_arbitrage_section(
             leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="short"
         )
         if not short_df.empty:
-            st.dataframe(short_df, use_container_width=True)
+            # Format leverage columns with % symbols
+            styled_short_df = format_spot_arbitrage_dataframe(short_df)
+            st.dataframe(styled_short_df, use_container_width=True)
         else:
             st.info(f"No valid protocol/market pairs found for {group_name} short positions.")
 
         st.divider()
+
+
+def format_spot_arbitrage_dataframe(df: pd.DataFrame) -> Any:
+    """
+    Apply styling and formatting to spot arbitrage DataFrame for Streamlit display.
+
+    Note: The hourly fee rates are already in percentage format, so we just add % symbols.
+
+    Args:
+        df: DataFrame to format
+
+    Returns:
+        Styled DataFrame ready for st.dataframe()
+    """
+    # Create format dictionary for leverage columns (columns containing "x (hr)")
+    format_dict = {}
+    for col in df.columns:
+        if "x (hr)" in col:
+            format_dict[col] = "{:.4f}%"
+
+    # Apply formatting with None handling
+    styled_df = df.style.format(format_dict, na_rep="None")
+
+    return styled_df
