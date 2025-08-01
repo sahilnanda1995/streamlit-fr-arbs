@@ -25,12 +25,13 @@ def calculate_spot_rate_with_direction(
     staking_data: dict,
     asset: str,
     leverage: float = 2.0,
-    direction: str = "long"  # "long" or "short"
+    direction: str = "long",  # "long" or "short"
+    target_hours: int = 1
 ) -> Dict[str, float]:
     """
     Calculate spot rates for an asset in a specific direction.
 
-    Note: The returned hourly rates are already in percentage format (e.g., 0.01 represents 0.01% per hour).
+    Note: The returned rates are in percentage format scaled to the target interval.
 
     Args:
         token_config: Token configuration dictionary
@@ -39,9 +40,10 @@ def calculate_spot_rate_with_direction(
         asset: Asset to calculate rates for
         leverage: Leverage level (default 2.0)
         direction: "long" or "short" position
+        target_hours: Target interval in hours (default 1)
 
     Returns:
-        Dictionary of {protocol: hourly_rate} where rates are in percentage format
+        Dictionary of {protocol: rate} where rates are in percentage format scaled to target interval
     """
     spot_rates = {}
 
@@ -92,7 +94,9 @@ def calculate_spot_rate_with_direction(
                 lend_staking_rate, borrow_staking_rate,
                 leverage
             )
-            spot_rates[f"{protocol}({market})"] = hourly_rate
+            # Scale to target interval
+            scaled_rate = hourly_rate * target_hours
+            spot_rates[f"{protocol}({market})"] = scaled_rate
         except ValueError:
             continue
 
@@ -102,7 +106,8 @@ def calculate_spot_rate_with_direction(
 def get_perps_rates_for_asset(
     hyperliquid_data: dict,
     drift_data: dict,
-    asset: str
+    asset: str,
+    target_hours: int = 1
 ) -> Dict[str, float]:
     """
     Get funding rates from all perps exchanges for an asset.
@@ -111,9 +116,10 @@ def get_perps_rates_for_asset(
         hyperliquid_data: Hyperliquid funding data
         drift_data: Drift funding data
         asset: Asset to get funding rates for ("BTC" or "SOL")
+        target_hours: Target interval in hours (default 1)
 
     Returns:
-        Dictionary of {exchange: funding_rate}
+        Dictionary of {exchange: funding_rate} scaled to target interval
     """
     perps_rates = {}
 
@@ -132,10 +138,12 @@ def get_perps_rates_for_asset(
                                 funding_rate_str = funding_info.get("fundingRate", "0")
                                 try:
                                     funding_rate = float(funding_rate_str)
-                                    # Convert to hourly rate
+                                    # Convert to hourly rate first
                                     interval_hours = funding_info.get("fundingIntervalHours", 8)
                                     hourly_rate = funding_rate / interval_hours
-                                    perps_rates[exchange_name] = hourly_rate
+                                    # Scale to target interval
+                                    scaled_rate = hourly_rate * target_hours
+                                    perps_rates[exchange_name] = scaled_rate
                                 except (ValueError, ZeroDivisionError):
                                     continue
                     break
@@ -145,9 +153,11 @@ def get_perps_rates_for_asset(
         markets = drift_data.get("markets", [])
         for market in markets:
             if isinstance(market, dict) and market.get("symbol") == f"{asset}-PERP":
-                # Convert to percentage and scale to hourly
+                # Convert to percentage and scale to target interval
                 funding_rate = market.get("fundingRate", 0)
-                perps_rates["Drift"] = funding_rate
+                # Assuming Drift rates are already hourly, scale to target interval
+                scaled_rate = funding_rate * target_hours
+                perps_rates["Drift"] = scaled_rate
                 break
 
     return perps_rates
@@ -239,7 +249,8 @@ def create_spot_perps_opportunities_table(
     drift_data: dict,
     asset_variants: list,
     asset_type: str,  # "BTC" or "SOL"
-    leverage: float = 2.0
+    leverage: float = 2.0,
+    target_hours: int = 1
 ) -> pd.DataFrame:
     """
     Create table with spot and perps arbitrage opportunities.
@@ -253,6 +264,7 @@ def create_spot_perps_opportunities_table(
         asset_variants: List of asset variants (e.g., ["CBBTC", "WBTC", "XBTC"])
         asset_type: "BTC" or "SOL" for perps mapping
         leverage: Leverage level for spot calculations
+        target_hours: Target interval in hours (default 1)
 
     Returns:
         DataFrame with all columns including arbitrage calculations
@@ -260,7 +272,7 @@ def create_spot_perps_opportunities_table(
     rows = []
 
     # Get perps rates for the asset type
-    perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type)
+    perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
 
     # Calculate for both Long and Short directions for the main asset (BTC or SOL)
     for direction in ["Long", "Short"]:
@@ -275,7 +287,7 @@ def create_spot_perps_opportunities_table(
         for variant in asset_variants:
             spot_rates = calculate_spot_rate_with_direction(
                 token_config, rates_data, staking_data,
-                variant, leverage, direction.lower()
+                variant, leverage, direction.lower(), target_hours
             )
             variant_rates[variant] = spot_rates
 
@@ -319,6 +331,21 @@ def create_spot_perps_opportunities_table(
         return pd.DataFrame()
 
 
+def format_spot_perps_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Format the spot perps opportunities DataFrame to display percentage symbols.
+    Keeps values as floats for sorting/filtering while displaying as percentages.
+
+    Args:
+        df: DataFrame with spot perps opportunities data
+
+    Returns:
+        DataFrame with float values (for functionality) and percentage display
+    """
+    # Return the original DataFrame - we'll use Streamlit's formatting instead
+    return df
+
+
 def display_spot_perps_opportunities_section(
     token_config: dict,
     rates_data: dict,
@@ -333,9 +360,19 @@ def display_spot_perps_opportunities_section(
     Note: The spot rates displayed are already in percentage format (hourly fee rates).
     """
     import streamlit as st
-    from config.constants import SPOT_PERPS_CONFIG
+    from config.constants import SPOT_PERPS_CONFIG, INTERVAL_OPTIONS
 
     st.header("💰 Spot and FR Opportunities")
+
+    # Add interval selection
+    selected_interval = st.selectbox(
+        "Select target interval:",
+        list(INTERVAL_OPTIONS.keys()),
+        index=0  # Default to 1 hr
+    )
+    target_hours = INTERVAL_OPTIONS[selected_interval]
+
+    st.caption(f"💡 Rates and arbitrage opportunities scaled to {selected_interval} interval")
 
     # Create separate tables for BTC and SOL
     asset_configs = {
@@ -349,11 +386,23 @@ def display_spot_perps_opportunities_section(
         opportunities_df = create_spot_perps_opportunities_table(
             token_config, rates_data, staking_data,
             hyperliquid_data, drift_data,
-            asset_variants, asset_type, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"]
+            asset_variants, asset_type, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"],
+            target_hours
         )
 
         if not opportunities_df.empty:
-            st.dataframe(opportunities_df, use_container_width=True)
+            # Display DataFrame with percentage formatting
+            st.dataframe(
+                opportunities_df,
+                use_container_width=True,
+                column_config={
+                    col: st.column_config.NumberColumn(
+                        col,
+                        format="%.6f%%"
+                    ) for col in opportunities_df.columns
+                    if col not in ["Spot Direction", "Asset"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
+                }
+            )
         else:
             st.info(f"No valid opportunities found for {asset_name} assets.")
 
