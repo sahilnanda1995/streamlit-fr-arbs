@@ -364,22 +364,31 @@ def display_spot_perps_opportunities_section(
 
     st.header("💰 Spot and FR Opportunities")
 
-    # Add interval selection
-    selected_interval = st.selectbox(
-        "Select target interval:",
-        list(INTERVAL_OPTIONS.keys()),
-        index=0  # Default to 1 hr
-    )
-    target_hours = INTERVAL_OPTIONS[selected_interval]
+    # Add options to sidebar
+    with st.sidebar:
+        st.header("⚙️ Settings")
 
-    # Add leverage selection
-    selected_leverage = st.selectbox(
-        "Select spot leverage:",
-        SPOT_LEVERAGE_LEVELS,
-        index=1  # Default to 2x leverage
-    )
+        # Add interval selection
+        selected_interval = st.selectbox(
+            "Select target interval:",
+            list(INTERVAL_OPTIONS.keys()),
+            index=0  # Default to 1 hr
+        )
+        target_hours = INTERVAL_OPTIONS[selected_interval]
 
-    st.caption(f"💡 Rates and arbitrage opportunities scaled to {selected_interval} interval with {selected_leverage}x leverage")
+        st.caption("📅 **Interval**: Scales all rates to your selected time period. Higher intervals show longer-term potential returns.")
+
+        # Add leverage selection
+        selected_leverage = st.selectbox(
+            "Select spot leverage:",
+            SPOT_LEVERAGE_LEVELS,
+            index=1  # Default to 2x leverage
+        )
+
+        st.caption("⚖️ **Leverage**: Amplifies spot trading positions. Higher leverage = higher potential returns but also higher risk.")
+
+        st.divider()
+        st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")
 
     # Create separate tables for BTC and SOL
     asset_configs = {
