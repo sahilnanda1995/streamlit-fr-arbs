@@ -10,14 +10,12 @@ from typing import Dict, List, Optional, Union
 class ExchangeInfo:
     """Information about funding rate from a specific exchange."""
     funding_rate: float
-    funding_interval_hours: int
 
     @classmethod
     def from_dict(cls, data: Dict[str, Union[str, int, float]]) -> 'ExchangeInfo':
         """Create ExchangeInfo from API response dictionary."""
         return cls(
-            funding_rate=float(data.get("fundingRate", 0)),
-            funding_interval_hours=int(data.get("fundingIntervalHours", 1))
+            funding_rate=float(data.get("fundingRate", 0))
         )
 
 

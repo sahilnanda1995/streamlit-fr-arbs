@@ -17,8 +17,7 @@ from api.endpoints import (
     fetch_asgard_current_rates,
     fetch_asgard_staking_rates
 )
-from data.processing import process_drift_data
-from data.merger import merge_funding_data
+from data.processing import merge_funding_rate_data
 from data.money_markets_processing import process_money_markets_data
 from utils.formatting import (
     process_raw_data_for_display,
@@ -41,6 +40,9 @@ def main():
         staking_data = fetch_asgard_staking_rates()
         hyperliquid_data = fetch_hyperliquid_funding_data()
         drift_data = fetch_drift_markets_24h()
+
+    # === PERPS DATA MERGING AT THE TOP ===
+    merged_perps_data = merge_funding_rate_data(hyperliquid_data, drift_data)
 
     # === Spot Hourly Fee Rates ===
     st.header("💰 Spot Hourly Fee Rates")
@@ -177,12 +179,12 @@ def main():
         list(INTERVAL_OPTIONS.keys())
     )
     target_hours = INTERVAL_OPTIONS[selected_interval]
-    processed_drift_data = process_drift_data(drift_data)
-    merged_data = merge_funding_data(hyperliquid_data, processed_drift_data)
-    if not merged_data:
+
+    # Use the pre-merged perps data
+    if not merged_perps_data:
         st.error("Failed to load funding data from APIs. Please try again later.")
         st.stop()
-    formatted_data = process_raw_data_for_display(merged_data, target_hours)
+    formatted_data = process_raw_data_for_display(merged_perps_data, target_hours)
     df = create_styled_dataframe(formatted_data)
     st.subheader(f"Funding Rates (%), scaled to {selected_interval}")
     styled_df = format_dataframe_for_display(df)

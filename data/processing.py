@@ -5,47 +5,191 @@ Data processing functions for transforming API responses into standardized forma
 from typing import List, Dict, Any
 from config.constants import (
     PERP_SYMBOL_SUFFIX,
-    PERCENTAGE_CONVERSION_FACTOR,
-    DEFAULT_FUNDING_INTERVAL_HOURS
+    PERCENTAGE_CONVERSION_FACTOR
 )
 
 
-def process_drift_data(drift_data: Dict[str, Any]) -> List[List]:
+def merge_funding_rate_data(
+    hyperliquid_response: List[List],
+    drift_response: Dict[str, Any]
+) -> List[List]:
     """
-    Process Drift API data and convert to Hyperliquid-compatible format.
+    Process and merge funding rate data from Hyperliquid and Drift APIs.
+    All rates are normalized to 1-hour intervals and returned as numbers.
 
     Args:
-        drift_data: Raw response from Drift API
+        hyperliquid_response: Raw response from Hyperliquid API
+        drift_response: Raw response from Drift API
+
+    Returns:
+        List of [token_name, [[exchange_name, exchange_info]]] entries
+    """
+    # Handle empty or None responses
+    if not hyperliquid_response:
+        hyperliquid_response = []
+    if not drift_response:
+        drift_response = {"data": []}
+
+    # Process Hyperliquid data
+    hyperliquid_processed = process_hyperliquid_raw_data(hyperliquid_response)
+
+    # Process Drift data
+    drift_processed = process_drift_raw_data(drift_response)
+
+    # Merge the processed data
+    return merge_processed_data(hyperliquid_processed, drift_processed)
+
+
+def process_hyperliquid_raw_data(hyperliquid_response: List[List]) -> List[List]:
+    """
+    Process Hyperliquid API response and normalize funding rates to 1-hour intervals.
+
+    Args:
+        hyperliquid_response: Raw response from Hyperliquid API
 
     Returns:
         List of [token_name, [[exchange_name, exchange_info]]] entries
     """
     processed_data = []
 
-    # First, filter for perp markets only
-    perp_markets = get_perp_markets_from_drift_data(drift_data)
+    # Handle empty or None responses
+    if not hyperliquid_response:
+        return []
+
+    for item in hyperliquid_response:
+        if not item or len(item) < 2:
+            continue
+
+        token_name = item[0]
+        exchanges = item[1]
+
+        if not exchanges:
+            continue
+
+        processed_exchanges = []
+        for exchange in exchanges:
+            if not exchange or len(exchange) < 2:
+                continue
+
+            exchange_name = exchange[0]
+            details = exchange[1]
+
+            if not details:
+                continue
+
+            try:
+                funding_rate = float(details.get("fundingRate", 0))
+                funding_interval = details.get("fundingIntervalHours", 1)
+
+                # Normalize to 1-hour interval
+                if funding_interval != 1:
+                    funding_rate = funding_rate / funding_interval
+
+                processed_exchanges.append([exchange_name, {
+                    "fundingRate": funding_rate
+                }])
+            except (ValueError, TypeError):
+                continue
+
+        if processed_exchanges:
+            processed_data.append([token_name, processed_exchanges])
+
+    return processed_data
+
+
+def process_drift_raw_data(drift_response: Dict[str, Any]) -> List[List]:
+    """
+    Process Drift API response and normalize funding rates to 1-hour intervals.
+
+    Args:
+        drift_response: Raw response from Drift API
+
+    Returns:
+        List of [token_name, [[exchange_name, exchange_info]]] entries
+    """
+    processed_data = []
+
+    # Handle empty or None responses
+    if not drift_response:
+        return []
+
+    # Filter for perp markets only
+    perp_markets = get_perp_markets_from_drift_data(drift_response)
 
     for item in perp_markets:
+        if not item:
+            continue
+
         symbol = item.get("symbol", "")
+        if not symbol:
+            continue
 
         # Extract token name by removing -PERP suffix
         token_name = symbol.replace(PERP_SYMBOL_SUFFIX, "")
 
-        # Get avgFunding and convert from percentage to decimal
-        avg_funding = item.get("avgFunding", 0)
-        funding_rate_decimal = avg_funding / PERCENTAGE_CONVERSION_FACTOR
+        try:
+            # Get avgFunding and convert from percentage to decimal
+            avg_funding = item.get("avgFunding", 0)
+            funding_rate_decimal = avg_funding / PERCENTAGE_CONVERSION_FACTOR
 
-        # Create entry in Hyperliquid-compatible format
-        drift_entry = [
-            token_name,
-            [["DriftPerp", {
-                "fundingRate": str(funding_rate_decimal),
-                "fundingIntervalHours": DEFAULT_FUNDING_INTERVAL_HOURS
-            }]]
-        ]
-        processed_data.append(drift_entry)
+            # Create entry with 1-hour normalized rate
+            drift_entry = [
+                token_name,
+                [["DriftPerp", {
+                    "fundingRate": funding_rate_decimal
+                }]]
+            ]
+            processed_data.append(drift_entry)
+        except (ValueError, TypeError):
+            continue
 
     return processed_data
+
+
+def merge_processed_data(hyperliquid_data: List[List], drift_data: List[List]) -> List[List]:
+    """
+    Merge processed Hyperliquid and Drift data into unified dataset.
+
+    Args:
+        hyperliquid_data: Processed Hyperliquid data
+        drift_data: Processed Drift data
+
+    Returns:
+        Merged list with combined exchange data for each token
+    """
+    # Handle empty data
+    if not hyperliquid_data and not drift_data:
+        return []
+
+    # Create dictionaries for easy lookup
+    hl_dict = {entry[0]: entry for entry in hyperliquid_data if entry and len(entry) >= 2}
+    drift_dict = {entry[0]: entry for entry in drift_data if entry and len(entry) >= 2}
+
+    merged_data = []
+
+    # Process all tokens from both sources
+    all_tokens = set(hl_dict.keys()) | set(drift_dict.keys())
+
+    for token in all_tokens:
+        if token in hl_dict and token in drift_dict:
+            # Token exists in both sources - merge exchanges
+            hl_entry = hl_dict[token]
+            drift_entry = drift_dict[token]
+
+            # Combine exchange data
+            combined_exchanges = hl_entry[1] + drift_entry[1]
+            merged_entry = [token, combined_exchanges]
+            merged_data.append(merged_entry)
+
+        elif token in hl_dict:
+            # Token only in Hyperliquid
+            merged_data.append(hl_dict[token])
+
+        elif token in drift_dict:
+            # Token only in Drift
+            merged_data.append(drift_dict[token])
+
+    return merged_data
 
 
 def get_perp_markets_from_drift_data(drift_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -125,22 +269,18 @@ def convert_percentage_to_decimal(percentage: float) -> float:
     return percentage / PERCENTAGE_CONVERSION_FACTOR
 
 
-def create_exchange_entry(exchange_name: str, funding_rate: float, interval_hours: int = None) -> List:
+def create_exchange_entry(exchange_name: str, funding_rate: float) -> List:
     """
     Create standardized exchange entry format.
+    All rates are normalized to 1-hour intervals.
 
     Args:
         exchange_name: Name of the exchange
-        funding_rate: Funding rate as decimal
-        interval_hours: Funding interval in hours
+        funding_rate: Funding rate as decimal (normalized to 1-hour interval)
 
     Returns:
         Standardized exchange entry
     """
-    if interval_hours is None:
-        interval_hours = DEFAULT_FUNDING_INTERVAL_HOURS
-
     return [exchange_name, {
-        "fundingRate": str(funding_rate),
-        "fundingIntervalHours": interval_hours
+        "fundingRate": funding_rate
     }]

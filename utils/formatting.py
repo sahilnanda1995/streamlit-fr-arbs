@@ -30,6 +30,7 @@ def scale_funding_rate_to_percentage(
 def create_funding_rate_row(token_name: str, exchanges_data: List[List]) -> FundingRateRow:
     """
     Create a funding rate row from token exchange data.
+    All rates are normalized to 1-hour intervals.
 
     Args:
         token_name: Name of the token
@@ -43,8 +44,7 @@ def create_funding_rate_row(token_name: str, exchanges_data: List[List]) -> Fund
     for exchange_name, details in exchanges_data:
         if details is not None:
             try:
-                rate = float(details.get("fundingRate", 0))
-                interval = details.get("fundingIntervalHours", 1)
+                rate = details.get("fundingRate", 0)
 
                 # Note: This function creates the row but doesn't scale yet
                 # Scaling happens in process_raw_data_for_display
@@ -68,6 +68,7 @@ def process_raw_data_for_display(
 ) -> List[Dict[str, Optional[float]]]:
     """
     Process raw funding data into display format with scaling.
+    All rates are normalized to 1-hour intervals, so scaling is simplified.
 
     Args:
         raw_data: Raw data in [token, exchanges] format
@@ -93,9 +94,9 @@ def process_raw_data_for_display(
         for exchange_name, details in exchanges:
             if details is not None:
                 try:
-                    rate = float(details.get("fundingRate", 0))
-                    interval = details.get("fundingIntervalHours", 1)
-                    scaled_percent = scale_funding_rate_to_percentage(rate, interval, target_hours)
+                    rate = details.get("fundingRate", 0)
+                    # Since rates are normalized to 1-hour intervals, scaling is simplified
+                    scaled_percent = scale_funding_rate_to_percentage(rate, 1, target_hours)
 
                     # Map exchange names to display columns
                     display_name = EXCHANGE_NAME_MAPPING.get(exchange_name)
