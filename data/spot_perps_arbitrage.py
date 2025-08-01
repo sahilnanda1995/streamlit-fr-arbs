@@ -360,7 +360,7 @@ def display_spot_perps_opportunities_section(
     Note: The spot rates displayed are already in percentage format (hourly fee rates).
     """
     import streamlit as st
-    from config.constants import SPOT_PERPS_CONFIG, INTERVAL_OPTIONS
+    from config.constants import SPOT_PERPS_CONFIG, INTERVAL_OPTIONS, SPOT_LEVERAGE_LEVELS
 
     st.header("💰 Spot and FR Opportunities")
 
@@ -372,7 +372,14 @@ def display_spot_perps_opportunities_section(
     )
     target_hours = INTERVAL_OPTIONS[selected_interval]
 
-    st.caption(f"💡 Rates and arbitrage opportunities scaled to {selected_interval} interval")
+    # Add leverage selection
+    selected_leverage = st.selectbox(
+        "Select spot leverage:",
+        SPOT_LEVERAGE_LEVELS,
+        index=1  # Default to 2x leverage
+    )
+
+    st.caption(f"💡 Rates and arbitrage opportunities scaled to {selected_interval} interval with {selected_leverage}x leverage")
 
     # Create separate tables for BTC and SOL
     asset_configs = {
@@ -386,7 +393,7 @@ def display_spot_perps_opportunities_section(
         opportunities_df = create_spot_perps_opportunities_table(
             token_config, rates_data, staking_data,
             hyperliquid_data, drift_data,
-            asset_variants, asset_type, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"],
+            asset_variants, asset_type, selected_leverage,
             target_hours
         )
 
@@ -409,7 +416,7 @@ def display_spot_perps_opportunities_section(
         # Display asset-specific opportunities below each table
         display_asset_specific_opportunities(
             token_config, rates_data, staking_data, hyperliquid_data, drift_data,
-            asset_name, asset_variants, asset_type, target_hours
+            asset_name, asset_variants, asset_type, target_hours, selected_leverage
         )
 
         st.divider()
@@ -602,7 +609,8 @@ def display_asset_specific_opportunities(
     asset_name: str,
     asset_variants: list,
     asset_type: str,
-    target_hours: int = 1
+    target_hours: int = 1,
+    leverage: float = 2.0
 ) -> None:
     """
     Display asset-specific arbitrage opportunities and best strategies.
@@ -617,6 +625,7 @@ def display_asset_specific_opportunities(
         asset_variants: List of asset variants
         asset_type: Asset type for perps mapping
         target_hours: Target interval in hours
+        leverage: Leverage level for spot calculations (default 2.0)
     """
     import streamlit as st
     from config.constants import SPOT_PERPS_CONFIG
@@ -665,7 +674,7 @@ def display_asset_specific_opportunities(
         for direction in ["Long", "Short"]:
             spot_rates = calculate_spot_rate_with_direction(
                 token_config, rates_data, staking_data,
-                variant, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"],
+                variant, leverage,
                 direction.lower(), target_hours
             )
 
