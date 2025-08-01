@@ -58,3 +58,11 @@ PERP_SYMBOL_SUFFIX = "-PERP"
 APP_TITLE = "📈 SPOT and Perps Arbitrage"
 APP_DESCRIPTION = "Calculate the arbitrage opportunities between Spot and Perps."
 PAGE_TITLE = "SPOT and Perps Arbitrage"
+
+# Spot Arbitrage Configuration
+SPOT_ASSET_GROUPS = {
+    "SOL_VARIANTS": ["SOL", "JITOSOL", "JUPSOL"],
+    "BTC_VARIANTS": ["CBBTC", "WBTC", "XBTC"]
+}
+SPOT_BORROW_ASSET = "USDC"
+SPOT_LEVERAGE_LEVELS = [1, 2, 3, 4, 5]
