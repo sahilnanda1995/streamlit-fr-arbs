@@ -355,7 +355,7 @@ def display_spot_perps_opportunities_section(
 ) -> None:
     """
     Display complete spot and perps opportunities section.
-    Shows separate tables for BTC and SOL.
+    Shows separate tables for BTC and SOL with asset-specific opportunities below each table.
 
     Note: The spot rates displayed are already in percentage format (hourly fee rates).
     """
@@ -381,7 +381,7 @@ def display_spot_perps_opportunities_section(
     }
 
     for asset_name, (asset_variants, asset_type) in asset_configs.items():
-        st.subheader(f"{asset_name} Assets")
+        st.subheader(f"{asset_name}")
 
         opportunities_df = create_spot_perps_opportunities_table(
             token_config, rates_data, staking_data,
@@ -406,4 +406,322 @@ def display_spot_perps_opportunities_section(
         else:
             st.info(f"No valid opportunities found for {asset_name} assets.")
 
+        # Display asset-specific opportunities below each table
+        display_asset_specific_opportunities(
+            token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+            asset_name, asset_variants, asset_type, target_hours
+        )
+
         st.divider()
+
+
+def create_arbitrage_opportunities_summary(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    target_hours: int = 1
+) -> Dict[str, List[Dict]]:
+    """
+    Create a summary of all arbitrage opportunities, ranked by profitability.
+
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        target_hours: Target interval in hours (default 1)
+
+    Returns:
+        Dictionary with 'spot_vs_perps' and 'perps_vs_perps' opportunities ranked by profitability
+    """
+    from config.constants import SPOT_PERPS_CONFIG
+
+    opportunities = {
+        'spot_vs_perps': [],
+        'perps_vs_perps': []
+    }
+
+    # Process each asset group
+    asset_configs = {
+        "BTC": (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC"),
+        "SOL": (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL")
+    }
+
+    for asset_name, (asset_variants, asset_type) in asset_configs.items():
+        # Get perps rates for this asset type
+        perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
+
+        # Calculate perps vs perps opportunities for this asset
+        perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+        if perps_vs_perps_arb is not None:
+            # Find the specific exchange pair that creates this opportunity
+            exchanges = list(perps_rates.keys())
+            best_pair = None
+            best_rate = float('inf')
+
+            for i in range(len(exchanges)):
+                for j in range(i + 1, len(exchanges)):
+                    exchange_a = exchanges[i]
+                    exchange_b = exchanges[j]
+                    rate_a = perps_rates[exchange_a]
+                    rate_b = perps_rates[exchange_b]
+                    net_arb = rate_a - rate_b
+
+                    if net_arb < best_rate:
+                        best_rate = net_arb
+                        best_pair = (exchange_a, exchange_b, rate_a, rate_b)
+
+            if best_pair:
+                opportunities['perps_vs_perps'].append({
+                    'asset': asset_type,
+                    'asset_name': asset_name,
+                    'exchange_a': best_pair[0],
+                    'exchange_b': best_pair[1],
+                    'rate_a': best_pair[2],
+                    'rate_b': best_pair[3],
+                    'arbitrage_rate': best_rate,
+                    'description': f"{asset_name} {best_pair[0]} vs {best_pair[1]}: {best_rate:.6f}%"
+                })
+
+        # Calculate spot vs perps opportunities for each variant
+        for variant in asset_variants:
+            for direction in ["Long", "Short"]:
+                spot_rates = calculate_spot_rate_with_direction(
+                    token_config, rates_data, staking_data,
+                    variant, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"],
+                    direction.lower(), target_hours
+                )
+
+                if spot_rates:
+                    # Use the first available spot rate
+                    spot_rate = list(spot_rates.values())[0]
+                    spot_vs_perps_arb = calculate_spot_vs_perps_arb(
+                        spot_rate, perps_rates, direction
+                    )
+
+                    if spot_vs_perps_arb is not None:
+                        # Find the best perps exchange for this opportunity
+                        best_exchange = None
+                        best_funding_rate = None
+
+                        for exchange, funding_rate in perps_rates.items():
+                            if direction == "Long":
+                                net_arb = spot_rate - funding_rate
+                            else:  # Short
+                                net_arb = spot_rate + funding_rate
+
+                            if net_arb == spot_vs_perps_arb:
+                                best_exchange = exchange
+                                best_funding_rate = funding_rate
+                                break
+
+                        if best_exchange:
+                            opportunities['spot_vs_perps'].append({
+                                'asset': variant,
+                                'asset_name': asset_name,
+                                'direction': direction,
+                                'spot_rate': spot_rate,
+                                'perps_exchange': best_exchange,
+                                'funding_rate': best_funding_rate,
+                                'arbitrage_rate': spot_vs_perps_arb,
+                                'description': f"{variant} {direction} Spot vs {best_exchange} Perps: {spot_vs_perps_arb:.6f}%"
+                            })
+
+    # Sort opportunities by profitability (most negative first)
+    opportunities['spot_vs_perps'].sort(key=lambda x: x['arbitrage_rate'])
+    opportunities['perps_vs_perps'].sort(key=lambda x: x['arbitrage_rate'])
+
+    return opportunities
+
+
+def display_arbitrage_opportunities_summary(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    target_hours: int = 1
+) -> None:
+    """
+    Display a summary of all arbitrage opportunities, ranked by profitability.
+
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        target_hours: Target interval in hours (default 1)
+    """
+    import streamlit as st
+
+    opportunities = create_arbitrage_opportunities_summary(
+        token_config, rates_data, staking_data, hyperliquid_data, drift_data, target_hours
+    )
+
+    st.subheader("🎯 Arbitrage Opportunities Summary")
+
+    # Display Spot vs Perps opportunities
+    if opportunities['spot_vs_perps']:
+        st.write("**💰 Spot vs Perps Opportunities:**")
+        for i, opp in enumerate(opportunities['spot_vs_perps'][:5]):  # Show top 5
+            color = "🟢" if opp['arbitrage_rate'] < 0 else "🔴"
+            st.write(f"{color} **{i+1}.** {opp['description']}")
+    else:
+        st.write("**💰 Spot vs Perps:** No profitable opportunities found")
+
+    st.write("---")
+
+    # Display Perps vs Perps opportunities
+    if opportunities['perps_vs_perps']:
+        st.write("**📈 Perps vs Perps Opportunities:**")
+        for i, opp in enumerate(opportunities['perps_vs_perps'][:5]):  # Show top 5
+            color = "🟢" if opp['arbitrage_rate'] < 0 else "🔴"
+            st.write(f"{color} **{i+1}.** {opp['description']}")
+    else:
+        st.write("**📈 Perps vs Perps:** No profitable opportunities found")
+
+    # Show best overall opportunity
+    all_opportunities = opportunities['spot_vs_perps'] + opportunities['perps_vs_perps']
+    if all_opportunities:
+        best_opp = min(all_opportunities, key=lambda x: x['arbitrage_rate'])
+        st.write("---")
+        st.write(f"**🏆 Best Overall Opportunity:** {best_opp['description']}")
+        st.write(f"*Rate: {best_opp['arbitrage_rate']:.6f}%*")
+
+
+def display_asset_specific_opportunities(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    asset_name: str,
+    asset_variants: list,
+    asset_type: str,
+    target_hours: int = 1
+) -> None:
+    """
+    Display asset-specific arbitrage opportunities and best strategies.
+
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        asset_name: Asset name (e.g., "BTC", "SOL")
+        asset_variants: List of asset variants
+        asset_type: Asset type for perps mapping
+        target_hours: Target interval in hours
+    """
+    import streamlit as st
+    from config.constants import SPOT_PERPS_CONFIG
+
+    # Get perps rates for this asset type
+    perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
+
+    # Calculate perps vs perps opportunities for this asset
+    perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+
+    # Collect all opportunities for this asset
+    asset_opportunities = []
+
+    # Add perps vs perps opportunity if available
+    if perps_vs_perps_arb is not None:
+        # Find the specific exchange pair that creates this opportunity
+        exchanges = list(perps_rates.keys())
+        best_pair = None
+        best_rate = float('inf')
+
+        for i in range(len(exchanges)):
+            for j in range(i + 1, len(exchanges)):
+                exchange_a = exchanges[i]
+                exchange_b = exchanges[j]
+                rate_a = perps_rates[exchange_a]
+                rate_b = perps_rates[exchange_b]
+                net_arb = rate_a - rate_b
+
+                if net_arb < best_rate:
+                    best_rate = net_arb
+                    best_pair = (exchange_a, exchange_b, rate_a, rate_b)
+
+        if best_pair:
+            # Calculate APY (assuming the rate continues for a year)
+            apy = abs(best_rate) * 365 * 24 / target_hours
+            asset_opportunities.append({
+                'type': 'Perps vs Perps',
+                'description': f"{best_pair[0]} vs {best_pair[1]}: {best_rate:.6f}%",
+                'rate': best_rate,
+                'apy': apy,
+                'details': f"{best_pair[0]}: {best_pair[2]:.6f}%, {best_pair[1]}: {best_pair[3]:.6f}%"
+            })
+
+    # Calculate spot vs perps opportunities for each variant
+    for variant in asset_variants:
+        for direction in ["Long", "Short"]:
+            spot_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, SPOT_PERPS_CONFIG["DEFAULT_SPOT_LEVERAGE"],
+                direction.lower(), target_hours
+            )
+
+            if spot_rates:
+                # Use the first available spot rate
+                spot_rate = list(spot_rates.values())[0]
+                spot_vs_perps_arb = calculate_spot_vs_perps_arb(
+                    spot_rate, perps_rates, direction
+                )
+
+                if spot_vs_perps_arb is not None:
+                    # Find the best perps exchange for this opportunity
+                    best_exchange = None
+                    best_funding_rate = None
+
+                    for exchange, funding_rate in perps_rates.items():
+                        if direction == "Long":
+                            net_arb = spot_rate - funding_rate
+                        else:  # Short
+                            net_arb = spot_rate + funding_rate
+
+                        if net_arb == spot_vs_perps_arb:
+                            best_exchange = exchange
+                            best_funding_rate = funding_rate
+                            break
+
+                    if best_exchange:
+                        # Calculate APY (assuming the rate continues for a year)
+                        apy = abs(spot_vs_perps_arb) * 365 * 24 / target_hours
+                        asset_opportunities.append({
+                            'type': 'Spot vs Perps',
+                            'description': f"{variant} {direction} Spot vs {best_exchange} Perps: {spot_vs_perps_arb:.6f}%",
+                            'rate': spot_vs_perps_arb,
+                            'apy': apy,
+                            'details': f"Spot Rate: {spot_rate:.6f}%, {best_exchange} Funding: {best_funding_rate:.6f}%"
+                        })
+
+    # Sort opportunities by profitability (most negative first)
+    asset_opportunities.sort(key=lambda x: x['rate'])
+
+    # Display asset-specific opportunities
+    if asset_opportunities:
+        st.write(f"**🎯 {asset_name} Best Strategies:**")
+
+        # Show top 3 opportunities
+        for i, opp in enumerate(asset_opportunities[:3]):
+            color = "🟢" if opp['rate'] < 0 else "🔴"
+            apy_text = f" (earn up to {opp['apy']:.1f}% APY)" if opp['rate'] < 0 else f" (cost up to {opp['apy']:.1f}% APY)"
+            st.write(f"{color} **{i+1}.** {opp['description']}{apy_text}")
+            st.caption(f"*{opp['details']}*")
+
+        # Show best overall opportunity for this asset
+        best_opp = min(asset_opportunities, key=lambda x: x['rate'])
+        best_apy_text = f" (earn up to {best_opp['apy']:.1f}% APY)" if best_opp['rate'] < 0 else f" (cost up to {best_opp['apy']:.1f}% APY)"
+        st.write("---")
+        st.write(f"**🏆 Best {asset_name} Strategy:** {best_opp['description']}{best_apy_text}")
+        st.write(f"*{best_opp['details']}*")
+    else:
+        st.write(f"**🎯 {asset_name} Strategies:** No profitable opportunities found")
