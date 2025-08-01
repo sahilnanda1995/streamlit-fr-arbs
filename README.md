@@ -1,21 +1,47 @@
 # SPOT and Perps Arbitrage Dashboard
 
-A Streamlit application for analyzing arbitrage fee rate opportunities between spot lending/borrowing markets and perpetual futures funding rates across multiple cryptocurrency exchanges and DeFi protocols.
+A multi-page Streamlit application for analyzing arbitrage opportunities between spot lending/borrowing markets and perpetual futures funding rates across multiple cryptocurrency exchanges and DeFi protocols.
 
 ## 🚀 Features
 
-- **💰 Spot Hourly Fee Rates**: Calculate arbitrage opportunities for SOL variants (SOL, JITOSOL, JUPSOL) and BTC variants (CBBTC, WBTC, xBTC) with leverage levels 1x-5x
-- **💰 Money Markets**: Display current lending/borrowing rates and staking yields across multiple DeFi protocols (Marginfi, Kamino, Drift, Solend)
-- **📈 Funding Rates**: Compare perpetual funding rates across exchanges (Hyperliquid, Drift) with flexible time intervals
-- **🔄 Real-time Data**: Fetches live data from 4 different APIs with 5-minute caching
-- **📊 Clean Interface**: Easy-to-read tables with percentage-based rates and hourly returns
-- **🔍 Raw Data Access**: View raw API responses for debugging and analysis
+### 📊 Main Dashboard - Spot and Perps Arbitrage
+
+- **💰 Spot vs Perps Opportunities**: Calculate arbitrage opportunities between spot markets and perpetual futures
+- **🔄 Long/Short Positions**: Compare long and short spot positions against perps funding rates
+- **📈 Multi-Asset Support**: SOL variants (SOL, JITOSOL, JUPSOL) and BTC variants (CBBTC, WBTC, XBTC)
+- **⚖️ Leverage Analysis**: 2x leverage calculations with customizable parameters
+
+### 📄 Individual Pages
+
+#### 💰 Spot Hourly Fee Rates
+
+- **Leverage Levels**: Calculate arbitrage opportunities for 1x-5x leverage
+- **Asset Variants**: SOL variants (SOL, JITOSOL, JUPSOL) and BTC variants (CBBTC, WBTC, XBTC)
+- **Formula**: `Fee Rate = (borrow_rate + staking_rate) * (leverage - 1) - (lend_rate + staking_rate) * leverage`
+
+#### 💰 Money Markets
+
+- **Current Rates**: Lending and borrowing rates across protocols
+- **Staking Yields**: Staking rates for yield-bearing tokens
+- **Protocol Coverage**: Marginfi, Kamino, Drift, Solend
+- **Token Support**: 20+ tokens including SOL variants, BTC variants, stablecoins
+
+#### 📈 Funding Rates
+
+- **Interval Selection**: Choose from 1hr, 4hr, 8hr, 24hr, or 1yr intervals
+- **Exchange Comparison**: Compare funding rates across Hyperliquid and Drift
+- **Scaled Display**: Rates automatically scaled to selected interval
+- **Raw Data**: Expand sections to view unprocessed API responses
 
 ## 📁 Project Structure
 
 ```
 fr-arbs/
-├── streamlit_app.py          # Main Streamlit application with three sections
+├── streamlit_app.py          # Main dashboard - Spot and Perps Arbitrage
+├── pages/                    # Individual feature pages
+│   ├── 1_Spot_Hourly_Fee_Rates.py    # Spot arbitrage calculations
+│   ├── 2_Money_Markets.py            # Money markets display
+│   └── 3_Funding_Rates.py            # Funding rates comparison
 ├── config/
 │   ├── __init__.py
 │   ├── constants.py          # Configuration constants and settings
@@ -27,7 +53,9 @@ fr-arbs/
 │   ├── __init__.py
 │   ├── models.py             # Data models and type definitions
 │   ├── processing.py         # Data transformation functions
-│   └── money_markets_processing.py  # Money markets data processing
+│   ├── money_markets_processing.py  # Money markets data processing
+│   ├── spot_arbitrage.py     # Spot arbitrage calculations
+│   └── spot_perps_arbitrage.py      # Spot vs perps arbitrage logic
 ├── utils/
 │   ├── __init__.py
 │   └── formatting.py         # Display formatting utilities
@@ -68,14 +96,31 @@ streamlit run streamlit_app.py
 
 The application will open in your default web browser at `http://localhost:8501`.
 
-### Using the Interface
+### Navigation
 
-The application has **three main sections**:
+The application uses Streamlit's multi-page structure:
+
+- **🏠 Main Page**: Spot and Perps Arbitrage dashboard
+- **💰 Spot Hourly Fee Rates**: Traditional spot arbitrage calculations
+- **💰 Money Markets**: Current lending/borrowing rates display
+- **📈 Funding Rates**: Perpetual funding rates comparison
+
+### Main Dashboard - Spot and Perps Arbitrage
+
+The main page provides a comprehensive view of arbitrage opportunities between spot markets and perpetual futures:
+
+- **Asset Groups**: SOL variants and BTC variants
+- **Position Types**: Long and Short spot positions
+- **Exchange Coverage**: Hyperliquid, Binance, Drift, Bybit
+- **Real-time Data**: Live rates from multiple APIs
+- **Arbitrage Calculations**: Spot vs Perps and Perps vs Perps opportunities
+
+### Individual Pages
 
 #### 1. 💰 Spot Hourly Fee Rates
 
 - **SOL Variants Table**: Shows arbitrage opportunities for SOL, JITOSOL, JUPSOL
-- **BTC Variants Table**: Shows arbitrage opportunities for CBBTC, WBTC, xBTC
+- **BTC Variants Table**: Shows arbitrage opportunities for CBBTC, WBTC, XBTC
 - **Leverage Levels**: Displays hourly fee rates for 1x-5x leverage
 - **Formula**: `Fee Rate = (borrow_rate + staking_rate) * (leverage - 1) - (lend_rate + staking_rate) * leverage`
 
@@ -95,21 +140,32 @@ The application has **three main sections**:
 
 ## 🔧 Architecture
 
+### Multi-Page Design
+
+The application follows Streamlit's multi-page structure for better organization:
+
+- **Main Dashboard** (`streamlit_app.py`): Comprehensive spot vs perps arbitrage analysis
+- **Feature Pages** (`pages/`): Specialized functionality for specific use cases
+- **Shared Modules**: Common functionality shared across all pages
+
 ### Modular Design
 
 The application follows a clean, modular architecture with clear separation of concerns:
 
-- **UI Logic** (`streamlit_app.py`): Streamlit interface with three main sections
+- **UI Logic**: Streamlit interface with multi-page navigation
 - **Configuration** (`config/`): Constants, settings, and token configuration management
 - **API Layer** (`api/`): External service clients with proper error handling and caching
-- **Data Layer** (`data/`): Data models, processing, and merging logic
+- **Data Layer** (`data/`): Data models, processing, and arbitrage calculations
 - **Utilities** (`utils/`): Formatting and display helper functions
 
 ### Data Flow
 
 1. **API Clients** fetch raw data from 4 external APIs (Hyperliquid, Drift, Asgard Current Rates, Asgard Staking Rates)
 2. **Data Processing** transforms responses into standardized formats
-3. **Arbitrage Fee Rate Calculation** computes hourly fee rates for different leverage levels
+3. **Arbitrage Calculations** compute opportunities for different scenarios:
+   - Spot arbitrage with leverage
+   - Spot vs Perps arbitrage
+   - Perps vs Perps arbitrage
 4. **Data Merging** combines data from multiple sources
 5. **Formatting** scales rates and prepares for display
 6. **UI Rendering** displays the final tables and controls
@@ -161,6 +217,15 @@ The codebase is organized for maintainability and testing:
 - **Documentation**: Docstrings for all functions and classes
 - **Modular Design**: Clear separation between UI, API, data processing, and utilities
 
+### Adding New Features
+
+To add new functionality:
+
+1. **New Page**: Create a new file in `pages/` directory
+2. **New API**: Add function in `api/endpoints.py` with `@st.cache_data(ttl=300)` decorator
+3. **New Processing**: Add logic in appropriate `data/` module
+4. **Configuration**: Update constants in `config/constants.py` if needed
+
 ### Adding New Exchanges
 
 To add support for a new exchange:
@@ -196,6 +261,8 @@ Key configuration values in `config/constants.py`:
 - **API URLs**: Endpoints for each service
 - **Exchange Mappings**: Internal names to display names
 - **UI Settings**: Application title, descriptions, etc.
+- **Asset Groups**: SOL variants and BTC variants for arbitrage calculations
+- **Leverage Levels**: Available leverage options for calculations
 
 Token configuration in `token_config.json`:
 
@@ -213,6 +280,7 @@ When contributing:
 4. Test with different interval selections and leverage levels for fee rate calculations
 5. Ensure error handling is maintained
 6. Update token configuration for new tokens
+7. Consider adding new pages for major features
 
 ## 📈 Performance
 
@@ -224,9 +292,18 @@ When contributing:
 
 ## 🔍 Key Features Explained
 
-### Arbitrage Fee Rate Calculation
+### Spot and Perps Arbitrage
 
-The application calculates arbitrage opportunities using the formula:
+The main dashboard calculates arbitrage opportunities between spot markets and perpetual futures:
+
+- **Long Position**: Lend asset, borrow USDC, compare against perps funding
+- **Short Position**: Lend USDC, borrow asset, compare against perps funding
+- **Perps vs Perps**: Compare funding rates across different exchanges
+- **Real-time Updates**: Live data from multiple sources
+
+### Spot Arbitrage Fee Rate Calculation
+
+The spot arbitrage page calculates opportunities using the formula:
 
 ```
 Fee Rate = (borrow_rate + staking_rate) * (leverage - 1) - (lend_rate + staking_rate) * leverage
@@ -249,7 +326,7 @@ The application integrates data from multiple DeFi protocols:
 The application supports 20+ tokens including:
 
 - **SOL Variants**: SOL, JITOSOL, JUPSOL, mSOL, CGNTSOL, ezSOL, kySOL
-- **BTC Variants**: CBBTC, WBTC, xBTC
+- **BTC Variants**: CBBTC, WBTC, XBTC
 - **Stablecoins**: USDC, USDT, FDUSD, USDS, USDG
 - **Other**: JLP, wETH, sSOL, dSOL
 
@@ -257,11 +334,17 @@ The application supports 20+ tokens including:
 
 The application uses minimal dependencies:
 
-- **streamlit**: Web application framework
+- **streamlit**: Web application framework with multi-page support
 - **requests**: HTTP client for API calls
 - **pandas**: Data manipulation and display
 
 ## 🔧 Technical Details
+
+### Multi-Page Structure
+
+- **Main Page**: Comprehensive spot vs perps arbitrage dashboard
+- **Feature Pages**: Specialized functionality for specific use cases
+- **Shared Resources**: Common modules and configuration across all pages
 
 ### Caching Strategy
 
