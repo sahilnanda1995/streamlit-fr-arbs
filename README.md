@@ -27,7 +27,6 @@ fr-arbs/
 │   ├── __init__.py
 │   ├── models.py             # Data models and type definitions
 │   ├── processing.py         # Data transformation functions
-│   ├── merger.py             # Data merging logic
 │   └── money_markets_processing.py  # Money markets data processing
 ├── utils/
 │   ├── __init__.py
@@ -36,7 +35,8 @@ fr-arbs/
 │   ├── current-rates.json
 │   ├── current-staking-rates.json
 │   ├── drift-market-index.json
-│   └── drift-avg-endpoints.json
+│   ├── drift-avg-endpoints.json
+│   └── hyperliquid-funding-rates.json
 ├── token_config.json         # Token configuration for money markets
 ├── requirements.txt          # Python dependencies
 └── README.md                # This file
@@ -252,3 +252,32 @@ The application supports 20+ tokens including:
 - **BTC Variants**: CBBTC, WBTC, xBTC
 - **Stablecoins**: USDC, USDT, FDUSD, USDS, USDG
 - **Other**: JLP, wETH, sSOL, dSOL
+
+## 📦 Dependencies
+
+The application uses minimal dependencies:
+
+- **streamlit**: Web application framework
+- **requests**: HTTP client for API calls
+- **pandas**: Data manipulation and display
+
+## 🔧 Technical Details
+
+### Caching Strategy
+
+- **API Responses**: 5-minute TTL using `@st.cache_data`
+- **Session Reuse**: Persistent HTTP session for connection efficiency
+- **Error Handling**: Graceful degradation with user-friendly error messages
+
+### Data Processing
+
+- **Type Safety**: Comprehensive type hints and dataclasses
+- **Error Recovery**: Fallback displays when APIs are unavailable
+- **Data Validation**: Input validation and sanitization
+- **Formatting**: Consistent display formatting across all sections
+
+### Security
+
+- **No API Keys**: All endpoints are public APIs
+- **Input Validation**: All user inputs are validated
+- **Error Handling**: No sensitive information in error messages
