@@ -136,6 +136,7 @@ def get_perps_rates_for_asset(
 ) -> Dict[str, float]:
     """
     Get funding rates from all perps exchanges for an asset.
+    Uses the centralized processing approach from data/processing.py.
 
     Args:
         hyperliquid_data: Hyperliquid funding data
@@ -146,44 +147,38 @@ def get_perps_rates_for_asset(
     Returns:
         Dictionary of {exchange: funding_rate} scaled to target interval
     """
+    from data.processing import merge_funding_rate_data
+    from utils.formatting import scale_funding_rate_to_percentage
+    from config.constants import EXCHANGE_NAME_MAPPING
+
+    # Use the centralized processing approach
+    merged_data = merge_funding_rate_data(hyperliquid_data, drift_data)
+
     perps_rates = {}
 
-    # Extract funding rates from Hyperliquid data
-    if hyperliquid_data and isinstance(hyperliquid_data, list):
-        for asset_data in hyperliquid_data:
-            if isinstance(asset_data, list) and len(asset_data) >= 2:
-                asset_name = asset_data[0]
-                if asset_name == asset:
-                    exchanges_data = asset_data[1]
-                    for exchange_data in exchanges_data:
-                        if isinstance(exchange_data, list) and len(exchange_data) >= 2:
-                            exchange_name = exchange_data[0]
-                            funding_info = exchange_data[1]
-                            if isinstance(funding_info, dict):
-                                funding_rate_str = funding_info.get("fundingRate", "0")
-                                try:
-                                    funding_rate = float(funding_rate_str)
-                                    # Convert to hourly rate first
-                                    interval_hours = funding_info.get("fundingIntervalHours", 8)
-                                    hourly_rate = funding_rate / interval_hours
-                                    # Scale to target interval
-                                    scaled_rate = hourly_rate * target_hours
-                                    perps_rates[exchange_name] = scaled_rate
-                                except (ValueError, ZeroDivisionError):
-                                    continue
-                    break
+    # Find the asset in the merged data
+    for token_entry in merged_data:
+        if token_entry[0] == asset:  # Match the asset name
+            exchanges = token_entry[1]
 
-    # Extract funding rates from Drift data
-    if drift_data and isinstance(drift_data, dict):
-        markets = drift_data.get("markets", [])
-        for market in markets:
-            if isinstance(market, dict) and market.get("symbol") == f"{asset}-PERP":
-                # Convert to percentage and scale to target interval
-                funding_rate = market.get("fundingRate", 0)
-                # Assuming Drift rates are already hourly, scale to target interval
-                scaled_rate = funding_rate * target_hours
-                perps_rates["Drift"] = scaled_rate
-                break
+            for exchange_name, details in exchanges:
+                if details is not None:
+                    try:
+                        rate = details.get("fundingRate", 0)
+                        # Scale to target interval and convert to percentage
+                        scaled_percent = scale_funding_rate_to_percentage(rate, 1, target_hours)
+
+                        # Map exchange names to display names
+                        display_name = EXCHANGE_NAME_MAPPING.get(exchange_name)
+                        if display_name:
+                            perps_rates[display_name] = scaled_percent
+                        else:
+                            # Fallback to original exchange name if not in mapping
+                            perps_rates[exchange_name] = scaled_percent
+
+                    except (ValueError, TypeError):
+                        continue
+            break
 
     return perps_rates
 
@@ -392,8 +387,14 @@ def display_spot_perps_opportunities_section(
     # Add toggle for calculation breakdowns
     show_breakdowns = st.checkbox("🔍 Show Calculation Breakdowns", value=False)
 
+    # Add toggle for detailed opportunity view
+    show_detailed_opportunities = st.checkbox("📊 Show Detailed Opportunity Analysis", value=True)
+
     if show_breakdowns:
         st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
+
+    if show_detailed_opportunities:
+        st.info("📊 Detailed opportunity analysis will show all arbitrage opportunities with comprehensive breakdowns.")
 
     # Add options to sidebar
     with st.sidebar:
@@ -420,6 +421,12 @@ def display_spot_perps_opportunities_section(
 
         st.divider()
         st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")
+
+        # Add filtering options
+        st.subheader("🔍 Filter Options")
+        show_profitable_only = st.checkbox("Show Profitable Only", value=False)
+        show_spot_vs_perps = st.checkbox("Show Spot vs Perps", value=True)
+        show_perps_vs_perps = st.checkbox("Show Perps vs Perps", value=True)
 
     # Create separate tables for BTC and SOL
     asset_configs = {
@@ -453,11 +460,13 @@ def display_spot_perps_opportunities_section(
         else:
             st.info(f"No valid opportunities found for {asset_name} assets.")
 
-        # Display asset-specific opportunities below each table
-        display_asset_specific_opportunities(
-            token_config, rates_data, staking_data, hyperliquid_data, drift_data,
-            asset_name, asset_variants, asset_type, target_hours, selected_leverage
-        )
+        # Display all possible arbitrage opportunities
+        if show_detailed_opportunities:
+            display_all_possible_arbitrage_opportunities(
+                token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+                asset_name, asset_variants, asset_type, target_hours, selected_leverage,
+                show_profitable_only, show_spot_vs_perps, show_perps_vs_perps
+            )
 
         # Show calculation breakdowns if requested
         if show_breakdowns:
@@ -621,33 +630,112 @@ def display_arbitrage_opportunities_summary(
     # Display Spot vs Perps opportunities
     if opportunities['spot_vs_perps']:
         st.write("**💰 Spot vs Perps Opportunities:**")
-        for i, opp in enumerate(opportunities['spot_vs_perps'][:5]):  # Show top 5
+        for i, opp in enumerate(opportunities['spot_vs_perps']):  # Show all opportunities
             color = "🟢" if opp['arbitrage_rate'] < 0 else "🔴"
-            st.write(f"{color} **{i+1}.** {opp['description']}")
+            profit_status = "💰 PROFITABLE" if opp['arbitrage_rate'] < 0 else "💸 COSTLY"
+
+            with st.expander(f"{color} **{i+1}.** {opp['description']}", expanded=False):
+                col1, col2 = st.columns([2, 1])
+
+                with col1:
+                    st.write(f"**Asset:** {opp['asset']}")
+                    st.write(f"**Direction:** {opp.get('direction', 'N/A')}")
+                    st.write(f"**Spot Rate:** {opp.get('spot_rate', 0):.6f}%")
+                    st.write(f"**Perps Exchange:** {opp.get('perps_exchange', 'N/A')}")
+                    st.write(f"**Funding Rate:** {opp.get('funding_rate', 0):.6f}%")
+                    st.write(f"**Arbitrage Rate:** {opp['arbitrage_rate']:.6f}%")
+                    st.write(f"**Profit Status:** {profit_status}")
+
+                with col2:
+                    if opp['arbitrage_rate'] < 0:
+                        st.success("✅ Profitable")
+                        apy = abs(opp['arbitrage_rate']) * 365 * 24
+                        st.metric("Potential APY", f"{apy:.1f}%", delta=f"{opp['arbitrage_rate']:.4f}%")
+                    else:
+                        st.error("❌ Costly")
+                        apy = abs(opp['arbitrage_rate']) * 365 * 24
+                        st.metric("Potential Cost", f"{apy:.1f}%", delta=f"{opp['arbitrage_rate']:.4f}%")
+
+                    if i == 0:
+                        st.info("🥇 **Best Spot vs Perps**")
+                    elif i < 3:
+                        st.info(f"#{i+1} Best")
     else:
-        st.write("**💰 Spot vs Perps:** No profitable opportunities found")
+        st.write("**💰 Spot vs Perps:** No opportunities found")
 
     st.write("---")
 
     # Display Perps vs Perps opportunities
     if opportunities['perps_vs_perps']:
         st.write("**📈 Perps vs Perps Opportunities:**")
-        for i, opp in enumerate(opportunities['perps_vs_perps'][:5]):  # Show top 5
+        for i, opp in enumerate(opportunities['perps_vs_perps']):  # Show all opportunities
             color = "🟢" if opp['arbitrage_rate'] < 0 else "🔴"
-            st.write(f"{color} **{i+1}.** {opp['description']}")
-    else:
-        st.write("**📈 Perps vs Perps:** No profitable opportunities found")
+            profit_status = "💰 PROFITABLE" if opp['arbitrage_rate'] < 0 else "💸 COSTLY"
 
-    # Show best overall opportunity
+            with st.expander(f"{color} **{i+1}.** {opp['description']}", expanded=False):
+                col1, col2 = st.columns([2, 1])
+
+                with col1:
+                    st.write(f"**Asset:** {opp['asset']}")
+                    st.write(f"**Exchange A:** {opp['exchange_a']}")
+                    st.write(f"**Exchange B:** {opp['exchange_b']}")
+                    st.write(f"**Rate A:** {opp['rate_a']:.6f}%")
+                    st.write(f"**Rate B:** {opp['rate_b']:.6f}%")
+                    st.write(f"**Arbitrage Rate:** {opp['arbitrage_rate']:.6f}%")
+                    st.write(f"**Profit Status:** {profit_status}")
+
+                with col2:
+                    if opp['arbitrage_rate'] < 0:
+                        st.success("✅ Profitable")
+                        apy = abs(opp['arbitrage_rate']) * 365 * 24
+                        st.metric("Potential APY", f"{apy:.1f}%", delta=f"{opp['arbitrage_rate']:.4f}%")
+                    else:
+                        st.error("❌ Costly")
+                        apy = abs(opp['arbitrage_rate']) * 365 * 24
+                        st.metric("Potential Cost", f"{apy:.1f}%", delta=f"{opp['arbitrage_rate']:.4f}%")
+
+                    if i == 0:
+                        st.info("🥇 **Best Perps vs Perps**")
+                    elif i < 3:
+                        st.info(f"#{i+1} Best")
+    else:
+        st.write("**📈 Perps vs Perps:** No opportunities found")
+
+    # Show summary statistics
+    st.write("---")
     all_opportunities = opportunities['spot_vs_perps'] + opportunities['perps_vs_perps']
     if all_opportunities:
+        profitable_spot = sum(1 for opp in opportunities['spot_vs_perps'] if opp['arbitrage_rate'] < 0)
+        profitable_perps = sum(1 for opp in opportunities['perps_vs_perps'] if opp['arbitrage_rate'] < 0)
+        total_profitable = profitable_spot + profitable_perps
+        total_opportunities = len(all_opportunities)
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Opportunities", total_opportunities)
+        with col2:
+            st.metric("Profitable", total_profitable)
+        with col3:
+            st.metric("Success Rate", f"{(total_profitable/total_opportunities*100):.1f}%" if total_opportunities > 0 else "0%")
+        with col4:
+            st.metric("Spot vs Perps", f"{len(opportunities['spot_vs_perps'])} opportunities")
+
+        # Show best overall opportunity
         best_opp = min(all_opportunities, key=lambda x: x['arbitrage_rate'])
         st.write("---")
         st.write(f"**🏆 Best Overall Opportunity:** {best_opp['description']}")
         st.write(f"*Rate: {best_opp['arbitrage_rate']:.6f}%*")
 
+        # Add APY calculation for best opportunity
+        if best_opp['arbitrage_rate'] < 0:
+            apy = abs(best_opp['arbitrage_rate']) * 365 * 24
+            st.success(f"✅ Potential APY: {apy:.1f}%")
+        else:
+            apy = abs(best_opp['arbitrage_rate']) * 365 * 24
+            st.error(f"❌ Potential Cost: {apy:.1f}%")
 
-def display_asset_specific_opportunities(
+
+def display_all_possible_arbitrage_opportunities(
     token_config: dict,
     rates_data: dict,
     staking_data: dict,
@@ -657,10 +745,13 @@ def display_asset_specific_opportunities(
     asset_variants: list,
     asset_type: str,
     target_hours: int = 1,
-    leverage: float = 2.0
+    leverage: float = 2.0,
+    show_profitable_only: bool = False,
+    show_spot_vs_perps: bool = True,
+    show_perps_vs_perps: bool = True
 ) -> None:
     """
-    Display asset-specific arbitrage opportunities and best strategies.
+    Display all possible arbitrage opportunities with comprehensive details.
 
     Args:
         token_config: Token configuration dictionary
@@ -673,6 +764,9 @@ def display_asset_specific_opportunities(
         asset_type: Asset type for perps mapping
         target_hours: Target interval in hours
         leverage: Leverage level for spot calculations (default 2.0)
+        show_profitable_only: Filter to show only profitable opportunities
+        show_spot_vs_perps: Show spot vs perps opportunities
+        show_perps_vs_perps: Show perps vs perps opportunities
     """
     import streamlit as st
     from config.constants import SPOT_PERPS_CONFIG
@@ -680,107 +774,215 @@ def display_asset_specific_opportunities(
     # Get perps rates for this asset type
     perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
 
-    # Calculate perps vs perps opportunities for this asset
-    perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+    # Collect all possible arbitrage opportunities
+    all_opportunities = []
 
-    # Collect all opportunities for this asset
-    asset_opportunities = []
+    # Helper function to get protocol/market/bank for an asset
+    def get_protocol_market_pairs(token_config, asset):
+        return [(b["protocol"], b["market"], b["bank"]) for b in token_config[asset]["banks"]]
 
-    # Add perps vs perps opportunity if available
-    if perps_vs_perps_arb is not None:
-        # Find the specific exchange pair that creates this opportunity
+    # 1. SPOT VS PERPS OPPORTUNITIES
+    if show_spot_vs_perps:
+        for variant in asset_variants:
+            for direction in ["Long", "Short"]:
+                # Get spot rates for this variant and direction
+                spot_rates = calculate_spot_rate_with_direction(
+                    token_config, rates_data, staking_data,
+                    variant, leverage, direction.lower(), target_hours
+                )
+
+                # For each spot rate (protocol/market), compare with all perps exchanges
+                for protocol_market, spot_rate in spot_rates.items():
+                    for exchange, funding_rate in perps_rates.items():
+                        # Calculate arbitrage
+                        if direction == "Long":
+                            net_arb = spot_rate - funding_rate
+                        else:  # Short
+                            net_arb = spot_rate + funding_rate
+
+                        # Apply profitability filter
+                        if show_profitable_only and net_arb >= 0:
+                            continue
+
+                        # Calculate APY
+                        apy = abs(net_arb) * 365 * 24 / target_hours
+
+                        opportunity = {
+                            'type': 'Spot vs Perps',
+                            'token': variant,
+                            'protocol': protocol_market.split('(')[0],
+                            'market': protocol_market.split('(')[1].split(')')[0],
+                            'direction': direction,
+                            'spot_rate': spot_rate,
+                            'perps_exchange': exchange,
+                            'funding_rate': funding_rate,
+                            'net_arb': net_arb,
+                            'apy': apy,
+                            'description': f"{variant} {direction} Spot ({protocol_market.split('(')[0]}({protocol_market.split('(')[1].split(')')[0]})) vs {exchange} Perps",
+                            'details': f"Spot: {spot_rate:.6f}%, Perps: {funding_rate:.6f}%",
+                            'calculation': f"Net Arb = {spot_rate:.6f}% {'-' if direction == 'Long' else '+'} {funding_rate:.6f}% = {net_arb:.6f}%"
+                        }
+                        all_opportunities.append(opportunity)
+
+    # 2. PERPS VS PERPS OPPORTUNITIES
+    if show_perps_vs_perps and len(perps_rates) >= 2:
         exchanges = list(perps_rates.keys())
-        best_pair = None
-        best_rate = float('inf')
-
         for i in range(len(exchanges)):
             for j in range(i + 1, len(exchanges)):
                 exchange_a = exchanges[i]
                 exchange_b = exchanges[j]
                 rate_a = perps_rates[exchange_a]
                 rate_b = perps_rates[exchange_b]
+
+                # Calculate arbitrage (Long A, Short B)
                 net_arb = rate_a - rate_b
 
-                if net_arb < best_rate:
-                    best_rate = net_arb
-                    best_pair = (exchange_a, exchange_b, rate_a, rate_b)
+                # Apply profitability filter
+                if show_profitable_only and net_arb >= 0:
+                    continue
 
-        if best_pair:
-            # Calculate APY (assuming the rate continues for a year)
-            apy = abs(best_rate) * 365 * 24 / target_hours
-            asset_opportunities.append({
-                'type': 'Perps vs Perps',
-                'description': f"{best_pair[0]} vs {best_pair[1]}: {best_rate:.6f}%",
-                'rate': best_rate,
-                'apy': apy,
-                'details': f"{best_pair[0]}: {best_pair[2]:.6f}%, {best_pair[1]}: {best_pair[3]:.6f}%"
-            })
+                # Calculate APY
+                apy = abs(net_arb) * 365 * 24 / target_hours
 
-    # Calculate spot vs perps opportunities for each variant
-    for variant in asset_variants:
-        for direction in ["Long", "Short"]:
-            spot_rates = calculate_spot_rate_with_direction(
-                token_config, rates_data, staking_data,
-                variant, leverage,
-                direction.lower(), target_hours
-            )
-
-            if spot_rates:
-                # Use the first available spot rate
-                spot_rate = list(spot_rates.values())[0]
-                spot_vs_perps_arb = calculate_spot_vs_perps_arb(
-                    spot_rate, perps_rates, direction
-                )
-
-                if spot_vs_perps_arb is not None:
-                    # Find the best perps exchange for this opportunity
-                    best_exchange = None
-                    best_funding_rate = None
-
-                    for exchange, funding_rate in perps_rates.items():
-                        if direction == "Long":
-                            net_arb = spot_rate - funding_rate
-                        else:  # Short
-                            net_arb = spot_rate + funding_rate
-
-                        if net_arb == spot_vs_perps_arb:
-                            best_exchange = exchange
-                            best_funding_rate = funding_rate
-                            break
-
-                    if best_exchange:
-                        # Calculate APY (assuming the rate continues for a year)
-                        apy = abs(spot_vs_perps_arb) * 365 * 24 / target_hours
-                        asset_opportunities.append({
-                            'type': 'Spot vs Perps',
-                            'description': f"{variant} {direction} Spot vs {best_exchange} Perps: {spot_vs_perps_arb:.6f}%",
-                            'rate': spot_vs_perps_arb,
-                            'apy': apy,
-                            'details': f"Spot Rate: {spot_rate:.6f}%, {best_exchange} Funding: {best_funding_rate:.6f}%"
-                        })
+                opportunity = {
+                    'type': 'Perps vs Perps',
+                    'token': asset_type,
+                    'protocol': 'N/A',
+                    'market': 'N/A',
+                    'direction': 'Long A, Short B',
+                    'spot_rate': 'N/A',
+                    'perps_exchange': f"{exchange_a} vs {exchange_b}",
+                    'funding_rate': f"{rate_a:.6f}% vs {rate_b:.6f}%",
+                    'net_arb': net_arb,
+                    'apy': apy,
+                    'description': f"{asset_type} {exchange_a} vs {exchange_b} Perps",
+                    'details': f"{exchange_a}: {rate_a:.6f}%, {exchange_b}: {rate_b:.6f}%",
+                    'calculation': f"Net Arb = {rate_a:.6f}% - {rate_b:.6f}% = {net_arb:.6f}%"
+                }
+                all_opportunities.append(opportunity)
 
     # Sort opportunities by profitability (most negative first)
-    asset_opportunities.sort(key=lambda x: x['rate'])
+    all_opportunities.sort(key=lambda x: x['net_arb'])
 
-    # Display asset-specific opportunities
-    if asset_opportunities:
-        st.write(f"**🎯 {asset_name} Best Strategies:**")
+    # Display all opportunities in expandable section
+    if all_opportunities:
+        with st.expander(f"🔍 **All Possible {asset_name} Arbitrage Opportunities** ({len(all_opportunities)} found)", expanded=False):
+            st.write(f"**📊 Found {len(all_opportunities)} arbitrage opportunities for {asset_name}**")
 
-        # Show top 3 opportunities
-        for i, opp in enumerate(asset_opportunities[:3]):
-            color = "🟢" if opp['rate'] < 0 else "🔴"
-            apy_text = f" (earn up to {opp['apy']:.1f}% APY)" if opp['rate'] < 0 else f" (cost up to {opp['apy']:.1f}% APY)"
-            st.write(f"{color} **{i+1}.** {opp['description']}{apy_text}")
-            st.caption(f"*{opp['details']}*")
+            # Summary statistics
+            profitable_count = sum(1 for opp in all_opportunities if opp['net_arb'] < 0)
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Opportunities", len(all_opportunities))
+            with col2:
+                st.metric("Profitable", profitable_count)
+            with col3:
+                st.metric("Success Rate", f"{(profitable_count/len(all_opportunities)*100):.1f}%" if all_opportunities else "0%")
+            with col4:
+                st.metric("Best Rate", f"{min(all_opportunities, key=lambda x: x['net_arb'])['net_arb']:.6f}%" if all_opportunities else "N/A")
 
-        # Show best overall opportunity for this asset
-        best_opp = min(asset_opportunities, key=lambda x: x['rate'])
-        best_apy_text = f" (earn up to {best_opp['apy']:.1f}% APY)" if best_opp['rate'] < 0 else f" (cost up to {best_opp['apy']:.1f}% APY)"
-        st.write("---")
-        st.write(f"**🏆 Best {asset_name} Strategy:** {best_opp['description']}{best_apy_text}")
-        st.write(f"*{best_opp['details']}*")
+            st.divider()
+
+                        # Display each opportunity with comprehensive details
+            for i, opp in enumerate(all_opportunities):
+                color = "🟢" if opp['net_arb'] < 0 else "🔴"
+                profit_status = "💰 PROFITABLE" if opp['net_arb'] < 0 else "💸 COSTLY"
+
+                with st.expander(f"{color} **{i+1}.** {opp['description']}: {opp['net_arb']:.6f}%", expanded=False):
+                    col1, col2 = st.columns([3, 1])
+
+                    with col1:
+                        st.write("**📋 Opportunity Details:**")
+                        st.write(f"- **Type:** {opp['type']}")
+                        st.write(f"- **Token:** {opp['token']}")
+                        st.write(f"- **Protocol:** {opp['protocol']}")
+                        st.write(f"- **Market:** {opp['market']}")
+                        st.write(f"- **Direction:** {opp['direction']}")
+
+                        if opp['type'] == 'Spot vs Perps':
+                            st.write(f"- **Spot Rate:** {opp['spot_rate']:.6f}%")
+                            st.write(f"- **Perps Exchange:** {opp['perps_exchange']}")
+                            st.write(f"- **Funding Rate:** {opp['funding_rate']:.6f}%")
+                        else:  # Perps vs Perps
+                            st.write(f"- **Exchange Pair:** {opp['perps_exchange']}")
+                            st.write(f"- **Funding Rates:** {opp['funding_rate']}")
+
+                        st.write(f"- **Net Arbitrage:** {opp['net_arb']:.6f}%")
+                        st.write(f"- **Annual Yield:** {opp['apy']:.2f}% APY")
+                        st.write(f"- **Profit Status:** {profit_status}")
+
+                        st.write("**🧮 Calculation:**")
+                        st.write(f"- {opp['calculation']}")
+
+                        st.write("**📊 Strategy Breakdown:**")
+                        if opp['type'] == 'Spot vs Perps':
+                            if 'Long' in opp['direction']:
+                                st.write(f"- Long {opp['token']} on {opp['protocol']} ({opp['market']})")
+                                st.write(f"- Short {asset_type} on {opp['perps_exchange']}")
+                                st.write(f"- Strategy: Long Spot + Short Perps")
+                            else:
+                                st.write(f"- Short {opp['token']} on {opp['protocol']} ({opp['market']})")
+                                st.write(f"- Long {asset_type} on {opp['perps_exchange']}")
+                                st.write(f"- Strategy: Short Spot + Long Perps")
+                            st.write(f"- Leverage: {leverage}x")
+                        else:  # Perps vs Perps
+                            exchanges = opp['perps_exchange'].split(' vs ')
+                            st.write(f"- Long {asset_type} on {exchanges[0]}")
+                            st.write(f"- Short {asset_type} on {exchanges[1]}")
+                            st.write(f"- Strategy: Cross-exchange arbitrage")
+
+                        st.write(f"- Target Hours: {target_hours}h")
+
+                        # Risk assessment
+                        st.write("**⚠️ Risk Assessment:**")
+                        if opp['net_arb'] < 0:
+                            st.write("- ✅ **Low Risk**: Profitable opportunity")
+                            st.write("- 📈 **Potential**: Earn money from rate differential")
+                            st.write("- ⏰ **Timing**: Execute when rates are favorable")
+                        else:
+                            st.write("- ❌ **High Risk**: Costly opportunity")
+                            st.write("- 💸 **Potential**: Loss from rate differential")
+                            st.write("- ⚠️ **Warning**: Avoid this strategy")
+
+                        # Execution guidance
+                        st.write("**🎯 Execution Guidance:**")
+                        if opp['net_arb'] < 0:
+                            st.write("- 🚀 **Recommended**: Execute this strategy")
+                            st.write("- 📊 **Monitor**: Track rate changes")
+                            st.write("- 🔄 **Reassess**: Review periodically")
+                        else:
+                            st.write("- 🛑 **Avoid**: Do not execute this strategy")
+                            st.write("- 👀 **Watch**: Monitor for rate improvements")
+                            st.write("- ⏳ **Wait**: Better opportunities may arise")
+
+                    with col2:
+                        # Visual indicators
+                        if opp['net_arb'] < 0:
+                            st.success("✅ Profitable")
+                            st.metric("Potential APY", f"{opp['apy']:.1f}%", delta=f"{opp['net_arb']:.4f}%")
+                        else:
+                            st.error("❌ Costly")
+                            st.metric("Potential Cost", f"{opp['apy']:.1f}%", delta=f"{opp['net_arb']:.4f}%")
+
+                        # Ranking
+                        if i == 0:
+                            st.info("🥇 **Best**")
+                        elif i < 3:
+                            st.info(f"#{i+1}")
+
+                        # Quick stats
+                        st.write("**📈 Quick Stats:**")
+                        st.write(f"- Rank: #{i+1}")
+                        st.write(f"- Type: {opp['type']}")
+                        st.write(f"- Token: {opp['token']}")
+                        if opp['net_arb'] < 0:
+                            st.write(f"- Profit: {abs(opp['net_arb']):.6f}%")
+                        else:
+                            st.write(f"- Cost: {abs(opp['net_arb']):.6f}%")
     else:
-        st.write(f"**🎯 {asset_name} Strategies:** No profitable opportunities found")
+        st.info(f"**🔍 No arbitrage opportunities found for {asset_name}**")
+        if show_profitable_only:
+            st.write("💡 *Try unchecking 'Show Profitable Only' to see all opportunities*")
 
 
 def display_spot_perps_breakdowns(
