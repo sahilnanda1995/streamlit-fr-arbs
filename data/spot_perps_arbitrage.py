@@ -88,6 +88,31 @@ def calculate_spot_rate_with_direction(
         if lend_rate is None or borrow_rate is None:
             continue
 
+        # Log the data being used for calculation
+        import logging
+        logging.info(f"""
+        🔍 SPOT PERPS ARBITRAGE DATA USED:
+        ===================================
+        Asset: {asset}
+        Direction: {direction.upper()}
+        Protocol: {protocol}
+        Market: {market}
+        Asset Bank: {asset_bank}
+        USDC Bank: {usdc_bank}
+        Target Hours: {target_hours}
+        Leverage: {leverage}x
+
+        Rates Data:
+        - Asset Lend Rate: {lend_rate:.6f}% APY
+        - Asset Borrow Rate: {borrow_rate:.6f}% APY
+        - Asset Staking Rate: {asset_staking_rate:.6f}% APY
+        - USDC Staking Rate: {borrow_staking_rate:.6f}% APY
+
+        Position Details:
+        - Long: Lend {asset}, Borrow USDC
+        - Short: Lend USDC, Borrow {asset}
+        """)
+
         try:
             hourly_rate = calculate_hourly_fee_rates(
                 lend_rates, borrow_rates,
@@ -364,6 +389,12 @@ def display_spot_perps_opportunities_section(
 
     st.header("💰 Spot and FR Opportunities")
 
+    # Add toggle for calculation breakdowns
+    show_breakdowns = st.checkbox("🔍 Show Calculation Breakdowns", value=False)
+
+    if show_breakdowns:
+        st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
+
     # Add options to sidebar
     with st.sidebar:
         st.header("⚙️ Settings")
@@ -427,6 +458,13 @@ def display_spot_perps_opportunities_section(
             token_config, rates_data, staking_data, hyperliquid_data, drift_data,
             asset_name, asset_variants, asset_type, target_hours, selected_leverage
         )
+
+        # Show calculation breakdowns if requested
+        if show_breakdowns:
+            display_spot_perps_breakdowns(
+                token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+                asset_name, asset_variants, asset_type, target_hours, selected_leverage
+            )
 
         st.divider()
 
@@ -743,3 +781,145 @@ def display_asset_specific_opportunities(
         st.write(f"*{best_opp['details']}*")
     else:
         st.write(f"**🎯 {asset_name} Strategies:** No profitable opportunities found")
+
+
+def display_spot_perps_breakdowns(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    asset_name: str,
+    asset_variants: list,
+    asset_type: str,
+    target_hours: int = 1,
+    leverage: float = 2.0
+) -> None:
+    """
+    Display detailed calculation breakdowns for spot perps arbitrage.
+
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        asset_name: Asset name (e.g., "BTC", "SOL")
+        asset_variants: List of asset variants
+        asset_type: Asset type for perps mapping
+        target_hours: Target interval in hours
+        leverage: Leverage level for spot calculations
+    """
+    import streamlit as st
+
+    st.subheader(f"📊 {asset_name} Calculation Breakdowns")
+
+    # Get perps rates for this asset type
+    perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
+
+    st.write("**📈 Perps Funding Rates:**")
+    for exchange, rate in perps_rates.items():
+        st.write(f"- {exchange}: {rate:.6f}%")
+
+    st.write("---")
+
+    # Helper: get protocol/market/bank for an asset
+    def get_protocol_market_pairs(token_config, asset):
+        return [(b["protocol"], b["market"], b["bank"]) for b in token_config[asset]["banks"]]
+
+    for variant in asset_variants:
+        st.write(f"**{variant}**")
+
+        asset_pairs = get_protocol_market_pairs(token_config, variant)
+        asset_mint = token_config[variant]["mint"]
+        asset_staking_rate = get_staking_rate_by_mint(staking_data, asset_mint) or 0.0
+
+        for protocol, market, asset_bank in asset_pairs:
+            # Find matching USDC bank for the same protocol/market
+            usdc_bank = None
+            for usdc_bank_info in token_config["USDC"]["banks"]:
+                if usdc_bank_info["protocol"] == protocol and usdc_bank_info["market"] == market:
+                    usdc_bank = usdc_bank_info["bank"]
+                    break
+
+            if not usdc_bank:
+                continue  # Skip if no matching USDC bank found
+
+            for direction in ["long", "short"]:
+                # Get rates based on direction
+                if direction == "long":
+                    # Long: lend asset, borrow USDC
+                    lend_rates = get_rates_by_bank_address(rates_data, asset_bank)
+                    borrow_rates = get_rates_by_bank_address(rates_data, usdc_bank)
+                    lend_staking_rate = asset_staking_rate
+                    borrow_staking_rate = get_staking_rate_by_mint(staking_data, token_config["USDC"]["mint"]) or 0.0
+                else:  # short
+                    # Short: lend USDC, borrow asset
+                    lend_rates = get_rates_by_bank_address(rates_data, usdc_bank)
+                    borrow_rates = get_rates_by_bank_address(rates_data, asset_bank)
+                    lend_staking_rate = get_staking_rate_by_mint(staking_data, token_config["USDC"]["mint"]) or 0.0
+                    borrow_staking_rate = asset_staking_rate
+
+                if not lend_rates or not borrow_rates:
+                    continue
+
+                lend_rate = lend_rates.get("lendingRate")
+                borrow_rate = borrow_rates.get("borrowingRate")
+                if lend_rate is None or borrow_rate is None:
+                    continue
+
+                # Display breakdown for this protocol/market combination
+                with st.expander(f"🔍 {variant} - {protocol} ({market}) - {direction.upper()}"):
+                    st.write(f"**Asset:** {variant}")
+                    st.write(f"**Protocol:** {protocol}")
+                    st.write(f"**Market:** {market}")
+                    st.write(f"**Direction:** {direction.upper()}")
+                    st.write(f"**Asset Bank:** {asset_bank}")
+                    st.write(f"**USDC Bank:** {usdc_bank}")
+                    st.write(f"**Target Hours:** {target_hours}")
+                    st.write(f"**Leverage:** {leverage}x")
+
+                    st.write("**📈 Rates Data:**")
+                    st.write(f"- Asset Lend Rate: {lend_rate:.6f}% APY")
+                    st.write(f"- Asset Borrow Rate: {borrow_rate:.6f}% APY")
+                    st.write(f"- Asset Staking Rate: {asset_staking_rate * 100:.6f}% APY (raw: {asset_staking_rate:.6f})")
+                    st.write(f"- USDC Staking Rate: {borrow_staking_rate * 100:.6f}% APY (raw: {borrow_staking_rate:.6f})")
+
+                    # Calculate spot rate
+                    try:
+                        # Calculate net rates (convert staking rates from decimal to percentage)
+                        net_lend = lend_rate + (lend_staking_rate * 100)  # Convert from decimal to percentage
+                        net_borrow = borrow_rate + (borrow_staking_rate * 100)  # Convert from decimal to percentage
+
+                        # Calculate fee rate
+                        fee_rate = net_borrow * (leverage - 1) - net_lend * leverage
+
+                        # Convert to hourly rate
+                        hourly_rate = fee_rate / (365 * 24)
+
+                        # Scale to target interval
+                        scaled_rate = hourly_rate * target_hours
+
+                        st.write("**🧮 Spot Rate Calculation:**")
+                        st.write(f"- Net Lend Rate: {net_lend:.6f}% APY")
+                        st.write(f"- Net Borrow Rate: {net_borrow:.6f}% APY")
+                        st.write(f"- Fee Rate: {fee_rate:.6f}% APY")
+                        st.write(f"- Hourly Rate: {hourly_rate:.8f}% per hour")
+                        st.write(f"- Scaled Rate ({target_hours}h): {scaled_rate:.8f}%")
+                        st.write(f"- Formula: ({net_borrow:.6f} × {leverage-1}) - ({net_lend:.6f} × {leverage}) = {fee_rate:.6f}% APY")
+
+                        # Calculate arbitrage opportunities
+                        if direction == "long":
+                            net_arb = scaled_rate - min(perps_rates.values()) if perps_rates else None
+                        else:  # short
+                            net_arb = scaled_rate + max(perps_rates.values()) if perps_rates else None
+
+                        if net_arb is not None:
+                            st.write("**🎯 Arbitrage Analysis:**")
+                            st.write(f"- Spot Rate: {scaled_rate:.8f}%")
+                            st.write(f"- Best Perps Rate: {min(perps_rates.values()) if direction == 'long' else max(perps_rates.values()):.8f}%")
+                            st.write(f"- Net Arbitrage: {net_arb:.8f}%")
+                            st.write(f"- Profitable: {'Yes' if net_arb < 0 else 'No'}")
+
+                    except ValueError:
+                        st.write("**🧮 Spot Rate Calculation:** Invalid calculation")
