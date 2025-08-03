@@ -22,7 +22,7 @@ def merge_funding_rate_data(
         drift_response: Raw response from Drift API
 
     Returns:
-        List of [token_name, [[exchange_name, exchange_info]]] entries
+        List of [token_name, [[exchange_name, exchange_info]]] entries. fundingRate is in decimal format.
     """
     # Handle empty or None responses
     if not hyperliquid_response:
