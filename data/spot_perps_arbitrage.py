@@ -271,7 +271,9 @@ def create_spot_perps_opportunities_table(
     asset_variants: list,
     asset_type: str,  # "BTC" or "SOL"
     leverage: float = 2.0,
-    target_hours: int = DEFAULT_TARGET_HOURS
+    target_hours: int = DEFAULT_TARGET_HOURS,
+    show_spot_vs_perps: bool = True,
+    show_perps_vs_perps: bool = False
 ) -> pd.DataFrame:
     """
     Create table with spot and perps arbitrage opportunities.
@@ -286,6 +288,8 @@ def create_spot_perps_opportunities_table(
         asset_type: "BTC" or "SOL" for perps mapping
         leverage: Leverage level for spot calculations
         target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
+        show_spot_vs_perps: Whether to show Spot vs Perps arbitrage column
+        show_perps_vs_perps: Whether to show Perps vs Perps arbitrage column
 
     Returns:
         DataFrame with all columns including arbitrage calculations
@@ -348,12 +352,22 @@ def create_spot_perps_opportunities_table(
 
     if rows:
         df = pd.DataFrame(rows)
-        # Reorder columns: Asset, Spot vs Perps Arb, Perps vs Perps Arb, then the rest
         columns = list(df.columns)
         columns.remove('Asset')
-        columns.remove('Spot vs Perps Arb')
-        columns.remove('Perps vs Perps Arb')
-        new_order = ['Asset', 'Spot vs Perps Arb', 'Perps vs Perps Arb'] + columns
+        # Remove arb columns for reordering
+        if 'Spot vs Perps Arb' in columns:
+            columns.remove('Spot vs Perps Arb')
+        if 'Perps vs Perps Arb' in columns:
+            columns.remove('Perps vs Perps Arb')
+        # Build new order based on filter settings
+        new_order = ['Asset']
+        if show_spot_vs_perps:
+            new_order.append('Spot vs Perps Arb')
+        if show_perps_vs_perps:
+            new_order.append('Perps vs Perps Arb')
+        new_order += columns
+        # Only keep columns that exist in df
+        new_order = [col for col in new_order if col in df.columns]
         df = df[new_order]
         return df
     else:
@@ -420,7 +434,9 @@ def display_spot_perps_opportunities_section(
             token_config, rates_data, staking_data,
             hyperliquid_data, drift_data,
             asset_variants, asset_type, selected_leverage,
-            target_hours
+            target_hours,
+            show_spot_vs_perps=show_spot_vs_perps,
+            show_perps_vs_perps=show_perps_vs_perps
         )
 
         if not opportunities_df.empty:
@@ -434,16 +450,20 @@ def display_spot_perps_opportunities_section(
                         "Asset",
                         pinned=True
                     ),
-                    "Spot vs Perps Arb": st.column_config.NumberColumn(
-                        "Spot vs Perps Arb",
-                        format="%.6f%%",
-                        pinned=True
-                    ),
-                    "Perps vs Perps Arb": st.column_config.NumberColumn(
-                        "Perps vs Perps Arb",
-                        format="%.6f%%",
-                        pinned=True
-                    ),
+                    **({
+                        "Spot vs Perps Arb": st.column_config.NumberColumn(
+                            "Spot vs Perps Arb",
+                            format="%.6f%%",
+                            pinned=True
+                        )
+                    } if show_spot_vs_perps else {}),
+                    **({
+                        "Perps vs Perps Arb": st.column_config.NumberColumn(
+                            "Perps vs Perps Arb",
+                            format="%.6f%%",
+                            pinned=True
+                        )
+                    } if show_perps_vs_perps else {}),
                     **{
                         col: st.column_config.NumberColumn(
                             col,

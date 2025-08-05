@@ -299,7 +299,7 @@ def create_sidebar_settings(
     show_detailed_opportunities_default: bool = True,
     show_profitable_only_default: bool = False,
     show_spot_vs_perps_default: bool = True,
-    show_perps_vs_perps_default: bool = True
+    show_perps_vs_perps_default: bool = False  # Default to False
 ) -> Dict[str, Any]:
     """
     Create sidebar settings for UI options.
