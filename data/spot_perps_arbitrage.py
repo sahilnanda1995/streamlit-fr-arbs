@@ -347,7 +347,15 @@ def create_spot_perps_opportunities_table(
         rows.append(row)
 
     if rows:
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        # Reorder columns: Asset, Spot vs Perps Arb, Perps vs Perps Arb, then the rest
+        columns = list(df.columns)
+        columns.remove('Asset')
+        columns.remove('Spot vs Perps Arb')
+        columns.remove('Perps vs Perps Arb')
+        new_order = ['Asset', 'Spot vs Perps Arb', 'Perps vs Perps Arb'] + columns
+        df = df[new_order]
+        return df
     else:
         return pd.DataFrame()
 
@@ -416,16 +424,33 @@ def display_spot_perps_opportunities_section(
         )
 
         if not opportunities_df.empty:
-            # Display DataFrame with percentage formatting
+            # Display DataFrame with percentage formatting, no index, and new column order
             st.dataframe(
                 opportunities_df,
                 use_container_width=True,
+                hide_index=True,
                 column_config={
-                    col: st.column_config.NumberColumn(
-                        col,
-                        format="%.6f%%"
-                    ) for col in opportunities_df.columns
-                    if col not in ["Spot Direction", "Asset"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
+                    "Asset": st.column_config.TextColumn(
+                        "Asset",
+                        pinned=True
+                    ),
+                    "Spot vs Perps Arb": st.column_config.NumberColumn(
+                        "Spot vs Perps Arb",
+                        format="%.6f%%",
+                        pinned=True
+                    ),
+                    "Perps vs Perps Arb": st.column_config.NumberColumn(
+                        "Perps vs Perps Arb",
+                        format="%.6f%%",
+                        pinned=True
+                    ),
+                    **{
+                        col: st.column_config.NumberColumn(
+                            col,
+                            format="%.6f%%"
+                        ) for col in opportunities_df.columns
+                        if col not in ["Spot Direction", "Asset", "Spot vs Perps Arb", "Perps vs Perps Arb"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
+                    }
                 }
             )
         else:
