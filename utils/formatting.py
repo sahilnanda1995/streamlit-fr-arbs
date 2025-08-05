@@ -3,8 +3,9 @@ Utility functions for formatting and display operations.
 """
 
 import pandas as pd
+import streamlit as st
 from typing import Dict, List, Optional, Any
-from config.constants import EXCHANGE_NAME_MAPPING, DISPLAY_COLUMNS, PERCENTAGE_CONVERSION_FACTOR
+from config.constants import EXCHANGE_NAME_MAPPING, DISPLAY_COLUMNS, PERCENTAGE_CONVERSION_FACTOR, INTERVAL_OPTIONS, SPOT_LEVERAGE_LEVELS
 from data.models import FundingRateRow, MoneyMarketEntry
 
 
@@ -291,3 +292,106 @@ def format_money_markets_for_display(df: pd.DataFrame) -> Any:
     styled_df = df.style.format(format_dict, na_rep="None")
 
     return styled_df
+
+
+def create_sidebar_settings(
+    show_breakdowns_default: bool = False,
+    show_detailed_opportunities_default: bool = True,
+    show_profitable_only_default: bool = False,
+    show_spot_vs_perps_default: bool = True,
+    show_perps_vs_perps_default: bool = True
+) -> Dict[str, Any]:
+    """
+    Create sidebar settings for UI options.
+
+    Args:
+        show_breakdowns_default: Default value for show calculation breakdowns
+        show_detailed_opportunities_default: Default value for show detailed opportunities
+        show_profitable_only_default: Default value for show profitable only filter
+        show_spot_vs_perps_default: Default value for show spot vs perps
+        show_perps_vs_perps_default: Default value for show perps vs perps
+
+    Returns:
+        Dictionary containing all settings values
+    """
+    with st.sidebar:
+        st.header("⚙️ Settings")
+
+        # Display options
+        st.subheader("📊 Display Options")
+        show_breakdowns = st.checkbox(
+            "🔍 Show Calculation Breakdowns",
+            value=show_breakdowns_default,
+            help="Show detailed calculation breakdowns below each table"
+        )
+
+        show_detailed_opportunities = st.checkbox(
+            "📊 Show Detailed Opportunity Analysis",
+            value=show_detailed_opportunities_default,
+            help="Show comprehensive arbitrage opportunity analysis"
+        )
+
+        # Filter options
+        st.subheader("🔍 Filter Options")
+        show_profitable_only = st.checkbox(
+            "Show Profitable Only",
+            value=show_profitable_only_default,
+            help="Filter to show only profitable opportunities"
+        )
+
+        show_spot_vs_perps = st.checkbox(
+            "Show Spot vs Perps",
+            value=show_spot_vs_perps_default,
+            help="Show spot vs perps arbitrage opportunities"
+        )
+
+        show_perps_vs_perps = st.checkbox(
+            "Show Perps vs Perps",
+            value=show_perps_vs_perps_default,
+            help="Show perps vs perps cross-exchange opportunities"
+        )
+
+        # Configuration options
+        st.subheader("⚙️ Configuration")
+        selected_interval = st.selectbox(
+            "Select target interval:",
+            list(INTERVAL_OPTIONS.keys()),
+            index=0,  # Default to 1 yr
+            help="Scales all rates to your selected time period"
+        )
+        target_hours = INTERVAL_OPTIONS[selected_interval]
+
+        selected_leverage = st.selectbox(
+            "Select spot leverage:",
+            SPOT_LEVERAGE_LEVELS,
+            index=1,  # Default to 2x leverage
+            help="Amplifies spot trading positions"
+        )
+
+        st.divider()
+        st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")
+
+        return {
+            "show_breakdowns": show_breakdowns,
+            "show_detailed_opportunities": show_detailed_opportunities,
+            "show_profitable_only": show_profitable_only,
+            "show_spot_vs_perps": show_spot_vs_perps,
+            "show_perps_vs_perps": show_perps_vs_perps,
+            "target_hours": target_hours,
+            "selected_leverage": selected_leverage,
+            "selected_interval": selected_interval
+        }
+
+
+def display_settings_info(settings: Dict[str, Any]) -> None:
+    """
+    Display information about current settings.
+
+    Args:
+        settings: Dictionary containing settings values
+    """
+    if settings.get("show_breakdowns"):
+        st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
+
+    if settings.get("show_detailed_opportunities"):
+        st.info("📊 Detailed opportunity analysis will show all arbitrage opportunities with comprehensive breakdowns.")

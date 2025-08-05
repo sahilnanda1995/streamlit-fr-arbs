@@ -207,13 +207,19 @@ def display_spot_arbitrage_section(
     """
     import streamlit as st
     from config.constants import SPOT_ASSET_GROUPS, SPOT_BORROW_ASSET, SPOT_LEVERAGE_LEVELS
+    from utils.formatting import create_sidebar_settings, display_settings_info
 
-    st.header("💰 Spot Hourly Fee Rates")
-    st.caption("💡 Values shown are hourly fee rates in percentage format (e.g., 0.01% per hour)")
+    # Get settings from sidebar (only show breakdowns option for this page)
+    with st.sidebar:
+        st.header("⚙️ Settings")
+        st.subheader("📊 Display Options")
+        show_breakdowns = st.checkbox(
+            "🔍 Show Calculation Breakdowns",
+            value=False,
+            help="Show detailed calculation breakdowns below each table"
+        )
 
-    # Add toggle for calculation breakdowns
-    show_breakdowns = st.checkbox("🔍 Show Calculation Breakdowns", value=False)
-
+    # Display settings info
     if show_breakdowns:
         st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
 

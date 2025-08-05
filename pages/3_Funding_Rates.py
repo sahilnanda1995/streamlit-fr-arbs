@@ -35,8 +35,6 @@ def main():
     # === PERPS DATA MERGING ===
     merged_perps_data = merge_funding_rate_data(hyperliquid_data, drift_data)
 
-    # === FUNDING RATES SECTION ===
-    st.header("📈 Funding Rates")
     selected_interval = st.selectbox(
         "Select target funding interval:",
         list(INTERVAL_OPTIONS.keys()),

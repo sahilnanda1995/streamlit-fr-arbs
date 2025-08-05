@@ -381,51 +381,23 @@ def display_spot_perps_opportunities_section(
     Note: The spot rates displayed are already in percentage format (hourly fee rates).
     """
     import streamlit as st
-    from config.constants import SPOT_PERPS_CONFIG, INTERVAL_OPTIONS, SPOT_LEVERAGE_LEVELS
+    from config.constants import SPOT_PERPS_CONFIG
+    from utils.formatting import create_sidebar_settings, display_settings_info
 
-    # Add toggle for calculation breakdowns
-    show_breakdowns = st.checkbox("🔍 Show Calculation Breakdowns", value=False)
+    # Get settings from sidebar
+    settings = create_sidebar_settings()
 
-    # Add toggle for detailed opportunity view
-    show_detailed_opportunities = st.checkbox("📊 Show Detailed Opportunity Analysis", value=True)
+    # Display settings info
+    display_settings_info(settings)
 
-    if show_breakdowns:
-        st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
-
-    if show_detailed_opportunities:
-        st.info("📊 Detailed opportunity analysis will show all arbitrage opportunities with comprehensive breakdowns.")
-
-    # Add options to sidebar
-    with st.sidebar:
-        st.header("⚙️ Settings")
-
-        # Add interval selection
-        selected_interval = st.selectbox(
-            "Select target interval:",
-            list(INTERVAL_OPTIONS.keys()),
-            index=0  # Default to 1 yr
-        )
-        target_hours = INTERVAL_OPTIONS[selected_interval]
-
-        st.caption("📅 **Interval**: Scales all rates to your selected time period. Higher intervals show longer-term potential returns.")
-
-        # Add leverage selection
-        selected_leverage = st.selectbox(
-            "Select spot leverage:",
-            SPOT_LEVERAGE_LEVELS,
-            index=1  # Default to 2x leverage
-        )
-
-        st.caption("⚖️ **Leverage**: Amplifies spot trading positions. Higher leverage = higher potential returns but also higher risk.")
-
-        st.divider()
-        st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")
-
-        # Add filtering options
-        st.subheader("🔍 Filter Options")
-        show_profitable_only = st.checkbox("Show Profitable Only", value=False)
-        show_spot_vs_perps = st.checkbox("Show Spot vs Perps", value=True)
-        show_perps_vs_perps = st.checkbox("Show Perps vs Perps", value=True)
+    # Extract settings values
+    show_breakdowns = settings["show_breakdowns"]
+    show_detailed_opportunities = settings["show_detailed_opportunities"]
+    show_profitable_only = settings["show_profitable_only"]
+    show_spot_vs_perps = settings["show_spot_vs_perps"]
+    show_perps_vs_perps = settings["show_perps_vs_perps"]
+    target_hours = settings["target_hours"]
+    selected_leverage = settings["selected_leverage"]
 
     # Create separate tables for BTC and SOL
     asset_configs = {

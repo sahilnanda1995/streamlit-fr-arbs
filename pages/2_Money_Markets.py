@@ -31,8 +31,6 @@ def main():
         rates_data = fetch_asgard_current_rates()
         staking_data = fetch_asgard_staking_rates()
 
-    # === MONEY MARKETS SECTION ===
-    st.header("💰 Money Markets")
     processed_money_markets = process_money_markets_data(rates_data, staking_data)
     if not processed_money_markets:
         st.error("Failed to load money markets data from APIs. Please try again later.")
