@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from data.money_markets_processing import get_staking_rate_by_mint, get_rates_by_bank_address
 from data.spot_arbitrage import calculate_hourly_fee_rates
+from config.constants import DEFAULT_TARGET_HOURS
 
 
 @dataclass
@@ -26,7 +27,7 @@ def calculate_spot_rate_with_direction(
     asset: str,
     leverage: float = 2.0,
     direction: str = "long",  # "long" or "short"
-    target_hours: int = 1
+    target_hours: int = DEFAULT_TARGET_HOURS
 ) -> Dict[str, float]:
     """
     Calculate spot rates for an asset in a specific direction.
@@ -40,7 +41,7 @@ def calculate_spot_rate_with_direction(
         asset: Asset to calculate rates for
         leverage: Leverage level (default 2.0)
         direction: "long" or "short" position
-        target_hours: Target interval in hours (default 1)
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
 
     Returns:
         Dictionary of {protocol: rate} where rates are in percentage format scaled to target interval
@@ -132,7 +133,7 @@ def get_perps_rates_for_asset(
     hyperliquid_data: dict,
     drift_data: dict,
     asset: str,
-    target_hours: int = 1
+    target_hours: int = DEFAULT_TARGET_HOURS
 ) -> Dict[str, float]:
     """
     Get funding rates from all perps exchanges for an asset.
@@ -142,7 +143,7 @@ def get_perps_rates_for_asset(
         hyperliquid_data: Hyperliquid funding data
         drift_data: Drift funding data
         asset: Asset to get funding rates for ("BTC" or "SOL")
-        target_hours: Target interval in hours (default 1)
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
 
     Returns:
         Dictionary of {exchange: funding_rate} scaled to target interval
@@ -270,7 +271,7 @@ def create_spot_perps_opportunities_table(
     asset_variants: list,
     asset_type: str,  # "BTC" or "SOL"
     leverage: float = 2.0,
-    target_hours: int = 1
+    target_hours: int = DEFAULT_TARGET_HOURS
 ) -> pd.DataFrame:
     """
     Create table with spot and perps arbitrage opportunities.
@@ -284,7 +285,7 @@ def create_spot_perps_opportunities_table(
         asset_variants: List of asset variants (e.g., ["CBBTC", "WBTC", "XBTC"])
         asset_type: "BTC" or "SOL" for perps mapping
         leverage: Leverage level for spot calculations
-        target_hours: Target interval in hours (default 1)
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
 
     Returns:
         DataFrame with all columns including arbitrage calculations
@@ -382,8 +383,6 @@ def display_spot_perps_opportunities_section(
     import streamlit as st
     from config.constants import SPOT_PERPS_CONFIG, INTERVAL_OPTIONS, SPOT_LEVERAGE_LEVELS
 
-    st.header("💰 Spot and FR Opportunities")
-
     # Add toggle for calculation breakdowns
     show_breakdowns = st.checkbox("🔍 Show Calculation Breakdowns", value=False)
 
@@ -404,7 +403,7 @@ def display_spot_perps_opportunities_section(
         selected_interval = st.selectbox(
             "Select target interval:",
             list(INTERVAL_OPTIONS.keys()),
-            index=0  # Default to 1 hr
+            index=0  # Default to 1 yr
         )
         target_hours = INTERVAL_OPTIONS[selected_interval]
 
@@ -484,7 +483,7 @@ def create_arbitrage_opportunities_summary(
     staking_data: dict,
     hyperliquid_data: dict,
     drift_data: dict,
-    target_hours: int = 1
+    target_hours: int = DEFAULT_TARGET_HOURS
 ) -> Dict[str, List[Dict]]:
     """
     Create a summary of all arbitrage opportunities, ranked by profitability.
@@ -495,7 +494,7 @@ def create_arbitrage_opportunities_summary(
         staking_data: Staking rates data from API
         hyperliquid_data: Hyperliquid funding data
         drift_data: Drift funding data
-        target_hours: Target interval in hours (default 1)
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
 
     Returns:
         Dictionary with 'spot_vs_perps' and 'perps_vs_perps' opportunities ranked by profitability
@@ -606,7 +605,7 @@ def display_arbitrage_opportunities_summary(
     staking_data: dict,
     hyperliquid_data: dict,
     drift_data: dict,
-    target_hours: int = 1
+    target_hours: int = DEFAULT_TARGET_HOURS
 ) -> None:
     """
     Display a summary of all arbitrage opportunities, ranked by profitability.
@@ -617,7 +616,7 @@ def display_arbitrage_opportunities_summary(
         staking_data: Staking rates data from API
         hyperliquid_data: Hyperliquid funding data
         drift_data: Drift funding data
-        target_hours: Target interval in hours (default 1)
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
     """
     import streamlit as st
 
@@ -744,7 +743,7 @@ def display_all_possible_arbitrage_opportunities(
     asset_name: str,
     asset_variants: list,
     asset_type: str,
-    target_hours: int = 1,
+    target_hours: int = DEFAULT_TARGET_HOURS,
     leverage: float = 2.0,
     show_profitable_only: bool = False,
     show_spot_vs_perps: bool = True,
@@ -762,7 +761,7 @@ def display_all_possible_arbitrage_opportunities(
         asset_name: Asset name (e.g., "BTC", "SOL")
         asset_variants: List of asset variants
         asset_type: Asset type for perps mapping
-        target_hours: Target interval in hours
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
         leverage: Leverage level for spot calculations (default 2.0)
         show_profitable_only: Filter to show only profitable opportunities
         show_spot_vs_perps: Show spot vs perps opportunities
@@ -994,7 +993,7 @@ def display_spot_perps_breakdowns(
     asset_name: str,
     asset_variants: list,
     asset_type: str,
-    target_hours: int = 1,
+    target_hours: int = DEFAULT_TARGET_HOURS,
     leverage: float = 2.0
 ) -> None:
     """
@@ -1009,7 +1008,7 @@ def display_spot_perps_breakdowns(
         asset_name: Asset name (e.g., "BTC", "SOL")
         asset_variants: List of asset variants
         asset_type: Asset type for perps mapping
-        target_hours: Target interval in hours
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
         leverage: Leverage level for spot calculations
     """
     import streamlit as st

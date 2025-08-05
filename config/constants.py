@@ -4,12 +4,15 @@ Configuration constants for the funding rate comparison application.
 
 # Funding interval options for user selection
 INTERVAL_OPTIONS = {
+    "1 yr": 8760,
     "1 hr": 1,
     "4 hr": 4,
     "8 hr": 8,
-    "24 hr": 24,
-    "1 yr (8760 hrs)": 8760
+    "24 hr": 24
 }
+
+# Default target hours (1 year)
+DEFAULT_TARGET_HOURS = INTERVAL_OPTIONS["1 yr"]
 
 # API Configuration
 HYPERLIQUID_API_URL = "https://api-ui.hyperliquid.xyz/info"
@@ -51,12 +54,11 @@ MONEY_MARKETS_COLUMNS = ["Token", "Protocol", "Market Key", "Lending Rate", "Bor
 
 # Data processing constants
 PERCENTAGE_CONVERSION_FACTOR = 100
-DEFAULT_FUNDING_INTERVAL_HOURS = 1
 PERP_SYMBOL_SUFFIX = "-PERP"
 
 # UI Configuration
 APP_TITLE = "📈 SPOT and Perps Arbitrage"
-APP_DESCRIPTION = "Calculate the arbitrage opportunities between Spot and Perps."
+APP_DESCRIPTION = "Checkout the arbitrage opportunities between Spot and Perps."
 PAGE_TITLE = "SPOT and Perps Arbitrage"
 
 # Spot Arbitrage Configuration

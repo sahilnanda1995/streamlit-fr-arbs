@@ -39,7 +39,8 @@ def main():
     st.header("📈 Funding Rates")
     selected_interval = st.selectbox(
         "Select target funding interval:",
-        list(INTERVAL_OPTIONS.keys())
+        list(INTERVAL_OPTIONS.keys()),
+        index=0  # Default to 1 yr
     )
     target_hours = INTERVAL_OPTIONS[selected_interval]
 
