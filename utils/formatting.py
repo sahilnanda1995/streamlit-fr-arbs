@@ -296,10 +296,11 @@ def format_money_markets_for_display(df: pd.DataFrame) -> Any:
 
 def create_sidebar_settings(
     show_breakdowns_default: bool = False,
-    show_detailed_opportunities_default: bool = True,
+    show_detailed_opportunities_default: bool = False,  # Changed to False by default
     show_profitable_only_default: bool = False,
     show_spot_vs_perps_default: bool = True,
-    show_perps_vs_perps_default: bool = False  # Default to False
+    show_perps_vs_perps_default: bool = False,  # Default to False
+    show_table_breakdown_default: bool = False  # New option for table breakdown analysis
 ) -> Dict[str, Any]:
     """
     Create sidebar settings for UI options.
@@ -310,6 +311,7 @@ def create_sidebar_settings(
         show_profitable_only_default: Default value for show profitable only filter
         show_spot_vs_perps_default: Default value for show spot vs perps
         show_perps_vs_perps_default: Default value for show perps vs perps
+        show_table_breakdown_default: Default value for show table breakdown analysis
 
     Returns:
         Dictionary containing all settings values
@@ -326,9 +328,15 @@ def create_sidebar_settings(
         )
 
         show_detailed_opportunities = st.checkbox(
-            "📊 Show Detailed Opportunity Analysis",
+            "📊 Show All Possible Arbitrage Opportunities",
             value=show_detailed_opportunities_default,
-            help="Show comprehensive arbitrage opportunity analysis"
+            help="Show comprehensive analysis of all arbitrage opportunities with detailed breakdowns"
+        )
+        
+        show_table_breakdown = st.checkbox(
+            "🔬 Show Table Breakdown Analysis",
+            value=show_table_breakdown_default,
+            help="Show detailed breakdown of how table arbitrage values are calculated"
         )
 
         # Filter options
@@ -377,6 +385,7 @@ def create_sidebar_settings(
             "show_profitable_only": show_profitable_only,
             "show_spot_vs_perps": show_spot_vs_perps,
             "show_perps_vs_perps": show_perps_vs_perps,
+            "show_table_breakdown": show_table_breakdown,
             "target_hours": target_hours,
             "selected_leverage": selected_leverage,
             "selected_interval": selected_interval
@@ -394,4 +403,7 @@ def display_settings_info(settings: Dict[str, Any]) -> None:
         st.info("📊 Calculation breakdowns will be shown below each table showing the exact data and formulas used.")
 
     if settings.get("show_detailed_opportunities"):
-        st.info("📊 Detailed opportunity analysis will show all arbitrage opportunities with comprehensive breakdowns.")
+        st.info("📊 All possible arbitrage opportunities will be shown with comprehensive analysis and detailed breakdowns.")
+        
+    if settings.get("show_table_breakdown"):
+        st.info("🔬 Table breakdown analysis will show exactly how the main table arbitrage values are calculated.")

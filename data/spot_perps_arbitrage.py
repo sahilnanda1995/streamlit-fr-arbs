@@ -424,6 +424,7 @@ def display_spot_perps_opportunities_section(
     show_profitable_only = settings["show_profitable_only"]
     show_spot_vs_perps = settings["show_spot_vs_perps"]
     show_perps_vs_perps = settings["show_perps_vs_perps"]
+    show_table_breakdown = settings["show_table_breakdown"]
     target_hours = settings["target_hours"]
     selected_leverage = settings["selected_leverage"]
 
@@ -497,11 +498,12 @@ def display_spot_perps_opportunities_section(
                 asset_name, asset_variants, asset_type, target_hours, selected_leverage
             )
         
-        # Always show table arbitrage calculation breakdown for debugging
-        display_table_arbitrage_calculation_breakdown(
-            token_config, rates_data, staking_data, hyperliquid_data, drift_data,
-            asset_name, asset_variants, asset_type, target_hours, selected_leverage
-        )
+        # Show table arbitrage calculation breakdown if requested
+        if show_table_breakdown:
+            display_table_arbitrage_calculation_breakdown(
+                token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+                asset_name, asset_variants, asset_type, target_hours, selected_leverage
+            )
 
         st.divider()
 
