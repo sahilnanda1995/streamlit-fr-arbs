@@ -328,21 +328,27 @@ def create_spot_perps_opportunities_table(
         for exchange, rate in perps_rates.items():
             row[exchange] = rate
 
-        # Calculate arbitrage opportunities using the first available spot rate
-        first_available_rate = None
-        for variant_rates_dict in variant_rates.values():
-            if variant_rates_dict:
-                first_available_rate = list(variant_rates_dict.values())[0]
-                break
-
-        if first_available_rate is not None:
-            spot_vs_perps_arb = calculate_spot_vs_perps_arb(
-                first_available_rate, perps_rates, direction
-            )
-            perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+        # Calculate arbitrage opportunities using ALL spot rates to find the BEST opportunity
+        all_spot_vs_perps_opportunities = []
+        
+        # Check all variants and all protocols to find the best arbitrage
+        for variant, variant_rates_dict in variant_rates.items():
+            for protocol, spot_rate in variant_rates_dict.items():
+                # Calculate arbitrage for this specific spot rate
+                arb_opportunity = calculate_spot_vs_perps_arb(
+                    spot_rate, perps_rates, direction
+                )
+                if arb_opportunity is not None:
+                    all_spot_vs_perps_opportunities.append(arb_opportunity)
+        
+        # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
+        if all_spot_vs_perps_opportunities:
+            spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
         else:
             spot_vs_perps_arb = None
-            perps_vs_perps_arb = None
+            
+        # Perps vs perps calculation remains the same (independent of spot rates)
+        perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
 
         # Add arbitrage columns
         row["Spot vs Perps Arb"] = spot_vs_perps_arb
@@ -490,6 +496,12 @@ def display_spot_perps_opportunities_section(
                 token_config, rates_data, staking_data, hyperliquid_data, drift_data,
                 asset_name, asset_variants, asset_type, target_hours, selected_leverage
             )
+        
+        # Always show table arbitrage calculation breakdown for debugging
+        display_table_arbitrage_calculation_breakdown(
+            token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+            asset_name, asset_variants, asset_type, target_hours, selected_leverage
+        )
 
         st.divider()
 
@@ -1141,3 +1153,135 @@ def display_spot_perps_breakdowns(
 
                     except ValueError:
                         st.write("**🧮 Spot Rate Calculation:** Invalid calculation")
+
+
+def display_table_arbitrage_calculation_breakdown(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    asset_name: str,
+    asset_variants: list,
+    asset_type: str,
+    target_hours: int = DEFAULT_TARGET_HOURS,
+    leverage: float = 2.0
+) -> None:
+    """
+    Display detailed breakdown of how the 'Spot vs Perps Arb' column is calculated in the main table.
+    
+    This function shows the exact calculation logic used in create_spot_perps_opportunities_table()
+    to help debug discrepancies between table values and expander values.
+    
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        asset_name: Asset name (e.g., "BTC", "SOL")
+        asset_variants: List of asset variants
+        asset_type: Asset type for perps mapping
+        target_hours: Target interval in hours (default from DEFAULT_TARGET_HOURS)
+        leverage: Leverage level for spot calculations (default 2.0)
+    """
+    import streamlit as st
+    
+    with st.expander(f"🔬 **{asset_name} Table Arbitrage Calculation Breakdown**", expanded=False):
+        st.write(f"**📊 How the 'Spot vs Perps Arb' column is calculated for {asset_name}**")
+        st.write("---")
+        
+        # Get perps rates for this asset type (same as table logic)
+        perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
+        
+        st.write("**📈 Step 1: Perps Rates (used for all calculations)**")
+        for exchange, rate in perps_rates.items():
+            st.write(f"- {exchange}: {rate:.8f}%")
+        st.write("")
+        
+        # Calculate for both Long and Short directions (same as table logic)
+        for direction in ["Long", "Short"]:
+            st.write(f"**🎯 Step 2: {direction.upper()} Direction Calculation**")
+            
+            # Calculate spot rates for each variant (same as table logic)
+            variant_rates = {}
+            for variant in asset_variants:
+                spot_rates = calculate_spot_rate_with_direction(
+                    token_config, rates_data, staking_data,
+                    variant, leverage, direction.lower(), target_hours
+                )
+                variant_rates[variant] = spot_rates
+                
+                st.write(f"  **{variant} Spot Rates:**")
+                for protocol, rate in spot_rates.items():
+                    st.write(f"    - {protocol}: {rate:.8f}%")
+            
+            # Show the corrected "best arbitrage across all rates" selection logic
+            st.write(f"  **✅ CORRECTED: Best Arbitrage Across ALL Rates Selection Logic**")
+            
+            # Calculate arbitrage opportunities using ALL spot rates to find the BEST opportunity
+            all_spot_vs_perps_opportunities = []
+            opportunity_details = []
+            
+            # Check all variants and all protocols to find the best arbitrage
+            for variant, variant_rates_dict in variant_rates.items():
+                for protocol, spot_rate in variant_rates_dict.items():
+                    # Calculate arbitrage for this specific spot rate
+                    arb_opportunity = calculate_spot_vs_perps_arb(
+                        spot_rate, perps_rates, direction
+                    )
+                    if arb_opportunity is not None:
+                        all_spot_vs_perps_opportunities.append(arb_opportunity)
+                        opportunity_details.append({
+                            'variant': variant,
+                            'protocol': protocol,
+                            'spot_rate': spot_rate,
+                            'arbitrage': arb_opportunity
+                        })
+            
+            st.write(f"  **🧮 Step 3: All Arbitrage Calculations**")
+            st.write(f"    - Direction = {direction}")
+            st.write(f"    - Found {len(all_spot_vs_perps_opportunities)} profitable opportunities:")
+            
+            # Show all opportunities
+            for i, detail in enumerate(opportunity_details):
+                st.write(f"      {i+1}. {detail['variant']} - {detail['protocol']}: {detail['spot_rate']:.8f}% → {detail['arbitrage']:.8f}%")
+            
+            # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
+            if all_spot_vs_perps_opportunities:
+                spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
+                
+                # Find which opportunity was the best
+                best_detail = None
+                for detail in opportunity_details:
+                    if detail['arbitrage'] == spot_vs_perps_arb:
+                        best_detail = detail
+                        break
+                
+                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
+                if best_detail:
+                    st.write(f"    - **Best Variant:** {best_detail['variant']}")
+                    st.write(f"    - **Best Protocol:** {best_detail['protocol']}")
+                    st.write(f"    - **Best Spot Rate:** {best_detail['spot_rate']:.8f}%")
+                st.write(f"    - **Best Arbitrage:** {spot_vs_perps_arb:.8f}%")
+                st.success(f"    ✅ **Table shows: {spot_vs_perps_arb:.8f}%**")
+                
+            else:
+                spot_vs_perps_arb = None
+                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
+                st.write(f"    - No profitable opportunities found")
+                st.info(f"    ℹ️ **Table shows: None (no profitable opportunity)**")
+            
+            st.write("---")
+        
+        st.write("**🔍 Key Points (CORRECTED LOGIC):**")
+        st.write("1. **All Rates Considered**: Table now uses ALL available spot rates from ALL variants")
+        st.write("2. **Best Rate Selection**: Table uses the BEST (most profitable) arbitrage opportunity")
+        st.write("3. **Comprehensive Comparison**: Each row compares ALL spot rates against all perps rates")
+        st.write("4. **Min Selection**: Returns the most negative (best) arbitrage opportunity across everything")
+        st.write("5. **Profitability Filter**: Returns None if no negative (profitable) opportunities exist")
+        
+        st.write("**✅ This should now match the expander:**")
+        st.write("- Table shows BEST opportunity across all variants × all protocols × all exchanges")
+        st.write("- Expander shows same data with more detailed breakdown")
+        st.write("- Both should now show identical best arbitrage values!")
