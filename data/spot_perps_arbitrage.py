@@ -1433,38 +1433,14 @@ def display_asset_top_opportunities(
     if asset_top:
         st.subheader(f"🏆 Top {asset_name} Arbitrage Opportunities")
         
-        # Create columns for the cards
-        cols = st.columns(len(asset_top))
+        for i, opp in enumerate(asset_top):
+            # Single line compact format
+            ranking_emoji = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+            
+            # Clean up protocol name but keep structure
+            protocol_display = opp['protocol'].replace('(', ' (')
+            
+            # Create single line with green APY
+            st.markdown(f"{ranking_emoji} {opp['asset']} <span style='color: #00ff00'>{opp['apy']:.0f}%</span> • 💰 Buy {opp['variant']} {protocol_display} {opp['spot_rate']:.2f}% • 🎯 Sell {opp['asset']} {opp['perps_exchange']} {opp['funding_rate']:.2f}%", unsafe_allow_html=True)
         
-        for i, (col, opp) in enumerate(zip(cols, asset_top)):
-            with col:
-                # Calculate basis points
-                bps = abs(opp['arbitrage_rate'] * 100)  # Convert to basis points
-                
-                # Use Streamlit container for card styling
-                with st.container():
-                    # Ranking badge
-                    if i == 0:
-                        st.markdown("🥇 **#1**")
-                    elif i == 1:
-                        st.markdown("🥈 **#2**")
-                    else:
-                        st.markdown("🥉 **#3**")
-                    
-                    # Asset name
-                    st.markdown(f"### {opp['asset']}")
-                    
-                    # Arbitrage rate
-                    st.markdown(f"**{bps:.0f} bps arbitrage**")
-                    st.markdown(f"*({opp['apy']:.0f}% APY)*")
-                    
-                    # Detailed strategy with rates
-                    protocol_clean = opp['protocol'].replace('(', ' ').replace(')', '')
-                    
-                    st.markdown(f"💰 Buy {opp['variant']} {protocol_clean} {opp['spot_rate']:.2f}%")
-                    st.markdown(f"🎯 Sell {opp['asset']} {opp['perps_exchange']} {opp['funding_rate']:.2f}%")
-                    
-                    # Add some spacing
-                    st.markdown("---")
-        
-        st.markdown("<br>", unsafe_allow_html=True)  # Add space after cards
+        st.markdown("<br>", unsafe_allow_html=True)  # Add space after opportunities
