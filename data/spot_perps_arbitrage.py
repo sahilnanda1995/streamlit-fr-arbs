@@ -299,62 +299,85 @@ def create_spot_perps_opportunities_table(
     # Get perps rates for the asset type
     perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
 
-    # Calculate for both Long and Short directions for the main asset (BTC or SOL)
-    for direction in ["Long", "Short"]:
-        # Create row with main asset
-        row = {
-            "Spot Direction": direction,
-            "Asset": asset_type,
-        }
+    # Create single row for the asset (no more direction loop)
+    row = {
+        "Asset": asset_type,
+    }
 
-        # Calculate spot rates for each variant
+    # Calculate spot rates for both Long and Short directions for each variant
+    all_variant_rates = {}  # Will store {variant: {protocol: {long_rate, short_rate}}}
+    all_arbitrage_opportunities = []  # Will store all possible arbitrage opportunities
+
+    for variant in asset_variants:
+        # Calculate rates for both directions
+        long_rates = calculate_spot_rate_with_direction(
+            token_config, rates_data, staking_data,
+            variant, leverage, "long", target_hours
+        )
+        short_rates = calculate_spot_rate_with_direction(
+            token_config, rates_data, staking_data,
+            variant, leverage, "short", target_hours
+        )
+        
         variant_rates = {}
-        for variant in asset_variants:
-            spot_rates = calculate_spot_rate_with_direction(
-                token_config, rates_data, staking_data,
-                variant, leverage, direction.lower(), target_hours
-            )
-            variant_rates[variant] = spot_rates
-
-        # Add spot rates columns for each variant
-        for variant in asset_variants:
-            rates = variant_rates.get(variant, {})
-            # Add columns for each protocol/market for this variant
-            for protocol, rate in rates.items():
-                column_name = f"{variant}({protocol})"
-                row[column_name] = rate
-
-        # Add perps rates columns
-        for exchange, rate in perps_rates.items():
-            row[exchange] = rate
-
-        # Calculate arbitrage opportunities using ALL spot rates to find the BEST opportunity
-        all_spot_vs_perps_opportunities = []
+        # For each protocol, store both long and short rates
+        all_protocols = set(list(long_rates.keys()) + list(short_rates.keys()))
         
-        # Check all variants and all protocols to find the best arbitrage
-        for variant, variant_rates_dict in variant_rates.items():
-            for protocol, spot_rate in variant_rates_dict.items():
-                # Calculate arbitrage for this specific spot rate
-                arb_opportunity = calculate_spot_vs_perps_arb(
-                    spot_rate, perps_rates, direction
-                )
-                if arb_opportunity is not None:
-                    all_spot_vs_perps_opportunities.append(arb_opportunity)
-        
-        # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
-        if all_spot_vs_perps_opportunities:
-            spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
-        else:
-            spot_vs_perps_arb = None
+        for protocol in all_protocols:
+            long_rate = long_rates.get(protocol)
+            short_rate = short_rates.get(protocol)
             
-        # Perps vs perps calculation remains the same (independent of spot rates)
-        perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+            # Store both rates (even if None)
+            variant_rates[protocol] = {
+                'long_rate': long_rate,
+                'short_rate': short_rate
+            }
+            
+            # Calculate arbitrage opportunities for both directions
+            if long_rate is not None:
+                long_arb = calculate_spot_vs_perps_arb(long_rate, perps_rates, "Long")
+                if long_arb is not None:
+                    all_arbitrage_opportunities.append(long_arb)
+            
+            if short_rate is not None:
+                short_arb = calculate_spot_vs_perps_arb(short_rate, perps_rates, "Short")
+                if short_arb is not None:
+                    all_arbitrage_opportunities.append(short_arb)
+        
+        all_variant_rates[variant] = variant_rates
 
-        # Add arbitrage columns
-        row["Spot vs Perps Arb"] = spot_vs_perps_arb
-        row["Perps vs Perps Arb"] = perps_vs_perps_arb
+    # Add spot rates columns for BOTH directions
+    for variant in asset_variants:
+        variant_rates = all_variant_rates.get(variant, {})
+        for protocol, rates_info in variant_rates.items():
+            # Add Long column if rate exists
+            if rates_info['long_rate'] is not None:
+                long_column_name = f"{variant}({protocol})(L)"
+                row[long_column_name] = rates_info['long_rate']
+            
+            # Add Short column if rate exists
+            if rates_info['short_rate'] is not None:
+                short_column_name = f"{variant}({protocol})(S)"
+                row[short_column_name] = rates_info['short_rate']
 
-        rows.append(row)
+    # Add perps rates columns (unchanged)
+    for exchange, rate in perps_rates.items():
+        row[exchange] = rate
+
+    # Calculate best arbitrage opportunities
+    if all_arbitrage_opportunities:
+        spot_vs_perps_arb = min(all_arbitrage_opportunities)
+    else:
+        spot_vs_perps_arb = None
+        
+    # Perps vs perps calculation remains the same (independent of spot rates)
+    perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
+
+    # Add arbitrage columns
+    row["Spot vs Perps Arb"] = spot_vs_perps_arb
+    row["Perps vs Perps Arb"] = perps_vs_perps_arb
+
+    rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows)
@@ -365,13 +388,17 @@ def create_spot_perps_opportunities_table(
             columns.remove('Spot vs Perps Arb')
         if 'Perps vs Perps Arb' in columns:
             columns.remove('Perps vs Perps Arb')
+        
         # Build new order based on filter settings
         new_order = ['Asset']
         if show_spot_vs_perps:
             new_order.append('Spot vs Perps Arb')
         if show_perps_vs_perps:
             new_order.append('Perps vs Perps Arb')
+        
+        # Add remaining columns (spot rates and perps rates)
         new_order += columns
+        
         # Only keep columns that exist in df
         new_order = [col for col in new_order if col in df.columns]
         df = df[new_order]
@@ -476,7 +503,7 @@ def display_spot_perps_opportunities_section(
                             col,
                             format="%.6f%%"
                         ) for col in opportunities_df.columns
-                        if col not in ["Spot Direction", "Asset", "Spot vs Perps Arb", "Perps vs Perps Arb"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
+                        if col not in ["Asset", "Spot vs Perps Arb", "Perps vs Perps Arb"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
                     }
                 }
             )
@@ -1201,89 +1228,93 @@ def display_table_arbitrage_calculation_breakdown(
             st.write(f"- {exchange}: {rate:.8f}%")
         st.write("")
         
-        # Calculate for both Long and Short directions (same as table logic)
-        for direction in ["Long", "Short"]:
-            st.write(f"**🎯 Step 2: {direction.upper()} Direction Calculation**")
+        st.write(f"**🎯 Step 2: Both Long and Short Rates Display**")
+        
+        # Calculate spot rates for both directions for each variant (same as new table logic)
+        all_variant_rates = {}
+        all_arbitrage_opportunities = []
+        
+        for variant in asset_variants:
+            st.write(f"  **{variant} Analysis:**")
             
-            # Calculate spot rates for each variant (same as table logic)
+            # Calculate rates for both directions
+            long_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, leverage, "long", target_hours
+            )
+            short_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, leverage, "short", target_hours
+            )
+            
+            st.write(f"    - Long Rates: {long_rates}")
+            st.write(f"    - Short Rates: {short_rates}")
+            
             variant_rates = {}
-            for variant in asset_variants:
-                spot_rates = calculate_spot_rate_with_direction(
-                    token_config, rates_data, staking_data,
-                    variant, leverage, direction.lower(), target_hours
-                )
-                variant_rates[variant] = spot_rates
+            all_protocols = set(list(long_rates.keys()) + list(short_rates.keys()))
+            
+            for protocol in all_protocols:
+                long_rate = long_rates.get(protocol)
+                short_rate = short_rates.get(protocol)
                 
-                st.write(f"  **{variant} Spot Rates:**")
-                for protocol, rate in spot_rates.items():
-                    st.write(f"    - {protocol}: {rate:.8f}%")
-            
-            # Show the corrected "best arbitrage across all rates" selection logic
-            st.write(f"  **✅ CORRECTED: Best Arbitrage Across ALL Rates Selection Logic**")
-            
-            # Calculate arbitrage opportunities using ALL spot rates to find the BEST opportunity
-            all_spot_vs_perps_opportunities = []
-            opportunity_details = []
-            
-            # Check all variants and all protocols to find the best arbitrage
-            for variant, variant_rates_dict in variant_rates.items():
-                for protocol, spot_rate in variant_rates_dict.items():
-                    # Calculate arbitrage for this specific spot rate
-                    arb_opportunity = calculate_spot_vs_perps_arb(
-                        spot_rate, perps_rates, direction
-                    )
-                    if arb_opportunity is not None:
-                        all_spot_vs_perps_opportunities.append(arb_opportunity)
-                        opportunity_details.append({
-                            'variant': variant,
-                            'protocol': protocol,
-                            'spot_rate': spot_rate,
-                            'arbitrage': arb_opportunity
-                        })
-            
-            st.write(f"  **🧮 Step 3: All Arbitrage Calculations**")
-            st.write(f"    - Direction = {direction}")
-            st.write(f"    - Found {len(all_spot_vs_perps_opportunities)} profitable opportunities:")
-            
-            # Show all opportunities
-            for i, detail in enumerate(opportunity_details):
-                st.write(f"      {i+1}. {detail['variant']} - {detail['protocol']}: {detail['spot_rate']:.8f}% → {detail['arbitrage']:.8f}%")
-            
-            # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
-            if all_spot_vs_perps_opportunities:
-                spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
+                # Store both rates
+                variant_rates[protocol] = {
+                    'long_rate': long_rate,
+                    'short_rate': short_rate
+                }
                 
-                # Find which opportunity was the best
-                best_detail = None
-                for detail in opportunity_details:
-                    if detail['arbitrage'] == spot_vs_perps_arb:
-                        best_detail = detail
-                        break
+                # Calculate arbitrage for both directions
+                if long_rate is not None:
+                    long_arb = calculate_spot_vs_perps_arb(long_rate, perps_rates, "Long")
+                    if long_arb is not None:
+                        st.write(f"      {protocol} Long: Rate={long_rate:.8f}%, Arb={long_arb:.8f}%")
+                        all_arbitrage_opportunities.append(long_arb)
                 
-                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
-                if best_detail:
-                    st.write(f"    - **Best Variant:** {best_detail['variant']}")
-                    st.write(f"    - **Best Protocol:** {best_detail['protocol']}")
-                    st.write(f"    - **Best Spot Rate:** {best_detail['spot_rate']:.8f}%")
-                st.write(f"    - **Best Arbitrage:** {spot_vs_perps_arb:.8f}%")
-                st.success(f"    ✅ **Table shows: {spot_vs_perps_arb:.8f}%**")
-                
-            else:
-                spot_vs_perps_arb = None
-                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
-                st.write(f"    - No profitable opportunities found")
-                st.info(f"    ℹ️ **Table shows: None (no profitable opportunity)**")
+                if short_rate is not None:
+                    short_arb = calculate_spot_vs_perps_arb(short_rate, perps_rates, "Short")
+                    if short_arb is not None:
+                        st.write(f"      {protocol} Short: Rate={short_rate:.8f}%, Arb={short_arb:.8f}%")
+                        all_arbitrage_opportunities.append(short_arb)
             
-            st.write("---")
+            all_variant_rates[variant] = variant_rates
         
-        st.write("**🔍 Key Points (CORRECTED LOGIC):**")
-        st.write("1. **All Rates Considered**: Table now uses ALL available spot rates from ALL variants")
-        st.write("2. **Best Rate Selection**: Table uses the BEST (most profitable) arbitrage opportunity")
-        st.write("3. **Comprehensive Comparison**: Each row compares ALL spot rates against all perps rates")
-        st.write("4. **Min Selection**: Returns the most negative (best) arbitrage opportunity across everything")
-        st.write("5. **Profitability Filter**: Returns None if no negative (profitable) opportunities exist")
+        st.write(f"  **🧮 Step 3: Table Columns - Both Directions Shown**")
+        st.write("  **Table will show SEPARATE columns for Long and Short:**")
         
-        st.write("**✅ This should now match the expander:**")
-        st.write("- Table shows BEST opportunity across all variants × all protocols × all exchanges")
-        st.write("- Expander shows same data with more detailed breakdown")
-        st.write("- Both should now show identical best arbitrage values!")
+        # Show what the table headers will look like
+        for variant in asset_variants:
+            variant_rates = all_variant_rates.get(variant, {})
+            for protocol, rates_info in variant_rates.items():
+                if rates_info['long_rate'] is not None:
+                    long_column = f"{variant}({protocol})(L)"
+                    st.write(f"    - **{long_column}**: {rates_info['long_rate']:.8f}%")
+                if rates_info['short_rate'] is not None:
+                    short_column = f"{variant}({protocol})(S)"
+                    st.write(f"    - **{short_column}**: {rates_info['short_rate']:.8f}%")
+        
+        # Calculate best overall arbitrage
+        if all_arbitrage_opportunities:
+            spot_vs_perps_arb = min(all_arbitrage_opportunities)
+            st.write(f"  **🏆 Step 4: Best Overall Arbitrage**")
+            st.write(f"    - **Best Arbitrage:** {spot_vs_perps_arb:.8f}%")
+            st.success(f"    ✅ **Table shows: {spot_vs_perps_arb:.8f}%**")
+        else:
+            spot_vs_perps_arb = None
+            st.write(f"  **🏆 Step 4: Best Overall Arbitrage**")
+            st.write(f"    - No profitable opportunities found")
+            st.info(f"    ℹ️ **Table shows: None (no profitable opportunity)**")
+        
+        st.write("---")
+        
+        st.write("**🔍 Key Points (NEW SINGLE-ROW WITH BOTH DIRECTIONS):**")
+        st.write("1. **Single Row Per Asset**: Each asset (BTC/SOL) now has only ONE row instead of two")
+        st.write("2. **Both Directions Shown**: Separate columns for Long (L) and Short (S) rates")
+        st.write("3. **Complete Visibility**: You can see ALL spot rates for both directions")
+        st.write("4. **Direction Suffixes**: Column headers clearly show (L) for Long and (S) for Short")
+        st.write("5. **Best Overall Arbitrage**: 'Spot vs Perps Arb' shows the best opportunity across ALL combinations")
+        
+        st.write("**✅ Benefits of new structure:**")
+        st.write("- **Complete Transparency**: See both Long and Short spot rates side by side")
+        st.write("- **Easy Comparison**: Compare Long vs Short rates for each variant/protocol")
+        st.write("- **Single Row**: One row per asset for cleaner scanning")
+        st.write("- **Full Analysis**: All rate combinations visible in one comprehensive table")
