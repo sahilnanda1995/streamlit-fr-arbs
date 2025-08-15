@@ -433,6 +433,14 @@ def display_spot_perps_opportunities_section(
     target_hours = settings["target_hours"]
     selected_leverage = settings["selected_leverage"]
 
+    # Display curated arbitrage table at the top
+    display_curated_arbitrage_section(
+        token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+        target_hours, "Hyperliquid"
+    )
+
+    st.divider()
+
     # Create separate tables for SOL and BTC (SOL first, then BTC)
     asset_configs = [
         ("SOL", (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL")),
@@ -520,13 +528,6 @@ def display_spot_perps_opportunities_section(
                 asset_name, asset_variants, asset_type, target_hours, selected_leverage
             )
 
-    # Display curated arbitrage table
-    display_curated_arbitrage_section(
-        token_config, rates_data, staking_data, hyperliquid_data, drift_data,
-        target_hours, "Hyperliquid"
-    )
-
-    st.divider()
 
 
 def create_arbitrage_opportunities_summary(
@@ -1674,7 +1675,7 @@ def display_curated_arbitrage_section(
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        st.subheader("📊 Curated Arbitrage: Asgard Spot vs Perps")
+        st.subheader("📊 Asgard Spot vs Perps Arbitrage")
     
     with col2:
         max_leverage = st.slider(
