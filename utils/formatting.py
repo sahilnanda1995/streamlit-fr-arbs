@@ -375,6 +375,7 @@ def create_sidebar_settings(
             index=1,  # Default to 2x leverage
             help="Amplifies spot trading positions"
         )
+        
 
         st.divider()
         st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")

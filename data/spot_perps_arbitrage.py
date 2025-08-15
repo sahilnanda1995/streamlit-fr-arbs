@@ -299,90 +299,68 @@ def create_spot_perps_opportunities_table(
     # Get perps rates for the asset type
     perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
 
-    # Create single row for the asset (no more direction loop)
-    row = {
-        "Asset": asset_type,
-    }
+    # Calculate for both Long and Short directions (back to separate rows)
+    for direction in ["Long", "Short"]:
+        # Create row with asset and direction
+        row = {
+            "Asset": asset_type,
+            "Spot Direction": direction,
+        }
 
-    # Calculate spot rates for both Long and Short directions for each variant
-    all_variant_rates = {}  # Will store {variant: {protocol: {long_rate, short_rate}}}
-    all_arbitrage_opportunities = []  # Will store all possible arbitrage opportunities
-
-    for variant in asset_variants:
-        # Calculate rates for both directions
-        long_rates = calculate_spot_rate_with_direction(
-            token_config, rates_data, staking_data,
-            variant, leverage, "long", target_hours
-        )
-        short_rates = calculate_spot_rate_with_direction(
-            token_config, rates_data, staking_data,
-            variant, leverage, "short", target_hours
-        )
-        
+        # Calculate spot rates for each variant
         variant_rates = {}
-        # For each protocol, store both long and short rates
-        all_protocols = set(list(long_rates.keys()) + list(short_rates.keys()))
+        for variant in asset_variants:
+            spot_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, leverage, direction.lower(), target_hours
+            )
+            variant_rates[variant] = spot_rates
+
+        # Add spot rates columns for each variant (without direction suffixes)
+        for variant in asset_variants:
+            rates = variant_rates.get(variant, {})
+            # Add columns for each protocol/market for this variant
+            for protocol, rate in rates.items():
+                column_name = f"{variant}({protocol})"
+                row[column_name] = rate
+
+        # Add perps rates columns
+        for exchange, rate in perps_rates.items():
+            row[exchange] = rate
+
+        # Calculate arbitrage opportunities using ALL spot rates to find the BEST opportunity
+        all_spot_vs_perps_opportunities = []
         
-        for protocol in all_protocols:
-            long_rate = long_rates.get(protocol)
-            short_rate = short_rates.get(protocol)
-            
-            # Store both rates (even if None)
-            variant_rates[protocol] = {
-                'long_rate': long_rate,
-                'short_rate': short_rate
-            }
-            
-            # Calculate arbitrage opportunities for both directions
-            if long_rate is not None:
-                long_arb = calculate_spot_vs_perps_arb(long_rate, perps_rates, "Long")
-                if long_arb is not None:
-                    all_arbitrage_opportunities.append(long_arb)
-            
-            if short_rate is not None:
-                short_arb = calculate_spot_vs_perps_arb(short_rate, perps_rates, "Short")
-                if short_arb is not None:
-                    all_arbitrage_opportunities.append(short_arb)
+        # Check all variants and all protocols to find the best arbitrage
+        for variant, variant_rates_dict in variant_rates.items():
+            for protocol, spot_rate in variant_rates_dict.items():
+                # Calculate arbitrage for this specific spot rate
+                arb_opportunity = calculate_spot_vs_perps_arb(
+                    spot_rate, perps_rates, direction
+                )
+                if arb_opportunity is not None:
+                    all_spot_vs_perps_opportunities.append(arb_opportunity)
         
-        all_variant_rates[variant] = variant_rates
-
-    # Add spot rates columns for BOTH directions
-    for variant in asset_variants:
-        variant_rates = all_variant_rates.get(variant, {})
-        for protocol, rates_info in variant_rates.items():
-            # Add Long column if rate exists
-            if rates_info['long_rate'] is not None:
-                long_column_name = f"{variant}({protocol})(L)"
-                row[long_column_name] = rates_info['long_rate']
+        # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
+        if all_spot_vs_perps_opportunities:
+            spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
+        else:
+            spot_vs_perps_arb = None
             
-            # Add Short column if rate exists
-            if rates_info['short_rate'] is not None:
-                short_column_name = f"{variant}({protocol})(S)"
-                row[short_column_name] = rates_info['short_rate']
+        # Perps vs perps calculation remains the same (independent of spot rates)
+        perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
 
-    # Add perps rates columns (unchanged)
-    for exchange, rate in perps_rates.items():
-        row[exchange] = rate
+        # Add arbitrage columns
+        row["Spot vs Perps Arb"] = spot_vs_perps_arb
+        row["Perps vs Perps Arb"] = perps_vs_perps_arb
 
-    # Calculate best arbitrage opportunities
-    if all_arbitrage_opportunities:
-        spot_vs_perps_arb = min(all_arbitrage_opportunities)
-    else:
-        spot_vs_perps_arb = None
-        
-    # Perps vs perps calculation remains the same (independent of spot rates)
-    perps_vs_perps_arb = calculate_perps_vs_perps_arb(perps_rates)
-
-    # Add arbitrage columns
-    row["Spot vs Perps Arb"] = spot_vs_perps_arb
-    row["Perps vs Perps Arb"] = perps_vs_perps_arb
-
-    rows.append(row)
+        rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows)
         columns = list(df.columns)
         columns.remove('Asset')
+        columns.remove('Spot Direction')
         # Remove arb columns for reordering
         if 'Spot vs Perps Arb' in columns:
             columns.remove('Spot vs Perps Arb')
@@ -390,7 +368,7 @@ def create_spot_perps_opportunities_table(
             columns.remove('Perps vs Perps Arb')
         
         # Build new order based on filter settings
-        new_order = ['Asset']
+        new_order = ['Asset', 'Spot Direction']
         if show_spot_vs_perps:
             new_order.append('Spot vs Perps Arb')
         if show_perps_vs_perps:
@@ -490,6 +468,10 @@ def display_spot_perps_opportunities_section(
                         "Asset",
                         pinned=True
                     ),
+                    "Spot Direction": st.column_config.TextColumn(
+                        "Spot Direction",
+                        pinned=True
+                    ),
                     **({
                         "Spot vs Perps Arb": st.column_config.NumberColumn(
                             "Spot vs Perps Arb",
@@ -509,7 +491,7 @@ def display_spot_perps_opportunities_section(
                             col,
                             format="%.6f%%"
                         ) for col in opportunities_df.columns
-                        if col not in ["Asset", "Spot vs Perps Arb", "Perps vs Perps Arb"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
+                        if col not in ["Asset", "Spot Direction", "Spot vs Perps Arb", "Perps vs Perps Arb"] and opportunities_df[col].dtype in ['float64', 'float32', 'int64', 'int32']
                     }
                 }
             )
@@ -538,7 +520,13 @@ def display_spot_perps_opportunities_section(
                 asset_name, asset_variants, asset_type, target_hours, selected_leverage
             )
 
-        st.divider()
+    # Display curated arbitrage table
+    display_curated_arbitrage_section(
+        token_config, rates_data, staking_data, hyperliquid_data, drift_data,
+        target_hours, "Hyperliquid"
+    )
+
+    st.divider()
 
 
 def create_arbitrage_opportunities_summary(
@@ -1234,96 +1222,90 @@ def display_table_arbitrage_calculation_breakdown(
             st.write(f"- {exchange}: {rate:.8f}%")
         st.write("")
         
-        st.write(f"**🎯 Step 2: Both Long and Short Rates Display**")
-        
-        # Calculate spot rates for both directions for each variant (same as new table logic)
-        all_variant_rates = {}
-        all_arbitrage_opportunities = []
-        
-        for variant in asset_variants:
-            st.write(f"  **{variant} Analysis:**")
+        # Calculate for both Long and Short directions (same as reverted table logic)
+        for direction in ["Long", "Short"]:
+            st.write(f"**🎯 Step 2: {direction.upper()} Direction Calculation**")
             
-            # Calculate rates for both directions
-            long_rates = calculate_spot_rate_with_direction(
-                token_config, rates_data, staking_data,
-                variant, leverage, "long", target_hours
-            )
-            short_rates = calculate_spot_rate_with_direction(
-                token_config, rates_data, staking_data,
-                variant, leverage, "short", target_hours
-            )
-            
-            st.write(f"    - Long Rates: {long_rates}")
-            st.write(f"    - Short Rates: {short_rates}")
-            
+            # Calculate spot rates for each variant (same as reverted table logic)
             variant_rates = {}
-            all_protocols = set(list(long_rates.keys()) + list(short_rates.keys()))
+            for variant in asset_variants:
+                spot_rates = calculate_spot_rate_with_direction(
+                    token_config, rates_data, staking_data,
+                    variant, leverage, direction.lower(), target_hours
+                )
+                variant_rates[variant] = spot_rates
+                
+                st.write(f"  **{variant} Spot Rates:**")
+                for protocol, rate in spot_rates.items():
+                    st.write(f"    - {protocol}: {rate:.8f}%")
             
-            for protocol in all_protocols:
-                long_rate = long_rates.get(protocol)
-                short_rate = short_rates.get(protocol)
-                
-                # Store both rates
-                variant_rates[protocol] = {
-                    'long_rate': long_rate,
-                    'short_rate': short_rate
-                }
-                
-                # Calculate arbitrage for both directions
-                if long_rate is not None:
-                    long_arb = calculate_spot_vs_perps_arb(long_rate, perps_rates, "Long")
-                    if long_arb is not None:
-                        st.write(f"      {protocol} Long: Rate={long_rate:.8f}%, Arb={long_arb:.8f}%")
-                        all_arbitrage_opportunities.append(long_arb)
-                
-                if short_rate is not None:
-                    short_arb = calculate_spot_vs_perps_arb(short_rate, perps_rates, "Short")
-                    if short_arb is not None:
-                        st.write(f"      {protocol} Short: Rate={short_rate:.8f}%, Arb={short_arb:.8f}%")
-                        all_arbitrage_opportunities.append(short_arb)
+            # Calculate arbitrage using ALL spot rates to find the BEST opportunity
+            all_spot_vs_perps_opportunities = []
+            opportunity_details = []
             
-            all_variant_rates[variant] = variant_rates
+            # Check all variants and all protocols to find the best arbitrage
+            for variant, variant_rates_dict in variant_rates.items():
+                for protocol, spot_rate in variant_rates_dict.items():
+                    # Calculate arbitrage for this specific spot rate
+                    arb_opportunity = calculate_spot_vs_perps_arb(
+                        spot_rate, perps_rates, direction
+                    )
+                    if arb_opportunity is not None:
+                        all_spot_vs_perps_opportunities.append(arb_opportunity)
+                        opportunity_details.append({
+                            'variant': variant,
+                            'protocol': protocol,
+                            'spot_rate': spot_rate,
+                            'arbitrage': arb_opportunity
+                        })
+            
+            st.write(f"  **🧮 Step 3: All Arbitrage Calculations**")
+            st.write(f"    - Direction = {direction}")
+            st.write(f"    - Found {len(all_spot_vs_perps_opportunities)} profitable opportunities:")
+            
+            # Show all opportunities
+            for i, detail in enumerate(opportunity_details):
+                st.write(f"      {i+1}. {detail['variant']} - {detail['protocol']}: {detail['spot_rate']:.8f}% → {detail['arbitrage']:.8f}%")
+            
+            # Find the BEST (most negative) arbitrage opportunity across all variants/protocols
+            if all_spot_vs_perps_opportunities:
+                spot_vs_perps_arb = min(all_spot_vs_perps_opportunities)
+                
+                # Find which opportunity was the best
+                best_detail = None
+                for detail in opportunity_details:
+                    if detail['arbitrage'] == spot_vs_perps_arb:
+                        best_detail = detail
+                        break
+                
+                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
+                if best_detail:
+                    st.write(f"    - **Best Variant:** {best_detail['variant']}")
+                    st.write(f"    - **Best Protocol:** {best_detail['protocol']}")
+                    st.write(f"    - **Best Spot Rate:** {best_detail['spot_rate']:.8f}%")
+                st.write(f"    - **Best Arbitrage:** {spot_vs_perps_arb:.8f}%")
+                st.success(f"    ✅ **Table shows: {spot_vs_perps_arb:.8f}%**")
+                
+            else:
+                spot_vs_perps_arb = None
+                st.write(f"  **🏆 Step 4: Best Arbitrage Selection**")
+                st.write(f"    - No profitable opportunities found")
+                st.info(f"    ℹ️ **Table shows: None (no profitable opportunity)**")
+            
+            st.write("---")
         
-        st.write(f"  **🧮 Step 3: Table Columns - Both Directions Shown**")
-        st.write("  **Table will show SEPARATE columns for Long and Short:**")
+        st.write("**🔍 Key Points (REVERTED TO SEPARATE ROWS):**")
+        st.write("1. **Two Rows Per Asset**: Each asset (BTC/SOL) has separate Long and Short rows")
+        st.write("2. **Spot Direction Column**: Clear identification of Long vs Short position")
+        st.write("3. **Clean Column Headers**: No direction suffixes, just variant(protocol) format")
+        st.write("4. **Per-Direction Analysis**: Each row shows rates specific to that direction")
+        st.write("5. **Best Arbitrage Per Row**: Each row shows the best opportunity for that direction")
         
-        # Show what the table headers will look like
-        for variant in asset_variants:
-            variant_rates = all_variant_rates.get(variant, {})
-            for protocol, rates_info in variant_rates.items():
-                if rates_info['long_rate'] is not None:
-                    long_column = f"{variant}({protocol})(L)"
-                    st.write(f"    - **{long_column}**: {rates_info['long_rate']:.8f}%")
-                if rates_info['short_rate'] is not None:
-                    short_column = f"{variant}({protocol})(S)"
-                    st.write(f"    - **{short_column}**: {rates_info['short_rate']:.8f}%")
-        
-        # Calculate best overall arbitrage
-        if all_arbitrage_opportunities:
-            spot_vs_perps_arb = min(all_arbitrage_opportunities)
-            st.write(f"  **🏆 Step 4: Best Overall Arbitrage**")
-            st.write(f"    - **Best Arbitrage:** {spot_vs_perps_arb:.8f}%")
-            st.success(f"    ✅ **Table shows: {spot_vs_perps_arb:.8f}%**")
-        else:
-            spot_vs_perps_arb = None
-            st.write(f"  **🏆 Step 4: Best Overall Arbitrage**")
-            st.write(f"    - No profitable opportunities found")
-            st.info(f"    ℹ️ **Table shows: None (no profitable opportunity)**")
-        
-        st.write("---")
-        
-        st.write("**🔍 Key Points (NEW SINGLE-ROW WITH BOTH DIRECTIONS):**")
-        st.write("1. **Single Row Per Asset**: Each asset (BTC/SOL) now has only ONE row instead of two")
-        st.write("2. **Both Directions Shown**: Separate columns for Long (L) and Short (S) rates")
-        st.write("3. **Complete Visibility**: You can see ALL spot rates for both directions")
-        st.write("4. **Direction Suffixes**: Column headers clearly show (L) for Long and (S) for Short")
-        st.write("5. **Best Overall Arbitrage**: 'Spot vs Perps Arb' shows the best opportunity across ALL combinations")
-        
-        st.write("**✅ Benefits of new structure:**")
-        st.write("- **Complete Transparency**: See both Long and Short spot rates side by side")
-        st.write("- **Easy Comparison**: Compare Long vs Short rates for each variant/protocol")
-        st.write("- **Single Row**: One row per asset for cleaner scanning")
-        st.write("- **Full Analysis**: All rate combinations visible in one comprehensive table")
+        st.write("**✅ Benefits of reverted structure:**")
+        st.write("- **Clear Direction Separation**: Long and Short positions clearly distinguished")
+        st.write("- **Easy Comparison**: Compare same protocol rates between Long/Short rows")
+        st.write("- **Focused Analysis**: Each row focuses on one specific trading direction")
+        st.write("- **Comprehensive Coverage**: All combinations evaluated per direction")
 
 
 def display_asset_top_opportunities(
@@ -1444,3 +1426,333 @@ def display_asset_top_opportunities(
             st.markdown(f"{ranking_emoji} {opp['asset']} <span style='color: #00ff00'>{opp['apy']:.0f}%</span> • 💰 Buy {opp['variant']} {protocol_display} {opp['spot_rate']:.2f}% • 🎯 Sell {opp['asset']} {opp['perps_exchange']} {opp['funding_rate']:.2f}%", unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)  # Add space after opportunities
+
+
+def create_curated_arbitrage_table(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    target_hours: int = DEFAULT_TARGET_HOURS,
+    max_leverage: int = 5,
+    perps_exchange: str = "Hyperliquid"
+) -> pd.DataFrame:
+    """
+    Create a curated table showing best arbitrage opportunities between Asgard spot and selected perps exchange.
+    Tests leverage levels up to max_leverage to find optimal rates.
+    
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        target_hours: Target interval in hours
+        max_leverage: Maximum leverage level to consider (default 5)
+        perps_exchange: Perps exchange to compare against ("Hyperliquid", "Drift", etc.)
+    
+    Returns:
+        DataFrame with curated arbitrage opportunities
+    """
+    import pandas as pd
+    from config.constants import SPOT_PERPS_CONFIG, SPOT_LEVERAGE_LEVELS
+    
+    rows = []
+    row_group_id = 0  # To keep main+description rows together during sorting
+    
+    asset_configs = {
+        "SOL": (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL"),
+        "BTC": (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC")
+    }
+    
+    for asset_name, (asset_variants, asset_type) in asset_configs.items():
+        # Get perps funding rates for this asset
+        perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
+        
+        # Skip if neither exchange has rates available
+        if "Hyperliquid" not in perps_rates and "Drift" not in perps_rates:
+            continue
+            
+        hyperliquid_rate = perps_rates.get("Hyperliquid")
+        drift_rate = perps_rates.get("Drift")
+        
+        for direction in ["Long", "Short"]:
+            # Find best spot rate across all variants, protocols, and leverage levels
+            best_spot_info = find_best_spot_rate_across_leverages(
+                token_config, rates_data, staking_data,
+                asset_variants, direction.lower(), target_hours, max_leverage
+            )
+            
+            if best_spot_info is None:
+                continue  # Skip if no rates available
+            
+            # Calculate arbitrage for both exchanges using README formula
+            spot_rate = best_spot_info['rate']
+            
+            # Get variant for descriptions
+            variant = best_spot_info['variant']
+            
+            # Calculate Hyperliquid arbitrage
+            hyperliquid_arb = None
+            hyperliquid_calc = "N/A"
+            hyperliquid_desc = ""
+            if hyperliquid_rate is not None:
+                if direction == "Long":
+                    # Long spot, Short perps: spot_rate - funding_rate
+                    hyperliquid_arb = spot_rate - hyperliquid_rate
+                    hyperliquid_calc = f"{spot_rate:.1f}% - {hyperliquid_rate:.1f}% = {hyperliquid_arb:.1f}%"
+                    hyperliquid_desc = f"Long {variant} on Asgard {spot_rate:.1f}% • Short {asset_name} on Hyperliquid {hyperliquid_rate:.1f}%"
+                else:  # Short
+                    # Short spot, Long perps: spot_rate + funding_rate  
+                    hyperliquid_arb = spot_rate + hyperliquid_rate
+                    hyperliquid_calc = f"{spot_rate:.1f}% + {hyperliquid_rate:.1f}% = {hyperliquid_arb:.1f}%"
+                    hyperliquid_desc = f"Short {variant} on Asgard {spot_rate:.1f}% • Long {asset_name} on Hyperliquid {hyperliquid_rate:.1f}%"
+            
+            # Calculate Drift arbitrage
+            drift_arb = None
+            drift_calc = "N/A"
+            drift_desc = ""
+            if drift_rate is not None:
+                if direction == "Long":
+                    # Long spot, Short perps: spot_rate - funding_rate
+                    drift_arb = spot_rate - drift_rate
+                    drift_calc = f"{spot_rate:.1f}% - {drift_rate:.1f}% = {drift_arb:.1f}%"
+                    drift_desc = f"Long {variant} on Asgard {spot_rate:.1f}% • Short {asset_name} on Drift {drift_rate:.1f}%"
+                else:  # Short
+                    # Short spot, Long perps: spot_rate + funding_rate  
+                    drift_arb = spot_rate + drift_rate
+                    drift_calc = f"{spot_rate:.1f}% + {drift_rate:.1f}% = {drift_arb:.1f}%"
+                    drift_desc = f"Short {variant} on Asgard {spot_rate:.1f}% • Long {asset_name} on Drift {drift_rate:.1f}%"
+            
+            # Format the spot rate display
+            spot_display = f"{best_spot_info['rate']:.1f}%(via {best_spot_info['variant']}/{best_spot_info['pair_asset']}) {best_spot_info['leverage']}x"
+            
+            # Main data row with calculations only
+            row = {
+                "Coin": asset_name,
+                "Direction": f"Best {direction.lower()}",
+                "Asgard Spot Margin Borrow Rate": spot_display,
+                "Hyperliquid Funding Rate": f"{hyperliquid_rate:.1f}%" if hyperliquid_rate is not None else "N/A",
+                "Asgard - Hyperliquid Arb": hyperliquid_calc,
+                "Drift Funding Rate": f"{drift_rate:.1f}%" if drift_rate is not None else "N/A",
+                "Asgard - Drift Arb": drift_calc,
+                "Hyperliquid_Arb_Rate": hyperliquid_arb,  # For sorting/filtering
+                "Drift_Arb_Rate": drift_arb,  # For sorting/filtering
+                "Row_Group_ID": row_group_id,  # To keep pairs together
+                "Row_Type": "main"  # Main data row
+            }
+            rows.append(row)
+            
+            # Description row with strategy details
+            desc_row = {
+                "Coin": "",  # Empty for merged cell effect
+                "Direction": "",
+                "Asgard Spot Margin Borrow Rate": "",
+                "Hyperliquid Funding Rate": "",
+                "Asgard - Hyperliquid Arb": hyperliquid_desc,
+                "Drift Funding Rate": "",
+                "Asgard - Drift Arb": drift_desc,
+                "Hyperliquid_Arb_Rate": None,  # For sorting/filtering
+                "Drift_Arb_Rate": None,  # For sorting/filtering
+                "Row_Group_ID": row_group_id,  # To keep pairs together
+                "Row_Type": "description"  # Description row
+            }
+            rows.append(desc_row)
+            row_group_id += 1  # Increment for next pair
+    
+    if rows:
+        df = pd.DataFrame(rows)
+        
+# Keep rows in their natural order (no sorting needed)
+        
+        # Create merged coin column - only show coin name for main rows of each new asset
+        df_display = df.copy()
+        prev_coin = None
+        for i, row in df_display.iterrows():
+            if row['Row_Type'] == 'main':
+                if row['Coin'] == prev_coin:
+                    df_display.at[i, 'Coin'] = ""  # Empty string for subsequent main rows of same asset
+                prev_coin = row['Coin']
+            # Description rows already have empty Coin field
+        
+        # Remove the helper columns
+        df_display = df_display.drop(['Hyperliquid_Arb_Rate', 'Drift_Arb_Rate', 'Row_Group_ID', 'Row_Type'], axis=1)
+        return df_display
+    else:
+        return pd.DataFrame()
+
+
+def find_best_spot_rate_across_leverages(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    asset_variants: list,
+    direction: str,
+    target_hours: int,
+    max_leverage: int = 5
+) -> dict:
+    """
+    Find the best (most negative) spot rate across all variants, protocols, and leverage levels.
+    
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        asset_variants: List of asset variants to test
+        direction: "long" or "short"
+        target_hours: Target interval in hours
+        max_leverage: Maximum leverage level to consider
+    
+    Returns:
+        Dictionary with best rate info: {rate, variant, protocol, leverage, pair_asset}
+    """
+    from config.constants import SPOT_LEVERAGE_LEVELS
+    
+    best_rate = float('inf')  # We want the most negative (smallest) rate
+    best_info = None
+    
+    # Filter leverage levels based on max_leverage parameter
+    filtered_leverage_levels = [lev for lev in SPOT_LEVERAGE_LEVELS if lev <= max_leverage]
+    
+    # Test filtered leverage levels
+    for leverage in filtered_leverage_levels:
+        # Test all variants
+        for variant in asset_variants:
+            # Calculate spot rates for this variant and leverage
+            spot_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, leverage, direction, target_hours
+            )
+            
+            # Check each protocol for this variant
+            for protocol, rate in spot_rates.items():
+                if rate is not None and rate < best_rate:
+                    best_rate = rate
+                    
+                    # Determine pair asset based on direction
+                    if direction.lower() == "long":
+                        pair_asset = "USDC"  # Long: lend asset, borrow USDC
+                    else:
+                        pair_asset = "USDC"  # Short: lend USDC, borrow asset (display as variant/USDC)
+                    
+                    best_info = {
+                        'rate': rate,
+                        'variant': variant,
+                        'protocol': protocol,
+                        'leverage': leverage,
+                        'pair_asset': pair_asset
+                    }
+    
+    return best_info
+
+
+def display_curated_arbitrage_section(
+    token_config: dict,
+    rates_data: dict,
+    staking_data: dict,
+    hyperliquid_data: dict,
+    drift_data: dict,
+    target_hours: int = DEFAULT_TARGET_HOURS,
+    perps_exchange: str = "Hyperliquid"
+) -> None:
+    """
+    Display the curated arbitrage table section.
+    
+    Args:
+        token_config: Token configuration dictionary
+        rates_data: Current rates data from API
+        staking_data: Staking rates data from API
+        hyperliquid_data: Hyperliquid funding data
+        drift_data: Drift funding data
+        target_hours: Target interval in hours
+        perps_exchange: Perps exchange to compare against
+    """
+    import streamlit as st
+    
+    # Create columns for heading and slider
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.subheader("📊 Curated Arbitrage: Asgard Spot vs Perps")
+    
+    with col2:
+        max_leverage = st.slider(
+            "Max Leverage",
+            min_value=1,
+            max_value=5,
+            value=5,
+            step=1,
+            help="Maximum leverage level to consider for curated arbitrage analysis"
+        )
+    
+    st.caption(f"Best rates across all variants, protocols, and leverage levels (1x-{max_leverage}x)")
+    
+    # Create the curated table
+    curated_df = create_curated_arbitrage_table(
+        token_config, rates_data, staking_data,
+        hyperliquid_data, drift_data, target_hours, max_leverage, perps_exchange
+    )
+    
+    if not curated_df.empty:
+        # Display the table
+        st.dataframe(
+            curated_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Coin": st.column_config.TextColumn(
+                    "Coin",
+                    pinned=True,
+                    width=80
+                ),
+                "Direction": st.column_config.TextColumn(
+                    "Direction",
+                    width=120
+                ),
+                "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
+                    "Asgard Spot Margin Borrow Rate",
+                    width=300
+                ),
+                "Hyperliquid Funding Rate": st.column_config.TextColumn(
+                    "Hyperliquid Funding Rate",
+                    width=150
+                ),
+                "Asgard - Hyperliquid Arb": st.column_config.TextColumn(
+                    "Asgard - Hyperliquid Arb",
+                    width=400
+                ),
+                "Drift Funding Rate": st.column_config.TextColumn(
+                    "Drift Funding Rate",
+                    width=150
+                ),
+                "Asgard - Drift Arb": st.column_config.TextColumn(
+                    "Asgard - Drift Arb",
+                    width=400
+                )
+            }
+        )
+        
+        # Add explanation
+        with st.expander("ℹ️ How to read this table"):
+            st.markdown("""
+            **Asgard Spot Margin Borrow Rate**: Shows the best yearly rate across all:
+            - Asset variants (SOL, JUPSOL, JITOSOL / BTC, CBBTC, WBTC, XBTC)
+            - Protocols (marginfi, kamino, drift, solend)  
+            - Leverage levels (1x, 2x, 3x, 4x, 5x)
+            
+            **Format**: `Rate%(via variant/pair) leverage`
+            - Example: `10%(via JUPSOL/USDC) 2x` means 10% yearly rate using JUPSOL/USDC pair at 2x leverage
+            
+            **Arbitrage Calculation**:
+            - **Long**: Asgard rate - Perps funding = Net arbitrage
+            - **Short**: Asgard rate + Perps funding = Net arbitrage
+            
+            **Strategy**:
+            - **(Long on Asgard, short on perps)**: Take long position on Asgard spot, short on perps
+            - **(Short on Asgard, long on perps)**: Take short position on Asgard spot, long on perps
+            """)
+    else:
+        st.info(f"No arbitrage opportunities found between Asgard and {perps_exchange}")
+    
+    st.markdown("<br>", unsafe_allow_html=True)

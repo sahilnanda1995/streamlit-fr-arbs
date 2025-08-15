@@ -54,8 +54,8 @@ def calculate_hourly_fee_rates(
 
     # Log the calculation data
     logging.info(f"""
-    📊 SPOT HOURLY FEE RATE CALCULATION:
-    =====================================
+    📊 SPOT FEE RATE CALCULATION:
+    ==============================
     Input Data:
     - Lend Rate: {lend_rate:.6f}% APY
     - Borrow Rate: {borrow_rate:.6f}% APY
@@ -68,6 +68,7 @@ def calculate_hourly_fee_rates(
     - Net Borrow Rate: {net_borrow:.6f}% APY (borrow_rate + borrow_staking)
     - Fee Rate: {fee_rate:.6f}% APY (net_borrow * (leverage-1) - net_lend * leverage)
     - Hourly Rate: {hourly_rate:.8f}% per hour (fee_rate / (365*24))
+    - Note: Hourly rate will be converted to yearly for display
 
     Formula: ({net_borrow:.6f} * {leverage-1}) - ({net_lend:.6f} * {leverage}) = {fee_rate:.6f}% APY
     """)
@@ -183,9 +184,11 @@ def create_spot_arbitrage_table(
                         lend_staking_rate, borrow_staking_rate,
                         leverage
                     )
-                    row[f"{leverage}x (hr)"] = hourly_rate
+                    # Convert hourly rate to yearly rate (multiply by hours in a year)
+                    yearly_rate = hourly_rate * 365 * 24
+                    row[f"{leverage}x"] = yearly_rate
                 except ValueError:
-                    row[f"{leverage}x (hr)"] = None
+                    row[f"{leverage}x"] = None
 
             rows.append(row)
 
@@ -372,14 +375,16 @@ def display_calculation_breakdowns(
                         # Calculate fee rate
                         fee_rate = net_borrow * (leverage - 1) - net_lend * leverage
 
-                        # Convert to hourly rate
+                        # Convert to hourly rate (for internal calculation)
                         hourly_rate = fee_rate / (365 * 24)
+                        # Convert hourly rate back to yearly for display
+                        yearly_rate = hourly_rate * 365 * 24
 
                         st.write(f"**{leverage}x Leverage:**")
                         st.write(f"- Net Lend Rate: {net_lend:.6f}% APY")
                         st.write(f"- Net Borrow Rate: {net_borrow:.6f}% APY")
                         st.write(f"- Fee Rate: {fee_rate:.6f}% APY")
-                        st.write(f"- Hourly Rate: {hourly_rate:.8f}% per hour")
+                        st.write(f"- Yearly Rate: {yearly_rate:.2f}% per year")
                         st.write(f"- Formula: ({net_borrow:.6f} × {leverage-1}) - ({net_lend:.6f} × {leverage}) = {fee_rate:.6f}% APY")
                         st.write("---")
 
@@ -391,7 +396,7 @@ def format_spot_arbitrage_dataframe(df: pd.DataFrame) -> Any:
     """
     Apply styling and formatting to spot arbitrage DataFrame for Streamlit display.
 
-    Note: The hourly fee rates are already in percentage format, so we just add % symbols.
+    Note: The yearly fee rates are already in percentage format, so we just add % symbols.
 
     Args:
         df: DataFrame to format
@@ -399,11 +404,11 @@ def format_spot_arbitrage_dataframe(df: pd.DataFrame) -> Any:
     Returns:
         Styled DataFrame ready for st.dataframe()
     """
-    # Create format dictionary for leverage columns (columns containing "x (hr)")
+    # Create format dictionary for leverage columns (columns ending with "x")
     format_dict = {}
     for col in df.columns:
-        if "x (hr)" in col:
-            format_dict[col] = "{:.4f}%"
+        if col.endswith("x") and any(char.isdigit() for char in col):
+            format_dict[col] = "{:.2f}%"
 
     # Apply formatting with None handling
     styled_df = df.style.format(format_dict, na_rep="None")
