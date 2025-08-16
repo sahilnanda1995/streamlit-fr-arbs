@@ -11,7 +11,7 @@ from config.constants import (
     PAGE_TITLE
 )
 from api.endpoints import (
-    fetch_hyperliquid_funding_data,
+    fetch_loris_funding_data,
     fetch_drift_markets_24h,
     fetch_asgard_current_rates,
     fetch_asgard_staking_rates
@@ -28,7 +28,7 @@ def main():
     with st.spinner("Loading..."):
         rates_data = fetch_asgard_current_rates()
         staking_data = fetch_asgard_staking_rates()
-        hyperliquid_data = fetch_hyperliquid_funding_data()
+        hyperliquid_data = fetch_loris_funding_data()
         drift_data = fetch_drift_markets_24h()
 
     # === SPOT AND PERPS OPPORTUNITIES SECTION ===

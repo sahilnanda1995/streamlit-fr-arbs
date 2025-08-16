@@ -11,7 +11,8 @@ from config.constants import (
     HYPERLIQUID_REQUEST_BODY,
     DRIFT_API_URL,
     ASGARD_CURRENT_RATES_URL,
-    ASGARD_STAKING_RATES_URL
+    ASGARD_STAKING_RATES_URL,
+    LORIS_FUNDING_API_URL
 )
 
 # Create a persistent session for connection reuse
@@ -91,6 +92,38 @@ def fetch_drift_markets_24h() -> Dict[str, Any]:
         return {}
 
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def fetch_loris_funding_data() -> Dict[str, Any]:
+    """
+    Fetch 24h market data from Loris API.
+
+    Returns:
+        Market data dictionary or empty dict if request failed
+    """
+    try:
+        response = session.get(url=LORIS_FUNDING_API_URL, timeout=5)
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.Timeout:
+        st.error("Loris API request timed out after 5 seconds")
+        return {}
+
+    except requests.exceptions.ConnectionError:
+        st.error("Failed to connect to Loris API endpoint")
+        return {}
+
+    except requests.exceptions.HTTPError as e:
+        st.error(f"Loris API HTTP error: {e.response.status_code}: {e.response.reason}")
+        return {}
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Loris API request failed: {str(e)}")
+        return {}
+
+    except ValueError as e:
+        st.error(f"Invalid JSON response from Loris API: {str(e)}")
+        return {}
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes

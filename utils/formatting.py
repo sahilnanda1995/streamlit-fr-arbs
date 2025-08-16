@@ -89,6 +89,7 @@ def process_raw_data_for_display(
             "Hyperliquid": None,
             "Binance": None,
             "Bybit": None,
+            "Lighter": None,
             "Drift": None
         }
 
@@ -332,7 +333,7 @@ def create_sidebar_settings(
             value=show_detailed_opportunities_default,
             help="Show comprehensive analysis of all arbitrage opportunities with detailed breakdowns"
         )
-        
+
         show_table_breakdown = st.checkbox(
             "🔬 Show Table Breakdown Analysis",
             value=show_table_breakdown_default,
@@ -375,7 +376,7 @@ def create_sidebar_settings(
             index=1,  # Default to 2x leverage
             help="Amplifies spot trading positions"
         )
-        
+
 
         st.divider()
         st.caption(f"💡 **Current Settings**: {selected_interval} interval with {selected_leverage}x leverage")
@@ -405,6 +406,6 @@ def display_settings_info(settings: Dict[str, Any]) -> None:
 
     if settings.get("show_detailed_opportunities"):
         st.info("📊 All possible arbitrage opportunities will be shown with comprehensive analysis and detailed breakdowns.")
-        
+
     if settings.get("show_table_breakdown"):
         st.info("🔬 Table breakdown analysis will show exactly how the main table arbitrage values are calculated.")

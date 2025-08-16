@@ -4,6 +4,8 @@ Data processing functions for transforming API responses into standardized forma
 
 from typing import List, Dict, Any
 from config.constants import (
+    BPS_TO_DECIMAL,
+    LORIS_ALLOWED_EXCHANGES,
     PERP_SYMBOL_SUFFIX,
     PERCENTAGE_CONVERSION_FACTOR
 )
@@ -31,7 +33,7 @@ def merge_funding_rate_data(
         drift_response = {"data": []}
 
     # Process Hyperliquid data
-    hyperliquid_processed = process_hyperliquid_raw_data(hyperliquid_response)
+    hyperliquid_processed = process_loris_raw_data(hyperliquid_response)
 
     # Process Drift data
     drift_processed = process_drift_raw_data(drift_response)
@@ -96,6 +98,45 @@ def process_hyperliquid_raw_data(hyperliquid_response: List[List]) -> List[List]
 
     return processed_data
 
+
+def process_loris_raw_data(loris_response: Dict[str, Any]) -> List[List]:
+    """Process Loris API response and convert funding rates to decimal per 1-hour interval.
+
+    Returns a unified structure per token: [token, [[exchange_key, {"fundingRate": decimal}], ...]]
+    where exchange_key is the internal key like "hyperliquid_1_perp".
+    """
+    # Prepare containers
+    token_to_exchanges: Dict[str, List[List]] = {}
+
+    exchanges = loris_response.get("exchanges", {}).get("exchange_names", [])
+    funding_rates = loris_response.get("funding_rates", {})
+
+    # Only consider allowed exchanges
+    allowed_set = set(LORIS_ALLOWED_EXCHANGES)
+
+    for exchange_key, tokens in funding_rates.items():
+        if exchange_key not in allowed_set:
+            continue
+
+        if not isinstance(tokens, dict):
+            continue
+
+        for token, bps_rate in tokens.items():
+            try:
+                decimal_rate = float(bps_rate) / BPS_TO_DECIMAL / 8
+            except (TypeError, ValueError):
+                continue
+
+            exchange_entry = [exchange_key, {"fundingRate": decimal_rate}]
+            token_to_exchanges.setdefault(token, []).append(exchange_entry)
+
+    # Build processed list: one entry per token with all its exchanges
+    processed_list: List[List] = []
+    for token, exchange_entries in token_to_exchanges.items():
+        if exchange_entries:
+            processed_list.append([token, exchange_entries])
+
+    return processed_list
 
 def process_drift_raw_data(drift_response: Dict[str, Any]) -> List[List]:
     """

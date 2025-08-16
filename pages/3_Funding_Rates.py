@@ -10,7 +10,7 @@ from config.constants import (
     PAGE_TITLE
 )
 from api.endpoints import (
-    fetch_hyperliquid_funding_data,
+    fetch_loris_funding_data,
     fetch_drift_markets_24h
 )
 from data.processing import merge_funding_rate_data
@@ -29,7 +29,7 @@ def main():
 
     # === DATA FETCHING ===
     with st.spinner("Loading funding rates data..."):
-        hyperliquid_data = fetch_hyperliquid_funding_data()
+        hyperliquid_data = fetch_loris_funding_data()
         drift_data = fetch_drift_markets_24h()
 
     # === PERPS DATA MERGING ===
