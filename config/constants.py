@@ -16,10 +16,13 @@ DEFAULT_TARGET_HOURS = INTERVAL_OPTIONS["1 yr"]
 
 # API Configuration
 HYPERLIQUID_API_URL = "https://api-ui.hyperliquid.xyz/info"
+HYPERLIQUID_CORE_API_URL = "https://api.hyperliquid.xyz/info"
+DRIFT_FUNDING_HISTORY_URL = "https://mainnet-beta.api.drift.trade/fundingRates"
 DRIFT_API_URL = "https://mainnet-beta.api.drift.trade/markets24h"
 
 # Loris consolidated funding API (replaces Hyperliquid endpoint for funding data)
 LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
+HYPERLIQUID_HISTORICAL_FUNDING_URL = "https://api.hyperliquid.xyz/info"
 
 # Asgard API Configuration
 ASGARD_CURRENT_RATES_URL = "https://historical-apy.asgard.finance/current-rates"
@@ -95,4 +98,11 @@ SPOT_PERPS_CONFIG = {
         "BTC": "BTC",  # Use "BTC" to find funding rates for BTC assets
         "SOL": "SOL"   # Use "SOL" to find funding rates for SOL assets
     }
+}
+
+# Drift market index mapping (per Drift conventions)
+DRIFT_MARKET_INDEX = {
+    "SOL": 0,
+    "BTC": 1,
+    "ETH": 2,
 }

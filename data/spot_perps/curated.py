@@ -199,6 +199,7 @@ def display_curated_arbitrage_section(
     target_hours: int = DEFAULT_TARGET_HOURS,
 ) -> None:
     import streamlit as st
+    from .backtesting import display_backtesting_section
 
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -267,5 +268,14 @@ def display_curated_arbitrage_section(
         )
 
     st.markdown("<br>", unsafe_allow_html=True)
+
+    # Backtesting section below curated
+    display_backtesting_section(
+        token_config,
+        rates_data,
+        staking_data,
+        hyperliquid_data,
+        drift_data,
+    )
 
 

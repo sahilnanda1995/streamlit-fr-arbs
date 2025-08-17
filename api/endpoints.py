@@ -7,9 +7,11 @@ import streamlit as st
 from typing import List, Dict, Any
 from config.constants import (
     HYPERLIQUID_API_URL,
+    HYPERLIQUID_CORE_API_URL,
     HYPERLIQUID_HEADERS,
     HYPERLIQUID_REQUEST_BODY,
     DRIFT_API_URL,
+    DRIFT_FUNDING_HISTORY_URL,
     ASGARD_CURRENT_RATES_URL,
     ASGARD_STAKING_RATES_URL,
     LORIS_FUNDING_API_URL
@@ -17,6 +19,106 @@ from config.constants import (
 
 # Create a persistent session for connection reuse
 session = requests.Session()
+@st.cache_data(ttl=300)
+def fetch_hyperliquid_funding_history(coin: str = "BTC", start_time_ms: int = 0) -> List[Dict[str, Any]]:
+    """
+    Fetch historical funding rates from Hyperliquid core API.
+
+    Args:
+        coin: Asset symbol (e.g., "BTC")
+        start_time_ms: Epoch milliseconds start time
+
+    Returns:
+        List of dicts with keys: coin, fundingRate, premium, time
+    """
+    try:
+        payload = {"type": "fundingHistory", "coin": coin}
+        if start_time_ms > 0:
+            payload["startTime"] = start_time_ms
+        response = session.post(
+            url=HYPERLIQUID_CORE_API_URL,
+            headers={"Content-Type": "application/json"},
+            json=payload,
+            timeout=8,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, list):
+            return data
+        return []
+    except requests.exceptions.Timeout:
+        st.error("Hyperliquid funding history request timed out")
+        return []
+    except requests.exceptions.RequestException as e:
+        st.error(f"Hyperliquid funding history request failed: {str(e)}")
+        return []
+    except ValueError:
+        st.error("Invalid JSON from Hyperliquid funding history API")
+        return []
+
+
+@st.cache_data(ttl=300)
+def fetch_drift_funding_history(market_index: int, start_ts: float, end_ts: float) -> List[Dict[str, Any]]:
+    """
+    Fetch Drift funding rates history for one market in [start_ts, end_ts] seconds.
+
+    Returns a list of entries, each containing at least { "time": ms, "fundingRate": float }.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://app.drift.trade/',
+        'Origin': 'https://app.drift.trade',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site'
+    }
+    try:
+        params = {
+            'marketIndex': market_index,
+            'from': f"{start_ts:.3f}",
+            'to': f"{end_ts:.3f}"
+        }
+        response = session.get(DRIFT_FUNDING_HISTORY_URL, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict) or data.get('status') != 'ok':
+            st.error("Invalid response from Drift funding history API")
+            return []
+        # Expected structure: { status: 'ok', fundingRates: [ ... ] }
+        entries = data.get('fundingRates') or data.get('data') or []
+        normalized: List[Dict[str, Any]] = []
+        for e in entries:
+            ts_seconds = e.get('ts') or e.get('time') or 0
+            fr_raw = e.get('fundingRate')
+            oracle_twap_raw = e.get('oraclePriceTwap')
+            try:
+                ts_ms = int(float(ts_seconds) * 1000)
+            except (TypeError, ValueError):
+                continue
+            try:
+                fr_num = float(fr_raw)
+                oracle_num = float(oracle_twap_raw)
+            except (TypeError, ValueError):
+                continue
+            # Convert to hourly decimal: (fundingRate / 1e9) / (oraclePriceTwap / 1e6)
+            if oracle_num == 0:
+                continue
+            hourly_decimal = (fr_num / 1e9) / (oracle_num / 1e6)
+            normalized.append({
+                'time': ts_ms,
+                'fundingRate': hourly_decimal,
+            })
+        return normalized
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching Drift funding history: {str(e)}")
+        return []
+    except ValueError:
+        st.error("Error parsing Drift funding history response")
+        return []
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes

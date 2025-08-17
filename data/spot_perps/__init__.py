@@ -35,6 +35,9 @@ from .explorer import (
     format_spot_perps_dataframe,
     display_asset_top_opportunities,
 )
+from .backtesting import (
+    display_backtesting_section,
+)
 
 __all__ = [
     # helpers
@@ -62,6 +65,8 @@ __all__ = [
     "display_arbitrage_opportunities_summary",
     "format_spot_perps_dataframe",
     "display_asset_top_opportunities",
+    # backtesting
+    "display_backtesting_section",
 ]
 
 
