@@ -106,3 +106,7 @@ DRIFT_MARKET_INDEX = {
     "BTC": 1,
     "ETH": 2,
 }
+
+# Backtesting configuration
+BACKTEST_COINS = ["BTC", "SOL", "ETH"]
+BACKTEST_CAPTION = "Funding Rate shown as APY (%) over the past 1 month"

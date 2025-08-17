@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 
 import time
 from datetime import datetime, timedelta, timezone
@@ -10,7 +10,12 @@ from api.endpoints import (
     fetch_hyperliquid_funding_history,
     fetch_drift_funding_history,
 )
-from config.constants import DEFAULT_TARGET_HOURS, DRIFT_MARKET_INDEX
+from config.constants import (
+    DEFAULT_TARGET_HOURS,
+    DRIFT_MARKET_INDEX,
+    BACKTEST_COINS,
+    BACKTEST_CAPTION,
+)
 from utils.formatting import scale_funding_rate_to_percentage
 
 
@@ -48,6 +53,24 @@ def _to_dataframe(entries: List[Dict[str, Any]], rate_key: str = "fundingRate") 
     # Convert hourly decimal funding rate to yearly APY percentage via shared helper
     df[rate_key] = scale_funding_rate_to_percentage(df[rate_key], 1, DEFAULT_TARGET_HOURS)
     return df
+
+
+def _get_last_month_window_seconds() -> (float, float):
+    end = round(datetime.now().timestamp(), 3)
+    start = round(end - (30 * 24 * 3600), 3)
+    return start, end
+
+
+def _render_backtest_chart(title: str, entries: List[Dict[str, Any]], rate_key: str = "fundingRate") -> None:
+    st.markdown(f"**{title}**")
+    df = _to_dataframe(entries, rate_key=rate_key)
+    if df.empty:
+        st.info(f"No {title} funding history available for the selected period.")
+        return
+    st.line_chart(df.set_index("time")[rate_key].round(3), height=260)
+    st.caption(BACKTEST_CAPTION)
+    with st.expander(f"Show raw {title} funding history"):
+        st.json(entries)
 
 
 def _fetch_last_month_with_gap_check(coin: str) -> List[Dict[str, Any]]:
@@ -101,43 +124,25 @@ def display_backtesting_section(
     st.subheader("🧪 Backtesting (1M)")
 
     # Controls
-    coins = ["BTC", "SOL", "ETH"]
 
     # Hyperliquid
-    st.markdown("**Hyperliquid**")
     hl_coin = st.selectbox(
-        "Select coin (Hyperliquid)", options=coins, index=0, key="hl_backtesting_coin"
+        "Select token (Hyperliquid)", options=BACKTEST_COINS, index=0, key="hl_backtesting_coin"
     )
     with st.spinner("Loading Hyperliquid funding history..."):
         hl_history = _fetch_last_month_with_gap_check(hl_coin)
-    hl_df = _to_dataframe(hl_history, rate_key="fundingRate")
-    if hl_df.empty:
-        st.info("No Hyperliquid funding history available for the selected period.")
-    else:
-        st.line_chart(hl_df.set_index("time")["fundingRate"].round(3), height=260)
-        st.caption("Funding Rate shown as APY (%) over the past 1 month")
-        with st.expander("Show raw Hyperliquid funding history"):
-            st.json(hl_history)
+    _render_backtest_chart("Hyperliquid", hl_history)
 
     st.divider()
 
     # Drift
-    st.markdown("**Drift**")
     drift_coin = st.selectbox(
-        "Select coin (Drift)", options=coins, index=0, key="drift_backtesting_coin"
+        "Select token (Drift)", options=BACKTEST_COINS, index=0, key="drift_backtesting_coin"
     )
     market_index = DRIFT_MARKET_INDEX.get(drift_coin, DRIFT_MARKET_INDEX.get("BTC", 1))
-    end_time = round(datetime.now().timestamp(), 3)
-    start_time = round(end_time - (30 * 24 * 3600), 3)
+    start_time, end_time = _get_last_month_window_seconds()
     with st.spinner("Loading Drift funding history..."):
         drift_history = fetch_drift_funding_history(market_index, start_time, end_time)
-    drift_df = _to_dataframe(drift_history, rate_key="fundingRate")
-    if drift_df.empty:
-        st.info("No Drift funding history available for the selected period.")
-    else:
-        st.line_chart(drift_df.set_index("time")["fundingRate"].round(3), height=260)
-        st.caption("Funding Rate shown as APY (%) over the past 1 month")
-        with st.expander("Show raw Drift funding history"):
-            st.json(drift_history)
+    _render_backtest_chart("Drift", drift_history)
 
 
