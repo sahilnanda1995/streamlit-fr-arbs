@@ -28,40 +28,6 @@ def scale_funding_rate_to_percentage(
     return rate * (target_hours / original_hours) * PERCENTAGE_CONVERSION_FACTOR
 
 
-def create_funding_rate_row(token_name: str, exchanges_data: List[List]) -> FundingRateRow:
-    """
-    Create a funding rate row from token exchange data.
-    All rates are normalized to 1-hour intervals.
-
-    Args:
-        token_name: Name of the token
-        exchanges_data: List of [exchange_name, details] pairs
-
-    Returns:
-        FundingRateRow object with scaled percentages
-    """
-    row = FundingRateRow(token=token_name)
-
-    for exchange_name, details in exchanges_data:
-        if details is not None:
-            try:
-                rate = details.get("fundingRate", 0)
-
-                # Note: This function creates the row but doesn't scale yet
-                # Scaling happens in process_raw_data_for_display
-                if exchange_name == "HlPerp":
-                    row.hyperliquid = rate
-                elif exchange_name == "BinPerp":
-                    row.binance = rate
-                elif exchange_name == "BybitPerp":
-                    row.bybit = rate
-                elif exchange_name == "DriftPerp":
-                    row.drift = rate
-            except (ValueError, TypeError):
-                continue
-
-    return row
-
 
 def process_raw_data_for_display(
     raw_data: List[List],

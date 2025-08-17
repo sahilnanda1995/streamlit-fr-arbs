@@ -20,7 +20,6 @@ DRIFT_API_URL = "https://mainnet-beta.api.drift.trade/markets24h"
 
 # Loris consolidated funding API (replaces Hyperliquid endpoint for funding data)
 LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
-LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
 
 # Asgard API Configuration
 ASGARD_CURRENT_RATES_URL = "https://historical-apy.asgard.finance/current-rates"

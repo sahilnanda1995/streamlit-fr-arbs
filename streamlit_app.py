@@ -16,7 +16,7 @@ from api.endpoints import (
     fetch_asgard_current_rates,
     fetch_asgard_staking_rates
 )
-from data.spot_perps_arbitrage import display_spot_perps_opportunities_section
+from data.spot_perps import display_curated_arbitrage_section
 
 def main():
     """Main application logic."""
@@ -31,15 +31,18 @@ def main():
         hyperliquid_data = fetch_loris_funding_data()
         drift_data = fetch_drift_markets_24h()
 
-    # === SPOT AND PERPS OPPORTUNITIES SECTION ===
+    # === CURATED SPOT AND PERPS ARBITRAGE SECTION ===
     # Load token config
     from config import get_token_config
     token_config = get_token_config()
 
-    # Display spot and perps opportunities section
-    display_spot_perps_opportunities_section(
-        token_config, rates_data, staking_data,
-        hyperliquid_data, drift_data
+    # Display curated arbitrage section only
+    display_curated_arbitrage_section(
+        token_config,
+        rates_data,
+        staking_data,
+        hyperliquid_data,
+        drift_data
     )
 
 
