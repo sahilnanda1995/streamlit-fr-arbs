@@ -102,17 +102,19 @@ def display_backtesting_section(
 
     # Controls
     coins = ["BTC", "SOL", "ETH"]
-    coin = st.selectbox("Select coin", options=coins, index=1 if "BTC" in coins else 0)
 
     # Hyperliquid
     st.markdown("**Hyperliquid**")
+    hl_coin = st.selectbox(
+        "Select coin (Hyperliquid)", options=coins, index=0, key="hl_backtesting_coin"
+    )
     with st.spinner("Loading Hyperliquid funding history..."):
-        hl_history = _fetch_last_month_with_gap_check(coin)
+        hl_history = _fetch_last_month_with_gap_check(hl_coin)
     hl_df = _to_dataframe(hl_history, rate_key="fundingRate")
     if hl_df.empty:
         st.info("No Hyperliquid funding history available for the selected period.")
     else:
-        st.line_chart(hl_df.set_index("time")["fundingRate"], height=260)
+        st.line_chart(hl_df.set_index("time")["fundingRate"].round(3), height=260)
         st.caption("Funding Rate shown as APY (%) over the past 1 month")
         with st.expander("Show raw Hyperliquid funding history"):
             st.json(hl_history)
@@ -121,7 +123,10 @@ def display_backtesting_section(
 
     # Drift
     st.markdown("**Drift**")
-    market_index = DRIFT_MARKET_INDEX.get(coin, DRIFT_MARKET_INDEX.get("BTC", 1))
+    drift_coin = st.selectbox(
+        "Select coin (Drift)", options=coins, index=0, key="drift_backtesting_coin"
+    )
+    market_index = DRIFT_MARKET_INDEX.get(drift_coin, DRIFT_MARKET_INDEX.get("BTC", 1))
     end_time = round(datetime.now().timestamp(), 3)
     start_time = round(end_time - (30 * 24 * 3600), 3)
     with st.spinner("Loading Drift funding history..."):
@@ -130,7 +135,7 @@ def display_backtesting_section(
     if drift_df.empty:
         st.info("No Drift funding history available for the selected period.")
     else:
-        st.line_chart(drift_df.set_index("time")["fundingRate"], height=260)
+        st.line_chart(drift_df.set_index("time")["fundingRate"].round(3), height=260)
         st.caption("Funding Rate shown as APY (%) over the past 1 month")
         with st.expander("Show raw Drift funding history"):
             st.json(drift_history)
