@@ -3,8 +3,9 @@ Spot arbitrage calculations for hourly fee rates.
 """
 
 import pandas as pd
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Callable
 from data.money_markets_processing import get_staking_rate_by_mint, get_rates_by_bank_address
+from data.spot_perps.helpers import compute_effective_max_leverage
 
 
 def calculate_hourly_fee_rates(
@@ -83,7 +84,8 @@ def create_spot_arbitrage_table(
     asset_group: list,
     borrow_asset: str = "USDC",
     leverage_levels: list = [1, 2, 3, 4, 5],
-    position_type: str = "long"  # "long" or "short"
+    position_type: str = "long",  # "long" or "short"
+    logger: Optional[Callable[[str], None]] = None,
 ) -> pd.DataFrame:
     """
     Create a DataFrame with spot arbitrage calculations for given asset group.
@@ -139,11 +141,31 @@ def create_spot_arbitrage_table(
                 borrow_staking_rate = asset_staking_rate
 
             if not lend_rates or not borrow_rates:
+                if logger is not None:
+                    missing_parts = []
+                    if not lend_rates:
+                        missing_parts.append("lending")
+                    if not borrow_rates:
+                        missing_parts.append("borrowing")
+                    missing_str = "/".join(missing_parts)
+                    logger(
+                        f"Skipping {asset} {position_type.upper()} at {protocol} ({market}): missing {missing_str} data."
+                    )
                 continue
 
             lend_rate = lend_rates.get("lendingRate")
             borrow_rate = borrow_rates.get("borrowingRate")
             if lend_rate is None or borrow_rate is None:
+                if logger is not None:
+                    missing_parts = []
+                    if lend_rate is None:
+                        missing_parts.append("lending")
+                    if borrow_rate is None:
+                        missing_parts.append("borrowing")
+                    missing_str = "/".join(missing_parts)
+                    logger(
+                        f"Skipping {asset} {position_type.upper()} at {protocol} ({market}): {missing_str} rate not available."
+                    )
                 continue
 
             # Log the data being used for calculation
@@ -178,6 +200,16 @@ def create_spot_arbitrage_table(
             }
 
             for leverage in leverage_levels:
+                # Enforce per-bank max leverage caps
+                effective_max = compute_effective_max_leverage(
+                    token_config,
+                    asset_bank if position_type == "long" else borrow_bank,
+                    borrow_bank if position_type == "long" else asset_bank,
+                    position_type,
+                )
+                if leverage > effective_max:
+                    row[f"{leverage}x"] = None
+                    continue
                 try:
                     hourly_rate = calculate_hourly_fee_rates(
                         lend_rates, borrow_rates,
@@ -221,6 +253,11 @@ def display_spot_arbitrage_section(
             value=False,
             help="Show detailed calculation breakdowns below each table"
         )
+        show_missing_data = st.checkbox(
+            "🔎 Show missing data diagnostics",
+            value=False,
+            help="Display which protocol/market rows were skipped due to missing lending/borrowing rates",
+        )
 
     # Display settings info
     if show_breakdowns:
@@ -237,10 +274,12 @@ def display_spot_arbitrage_section(
 
         # Long positions
         st.write("**Long Positions** (Lend Asset, Borrow USDC)")
+        long_logs: List[str] = []
         long_df = create_spot_arbitrage_table(
             token_config, rates_data, staking_data,
             assets, borrow_asset=SPOT_BORROW_ASSET,
-            leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="long"
+            leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="long",
+            logger=(long_logs.append if show_missing_data else None),
         )
         if not long_df.empty:
             # Format leverage columns with % symbols
@@ -255,13 +294,19 @@ def display_spot_arbitrage_section(
                 )
         else:
             st.info(f"No valid protocol/market pairs found for {group_name} long positions.")
+        if show_missing_data and long_logs:
+            with st.expander(f"🔎 Missing data for {group_name} (Long)"):
+                for line in long_logs:
+                    st.write("- ", line)
 
         # Short positions
         st.write("**Short Positions** (Lend USDC, Borrow Asset)")
+        short_logs: List[str] = []
         short_df = create_spot_arbitrage_table(
             token_config, rates_data, staking_data,
             assets, borrow_asset=SPOT_BORROW_ASSET,
-            leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="short"
+            leverage_levels=SPOT_LEVERAGE_LEVELS, position_type="short",
+            logger=(short_logs.append if show_missing_data else None),
         )
         if not short_df.empty:
             # Format leverage columns with % symbols
@@ -276,6 +321,10 @@ def display_spot_arbitrage_section(
                 )
         else:
             st.info(f"No valid protocol/market pairs found for {group_name} short positions.")
+        if show_missing_data and short_logs:
+            with st.expander(f"🔎 Missing data for {group_name} (Short)"):
+                for line in short_logs:
+                    st.write("- ", line)
 
         st.divider()
 

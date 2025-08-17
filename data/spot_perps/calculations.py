@@ -1,12 +1,38 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 
 from data.money_markets_processing import get_staking_rate_by_mint, get_rates_by_bank_address
 from config.constants import DEFAULT_TARGET_HOURS
 from .helpers import (
     get_protocol_market_pairs,
     get_matching_usdc_bank,
-    compute_scaled_spot_rate_from_rates,
+    compute_effective_max_leverage,
 )
+
+
+def compute_scaled_spot_rate_from_rates(
+    lend_rates: Dict,
+    borrow_rates: Dict,
+    lend_staking_rate_decimal: float,
+    borrow_staking_rate_decimal: float,
+    leverage: float,
+    target_hours: int,
+) -> float:
+    # Re-implement here to avoid circular import with data.spot_arbitrage
+    # lend_rates/borrow_rates contain APY percentages (e.g., 5.0 means 5%)
+    lend_rate = (lend_rates or {}).get("lendingRate", 0.0) or 0.0
+    borrow_rate = (borrow_rates or {}).get("borrowingRate", 0.0) or 0.0
+    # Convert staking rates from decimal to percentage
+    lend_staking_pct = (lend_staking_rate_decimal or 0.0) * 100.0
+    borrow_staking_pct = (borrow_staking_rate_decimal or 0.0) * 100.0
+    # Net rates
+    net_lend = lend_rate + lend_staking_pct
+    net_borrow = borrow_rate + borrow_staking_pct
+    # Fee rate APY (%)
+    fee_rate_pct = net_borrow * (leverage - 1.0) - net_lend * leverage
+    # Hourly percentage rate
+    hourly_rate_pct = fee_rate_pct / (365.0 * 24.0)
+    # Scale to target hours (still percentage)
+    return hourly_rate_pct * target_hours
 
 
 def calculate_spot_rate_with_direction(
@@ -17,6 +43,7 @@ def calculate_spot_rate_with_direction(
     leverage: float = 2.0,
     direction: str = "long",  # "long" or "short"
     target_hours: int = DEFAULT_TARGET_HOURS,
+    logger: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, float]:
     spot_rates: Dict[str, float] = {}
 
@@ -41,11 +68,41 @@ def calculate_spot_rate_with_direction(
             borrow_staking_rate = asset_staking_rate
 
         if not lend_rates or not borrow_rates:
+            if logger is not None:
+                missing_parts = []
+                if not lend_rates:
+                    missing_parts.append("lending")
+                if not borrow_rates:
+                    missing_parts.append("borrowing")
+                missing_str = "/".join(missing_parts)
+                logger(
+                    f"Skipping {asset} {direction.upper()} at {protocol} ({market}): missing {missing_str} data."
+                )
             continue
 
         lend_rate = lend_rates.get("lendingRate")
         borrow_rate = borrow_rates.get("borrowingRate")
         if lend_rate is None or borrow_rate is None:
+            if logger is not None:
+                missing_parts = []
+                if lend_rate is None:
+                    missing_parts.append("lending")
+                if borrow_rate is None:
+                    missing_parts.append("borrowing")
+                missing_str = "/".join(missing_parts)
+                logger(
+                    f"Skipping {asset} {direction.upper()} at {protocol} ({market}): {missing_str} rate not available."
+                )
+            continue
+
+        # Enforce per-bank max leverage caps (default to 1.0 if missing)
+        effective_max = compute_effective_max_leverage(
+            token_config,
+            asset_bank if direction == "long" else usdc_bank,
+            usdc_bank if direction == "long" else asset_bank,
+            direction,
+        )
+        if leverage > effective_max:
             continue
 
         try:

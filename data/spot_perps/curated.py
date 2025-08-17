@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 
 import pandas as pd
 
@@ -69,6 +69,7 @@ def find_best_spot_rate_across_leverages(
     direction: str,
     target_hours: int,
     max_leverage: int = 5,
+    logger: Optional[Callable[[str], None]] = None,
 ) -> Optional[dict]:
     from .calculations import calculate_spot_rate_with_direction
     from config.constants import SPOT_LEVERAGE_LEVELS
@@ -79,7 +80,8 @@ def find_best_spot_rate_across_leverages(
         for variant in asset_variants:
             spot_rates = calculate_spot_rate_with_direction(
                 token_config, rates_data, staking_data,
-                variant, leverage, direction, target_hours
+                variant, leverage, direction, target_hours,
+                logger=logger,
             )
             for protocol, rate in spot_rates.items():
                 if rate is not None and rate < best_rate:
@@ -102,6 +104,7 @@ def create_curated_arbitrage_table(
     drift_data: dict,
     target_hours: int = DEFAULT_TARGET_HOURS,
     max_leverage: int = 5,
+    logger: Optional[Callable[[str], None]] = None,
 ) -> pd.DataFrame:
     rows: List[Dict] = []
     row_group_id = 0
@@ -128,6 +131,7 @@ def create_curated_arbitrage_table(
             best_spot_info = find_best_spot_rate_across_leverages(
                 token_config, rates_data, staking_data,
                 asset_variants, direction.lower(), target_hours, max_leverage,
+                logger=logger,
             )
             if best_spot_info is None:
                 continue
@@ -216,6 +220,14 @@ def display_curated_arbitrage_section(
 
     st.caption(f"Best rates across all variants, protocols, and leverage levels (1x-{max_leverage}x)")
 
+    # Sidebar: missing data diagnostics option
+    show_missing = st.sidebar.checkbox(
+        "🔎 Show missing data diagnostics",
+        value=False,
+        help="Display which rows were skipped due to missing lending/borrowing or rate fields",
+    )
+    logs: List[str] = []
+
     curated_df = create_curated_arbitrage_table(
         token_config,
         rates_data,
@@ -224,6 +236,7 @@ def display_curated_arbitrage_section(
         drift_data,
         target_hours,
         max_leverage,
+        logger=(logs.append if show_missing else None),
     )
 
     if curated_df.empty:
@@ -252,6 +265,11 @@ def display_curated_arbitrage_section(
         hide_index=True,
         column_config=column_config,
     )
+
+    if show_missing and logs:
+        with st.expander("🔎 Missing data (Curated)"):
+            for line in logs:
+                st.write("- ", line)
 
     with st.expander("ℹ️ How to read this table"):
         st.markdown(

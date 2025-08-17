@@ -192,9 +192,11 @@ def display_all_possible_arbitrage_opportunities(
     if show_spot_vs_perps:
         for variant in asset_variants:
             for direction in ["Long", "Short"]:
+                logs: List[str] = []
                 spot_rates = calculate_spot_rate_with_direction(
                     token_config, rates_data, staking_data,
                     variant, leverage, direction.lower(), target_hours,
+                    logger=(logs.append if settings.get("show_missing_data") else None),
                 )
                 for protocol_market, spot_rate in spot_rates.items():
                     for exchange, funding_rate in perps_rates.items():
@@ -416,9 +418,11 @@ def display_table_arbitrage_calculation_breakdown(
             st.write(f"**🎯 Step 2: {direction.upper()} Direction Calculation**")
             variant_rates = {}
             for variant in asset_variants:
+                logs: List[str] = []
                 spot_rates = calculate_spot_rate_with_direction(
                     token_config, rates_data, staking_data,
                     variant, leverage, direction.lower(), target_hours,
+                    logger=(logs.append if settings.get("show_missing_data") else None),
                 )
                 variant_rates[variant] = spot_rates
                 st.write(f"  **{variant} Spot Rates:**")

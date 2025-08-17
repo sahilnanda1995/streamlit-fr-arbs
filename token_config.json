@@ -12,7 +12,8 @@
       {
         "protocol": "kamino",
         "market": "Main Market",
-        "bank": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp"
+        "bank": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp",
+        "maxLeverage": { "long": 2, "short": 2.5 }
       }
     ]
   },
@@ -29,7 +30,8 @@
       {
         "protocol": "kamino",
         "market": "Main Market",
-        "bank": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q"
+        "bank": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+        "maxLeverage": { "long": 3.5, "short": 2.5 }
       },
       {
         "protocol": "kamino",
@@ -39,7 +41,8 @@
       {
         "protocol": "drift",
         "market": "Main Market",
-        "bank": "1"
+        "bank": "1",
+        "maxLeverage": { "long": 5, "short": 6 }
       },
       {
         "protocol": "solend",
@@ -61,12 +64,19 @@
       {
         "protocol": "kamino",
         "market": "Main Market",
-        "bank": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW"
+        "bank": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+        "maxLeverage": { "long": 2, "short": 2.5 }
       },
       {
         "protocol": "kamino",
         "market": "Jito 10x Market",
         "bank": "F9HdecRG8GPs9LEn4S5VfeJVEZVqrDJFR6bvmQTi22na"
+      },
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "6",
+        "maxLeverage": { "long": 5, "short": 6 }
       }
     ]
   },
@@ -131,12 +141,14 @@
       {
         "protocol": "kamino",
         "market": "Isolated JLP Market",
-        "bank": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP"
+        "bank": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP",
+        "maxLeverage": { "long": 6, "short": 1 }
       },
       {
         "protocol": "drift",
         "market": "Isolated JLP Market",
-        "bank": "33"
+        "bank": "33",
+        "maxLeverage": { "long": 10, "short": 10 }
       }
     ]
   },
@@ -216,12 +228,14 @@
       {
         "protocol": "kamino",
         "market": "Main Market",
-        "bank": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK"
+        "bank": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK",
+        "maxLeverage": { "long": 6, "short": 3 }
       },
       {
         "protocol": "drift",
         "market": "Main Market",
-        "bank": "27"
+        "bank": "27",
+        "maxLeverage": { "long": 5, "short": 6 }
       }
     ]
   },
@@ -233,7 +247,8 @@
       {
         "protocol": "kamino",
         "market": "Main Market",
-        "bank": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb"
+        "bank": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb",
+        "maxLeverage": { "long": 4.5, "short": 3 }
       }
     ]
   },
@@ -293,7 +308,60 @@
       {
         "protocol": "drift",
         "market": "Main Market",
-        "bank": "4"
+        "bank": "4",
+        "maxLeverage": { "long": 5, "short": 6 }
+      }
+    ]
+  },
+  "ALP": {
+    "symbol": "ALP",
+    "mint": "4yCLi5yWGzpTWMQ1iWHG5CrGYAdBkhyEdsuSugjDUqwj",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "kamino",
+        "market": "Main Market",
+        "bank": "D1ZdZSNfn6nfzEyK6uvFCcRi8SzihnPdYHLtnjBjwxGn",
+        "maxLeverage": { "long": 2.5, "short": 1 }
+      }
+    ]
+  },
+  "CLOUD": {
+    "symbol": "CLOUD",
+    "mint": "CLoUDKc4Ane7HeQcPpE3YHnznRxhMimJ4MyaUqyHFzAu",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "21",
+        "maxLeverage": { "long": 1, "short": 2 }
+      }
+    ]
+  },
+  "JTO": {
+    "symbol": "JTO",
+    "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+    "hasStakingYield": false,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "9",
+        "maxLeverage": { "long": 2, "short": 3 }
+      }
+    ]
+  },
+  "INF": {
+    "symbol": "INF",
+    "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+    "hasStakingYield": true,
+    "banks": [
+      {
+        "protocol": "drift",
+        "market": "Main Market",
+        "bank": "16",
+        "maxLeverage": { "long": 5, "short": 6 }
       }
     ]
   }

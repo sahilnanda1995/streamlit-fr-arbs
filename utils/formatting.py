@@ -306,6 +306,12 @@ def create_sidebar_settings(
             help="Show detailed breakdown of how table arbitrage values are calculated"
         )
 
+        show_missing_data = st.checkbox(
+            "🔎 Show missing data diagnostics",
+            value=False,
+            help="Display which rows were skipped due to missing lending/borrowing or rate fields",
+        )
+
         # Filter options
         st.subheader("🔍 Filter Options")
         show_profitable_only = st.checkbox(
@@ -336,10 +342,12 @@ def create_sidebar_settings(
         )
         target_hours = INTERVAL_OPTIONS[selected_interval]
 
-        selected_leverage = st.selectbox(
+        selected_leverage = st.slider(
             "Select spot leverage:",
-            SPOT_LEVERAGE_LEVELS,
-            index=1,  # Default to 2x leverage
+            min_value=1.0,
+            max_value=5.0,
+            value=2.0,
+            step=0.5,
             help="Amplifies spot trading positions"
         )
 
@@ -354,6 +362,7 @@ def create_sidebar_settings(
             "show_spot_vs_perps": show_spot_vs_perps,
             "show_perps_vs_perps": show_perps_vs_perps,
             "show_table_breakdown": show_table_breakdown,
+            "show_missing_data": show_missing_data,
             "target_hours": target_hours,
             "selected_leverage": selected_leverage,
             "selected_interval": selected_interval

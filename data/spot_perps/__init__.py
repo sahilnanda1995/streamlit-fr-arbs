@@ -6,7 +6,6 @@ Exports a stable public API to be imported by UI and other modules.
 from .helpers import (
     get_protocol_market_pairs,
     get_matching_usdc_bank,
-    compute_scaled_spot_rate_from_rates,
     compute_net_arb,
     compute_apy_from_net_arb,
 )
@@ -16,6 +15,7 @@ from .calculations import (
     get_perps_rates_for_asset,
     calculate_spot_vs_perps_arb,
     calculate_perps_vs_perps_arb,
+    compute_scaled_spot_rate_from_rates,
 )
 
 from .curated import (
@@ -43,7 +43,6 @@ __all__ = [
     # helpers
     "get_protocol_market_pairs",
     "get_matching_usdc_bank",
-    "compute_scaled_spot_rate_from_rates",
     "compute_net_arb",
     "compute_apy_from_net_arb",
     # calculations

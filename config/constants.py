@@ -22,7 +22,6 @@ DRIFT_API_URL = "https://mainnet-beta.api.drift.trade/markets24h"
 
 # Loris consolidated funding API (replaces Hyperliquid endpoint for funding data)
 LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
-HYPERLIQUID_HISTORICAL_FUNDING_URL = "https://api.hyperliquid.xyz/info"
 
 # Asgard API Configuration
 ASGARD_CURRENT_RATES_URL = "https://historical-apy.asgard.finance/current-rates"
@@ -44,19 +43,24 @@ HYPERLIQUID_REQUEST_BODY = {
     "type": "predictedFundings"
 }
 
-# Exchange name mappings
-# Supports both legacy Hyperliquid keys and Loris consolidated keys
-EXCHANGE_NAME_MAPPING = {
+# Exchanges: single source of truth mapping internal keys to display names
+EXCHANGES = {
     "hyperliquid_1_perp": "Hyperliquid",
     "binance_1_perp": "Binance",
     "bybit_1_perp": "Bybit",
+    "lighter_1_perp": "Lighter",
     "DriftPerp": "Drift",
-    "lighter_1_perp": "Lighter"
 }
 
-# Column names for DataFrame display
-# Include Lighter for Loris data
-DISPLAY_COLUMNS = ["Hyperliquid", "Binance", "Bybit", "Lighter", "Drift"]
+# Derived views
+EXCHANGE_NAME_MAPPING = EXCHANGES
+DISPLAY_COLUMNS = [EXCHANGES[k] for k in [
+    "hyperliquid_1_perp",
+    "binance_1_perp",
+    "bybit_1_perp",
+    "lighter_1_perp",
+    "DriftPerp",
+]]
 
 # Money Markets columns
 MONEY_MARKETS_COLUMNS = ["Token", "Protocol", "Market Key", "Lending Rate", "Borrow Rate", "Staking Rate"]
@@ -68,10 +72,7 @@ PERP_SYMBOL_SUFFIX = "-PERP"
 # Loris funding data constants
 BPS_TO_DECIMAL = 10000
 LORIS_ALLOWED_EXCHANGES = [
-    "hyperliquid_1_perp",
-    "binance_1_perp",
-    "bybit_1_perp",
-    "lighter_1_perp"
+    key for key in EXCHANGES.keys() if key != "DriftPerp"
 ]
 
 # UI Configuration
@@ -79,25 +80,31 @@ APP_TITLE = "📈 SPOT and Perps Arbitrage"
 APP_DESCRIPTION = "Checkout the arbitrage opportunities between Spot and Perps."
 PAGE_TITLE = "SPOT and Perps Arbitrage"
 
-# Spot Arbitrage Configuration
+# Asset variants (single source)
+ASSET_VARIANTS = {
+    "SOL": ["SOL", "JITOSOL", "JUPSOL", "INF"],
+    "BTC": ["CBBTC", "WBTC", "XBTC"],
+}
+
+# Spot Arbitrage Configuration (derived)
 SPOT_ASSET_GROUPS = {
-    "SOL_VARIANTS": ["SOL", "JITOSOL", "JUPSOL"],
-    "BTC_VARIANTS": ["CBBTC", "WBTC", "XBTC"]
+    "SOL_VARIANTS": ASSET_VARIANTS["SOL"],
+    "BTC_VARIANTS": ASSET_VARIANTS["BTC"],
 }
 SPOT_BORROW_ASSET = "USDC"
-SPOT_LEVERAGE_LEVELS = [1, 2, 3, 4, 5]
+SPOT_LEVERAGE_LEVELS = [round(x * 0.5, 1) for x in range(2, 11)]  # [1.0, 1.5, ..., 5.0]
 
 # Spot and Perps Arbitrage Configuration
 SPOT_PERPS_CONFIG = {
-    "BTC_ASSETS": ["CBBTC", "WBTC", "XBTC"],
-    "SOL_ASSETS": ["SOL", "JITOSOL", "JUPSOL"],
-    "PERPS_EXCHANGES": ["Hyperliquid", "Binance", "Bybit", "Lighter", "Drift"],
+    "BTC_ASSETS": ASSET_VARIANTS["BTC"],
+    "SOL_ASSETS": ASSET_VARIANTS["SOL"],
+    "PERPS_EXCHANGES": DISPLAY_COLUMNS,
     "DEFAULT_SPOT_LEVERAGE": 2,
     "SPOT_DIRECTIONS": ["Long", "Short"],
     "PERPS_ASSET_MAPPING": {
-        "BTC": "BTC",  # Use "BTC" to find funding rates for BTC assets
-        "SOL": "SOL"   # Use "SOL" to find funding rates for SOL assets
-    }
+        "BTC": "BTC",
+        "SOL": "SOL",
+    },
 }
 
 # Drift market index mapping (per Drift conventions)
