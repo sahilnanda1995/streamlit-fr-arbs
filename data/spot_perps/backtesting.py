@@ -18,7 +18,7 @@ from config.constants import (
 )
 from utils.formatting import scale_funding_rate_to_percentage
 from .helpers import get_matching_usdc_bank, get_protocol_market_pairs
-from .spot_history import build_spot_history_series
+from .spot_history import build_spot_history_series, build_arb_history_series
 from .curated import find_best_spot_rate_across_leverages
 from config.constants import SPOT_PERPS_CONFIG
 
@@ -129,31 +129,13 @@ def display_backtesting_section(
 
     # Controls
 
-    # Hyperliquid
-    hl_coin = st.selectbox(
-        "Select token (Hyperliquid)", options=BACKTEST_COINS, index=0, key="hl_backtesting_coin"
-    )
-    with st.spinner("Loading Hyperliquid funding history..."):
-        hl_history = _fetch_last_month_with_gap_check(hl_coin)
-    _render_backtest_chart("Hyperliquid", hl_history)
-
-    st.divider()
-
-    # Drift
-    drift_coin = st.selectbox(
-        "Select token (Drift)", options=BACKTEST_COINS, index=0, key="drift_backtesting_coin"
-    )
-    market_index = DRIFT_MARKET_INDEX.get(drift_coin, DRIFT_MARKET_INDEX.get("BTC", 1))
-    start_time, end_time = _get_last_month_window_seconds()
-    with st.spinner("Loading Drift funding history..."):
-        drift_history = fetch_drift_funding_history(market_index, start_time, end_time)
-    _render_backtest_chart("Drift", drift_history)
-
-    st.divider()
+    # Historical perps charts moved to Funding Rates page
+    st.caption("Perps historical charts are available on the Funding Rates page.")
 
     # Spot Rate History (derived from best Asgard Spot vs Perps config)
     st.subheader("📈 Spot Rate History (Hourly)")
     sh_limit = st.selectbox("Points (hours)", [168, 336, 720], index=2, key="spot_hist_limit")
+    perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0, key="spot_hist_perps")
 
     # Build strategy choices from best configs per asset/direction
     strategy_options: List[Dict[str, Any]] = []
@@ -202,14 +184,22 @@ def display_backtesting_section(
 
     st.caption(f"Using: {variant} • {proto} ({market}) • {direction} • {lev}x")
 
-    with st.spinner("Loading spot rate history..."):
-        spot_df = build_spot_history_series(
-            token_config, variant, proto, market, dir_lower, lev, int(sh_limit)
+    with st.spinner("Loading historical series..."):
+        series_df = build_arb_history_series(
+            token_config, variant, proto, market, dir_lower, lev, perps_exchange, int(sh_limit)
         )
-    if spot_df.empty:
-        st.info("No historical spot rate data available for the selection.")
+    if series_df.empty:
+        st.info("No historical data available for the selection.")
     else:
-        st.line_chart(spot_df.set_index("time")["spot_rate_pct"].round(3), height=260)
-        st.caption("Spot Rate shown as APY (%) per hour")
+        import plotly.graph_objects as go
+        df_plot = series_df.copy()
+        df_plot["time"] = pd.to_datetime(df_plot["time"])  # ensure dtype
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct"], name="Spot %", mode="lines"))
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct"], name="Perps %", mode="lines"))
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct"], name="Net Arb %", mode="lines"))
+        fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("Series: Spot Rate (APY%), Perps Funding (APY%), Net Arb (APY%) per 4 hours")
 
 
