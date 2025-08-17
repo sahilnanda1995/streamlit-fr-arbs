@@ -26,6 +26,8 @@ LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
 # Asgard API Configuration
 ASGARD_CURRENT_RATES_URL = "https://historical-apy.asgard.finance/current-rates"
 ASGARD_STAKING_RATES_URL = "https://historical-apy.asgard.finance/current-staking-rates"
+ASGARD_HISTORICAL_RATES_URL="https://historical-apy.asgard.finance/rates/hourly-data"
+ASGARD_HISTORICAL_STAKING_RATES_URL="https://historical-apy.asgard.finance/staking/hourly-data"
 
 # HTTP Headers for Hyperliquid API
 HYPERLIQUID_HEADERS = {

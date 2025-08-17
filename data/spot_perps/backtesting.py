@@ -17,6 +17,10 @@ from config.constants import (
     BACKTEST_CAPTION,
 )
 from utils.formatting import scale_funding_rate_to_percentage
+from .helpers import get_matching_usdc_bank, get_protocol_market_pairs
+from .spot_history import build_spot_history_series
+from .curated import find_best_spot_rate_across_leverages
+from config.constants import SPOT_PERPS_CONFIG
 
 
 def _now_ms() -> int:
@@ -144,5 +148,68 @@ def display_backtesting_section(
     with st.spinner("Loading Drift funding history..."):
         drift_history = fetch_drift_funding_history(market_index, start_time, end_time)
     _render_backtest_chart("Drift", drift_history)
+
+    st.divider()
+
+    # Spot Rate History (derived from best Asgard Spot vs Perps config)
+    st.subheader("📈 Spot Rate History (Hourly)")
+    sh_limit = st.selectbox("Points (hours)", [168, 336, 720], index=2, key="spot_hist_limit")
+
+    # Build strategy choices from best configs per asset/direction
+    strategy_options: List[Dict[str, Any]] = []
+    for asset_type in ["SOL", "BTC"]:
+        for dir_lower in ["long", "short"]:
+            variants = SPOT_PERPS_CONFIG["SOL_ASSETS"] if asset_type == "SOL" else SPOT_PERPS_CONFIG["BTC_ASSETS"]
+            best = find_best_spot_rate_across_leverages(
+                token_config, rates_data, staking_data,
+                variants, dir_lower, DEFAULT_TARGET_HOURS, max_leverage=5,
+                logger=None,
+            )
+            if not best:
+                continue
+            label = f"{best['variant']}/USDC at {float(best['leverage']):.1f}x"
+            strategy_options.append({
+                "label": label,
+                "asset_type": asset_type,
+                "direction": dir_lower,
+                "best": best,
+            })
+
+    if not strategy_options:
+        st.info("No valid strategies available to backtest.")
+        return
+
+    selected_idx = st.selectbox(
+        "Strategy to backtest",
+        options=list(range(len(strategy_options))),
+        format_func=lambda i: strategy_options[i]["label"],
+        key="spot_hist_strategy",
+    )
+
+    choice = strategy_options[selected_idx]
+    best = choice["best"]
+    direction = choice["direction"].title()
+    dir_lower = choice["direction"]
+    proto_market = best.get("protocol", "")
+    if "(" in proto_market and ")" in proto_market:
+        proto = proto_market.split("(")[0]
+        market = proto_market.split("(")[1].split(")")[0]
+    else:
+        proto = proto_market
+        market = ""
+    variant = best.get("variant")
+    lev = float(best.get("leverage", 2))
+
+    st.caption(f"Using: {variant} • {proto} ({market}) • {direction} • {lev}x")
+
+    with st.spinner("Loading spot rate history..."):
+        spot_df = build_spot_history_series(
+            token_config, variant, proto, market, dir_lower, lev, int(sh_limit)
+        )
+    if spot_df.empty:
+        st.info("No historical spot rate data available for the selection.")
+    else:
+        st.line_chart(spot_df.set_index("time")["spot_rate_pct"].round(3), height=260)
+        st.caption("Spot Rate shown as APY (%) per hour")
 
 

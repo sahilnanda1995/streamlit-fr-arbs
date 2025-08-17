@@ -1,10 +1,53 @@
-"""
-Functional API endpoints for fetching data from external services.
-"""
-
 import requests
 import streamlit as st
 from typing import List, Dict, Any
+
+# Create a persistent session for connection reuse
+session = requests.Session()
+
+@st.cache_data(ttl=300)
+def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> List[Dict[str, Any]]:
+    try:
+        url = f"https://historical-apy.asgard.finance/rates/hourly-data/{bank_address}/{protocol.lower()}"
+        response = session.get(url, params={"limit": limit}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):
+            return []
+        records = data.get("data", {}).get("records", [])
+        if isinstance(records, list):
+            return records
+        return []
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching hourly rates: {str(e)}")
+        return []
+    except ValueError:
+        st.error("Error parsing hourly rates response")
+        return []
+
+
+@st.cache_data(ttl=300)
+def fetch_hourly_staking(mint_address: str, limit: int = 720) -> List[Dict[str, Any]]:
+    try:
+        url = f"https://historical-apy.asgard.finance/staking/hourly-data/{mint_address}"
+        response = session.get(url, params={"limit": limit}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):
+            return []
+        records = data.get("data", {}).get("records", [])
+        if isinstance(records, list):
+            return records
+        return []
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching hourly staking: {str(e)}")
+        return []
+    except ValueError:
+        st.error("Error parsing hourly staking response")
+        return []
+"""
+Functional API endpoints for fetching data from external services.
+"""
 from config.constants import (
     HYPERLIQUID_API_URL,
     HYPERLIQUID_CORE_API_URL,
@@ -17,8 +60,6 @@ from config.constants import (
     LORIS_FUNDING_API_URL
 )
 
-# Create a persistent session for connection reuse
-session = requests.Session()
 @st.cache_data(ttl=300)
 def fetch_hyperliquid_funding_history(coin: str = "BTC", start_time_ms: int = 0) -> List[Dict[str, Any]]:
     """
