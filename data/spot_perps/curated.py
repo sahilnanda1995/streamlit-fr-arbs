@@ -124,9 +124,6 @@ def create_curated_arbitrage_table(
         ):
             continue
 
-        hyperliquid_rate = perps_rates.get("Hyperliquid")
-        drift_rate = perps_rates.get("Drift")
-
         for direction in ["Long", "Short"]:
             best_spot_info = find_best_spot_rate_across_leverages(
                 token_config, rates_data, staking_data,
