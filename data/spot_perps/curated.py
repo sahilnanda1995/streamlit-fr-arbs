@@ -9,6 +9,58 @@ from .calculations import (
 from .helpers import compute_net_arb
 
 
+EXCHANGES: List[str] = ["Hyperliquid", "Lighter", "Drift"]
+
+
+def _compute_exchange_fields(
+    exchange_name: str,
+    funding_rate: Optional[float],
+    spot_rate: float,
+    direction: str,
+    asset_name: str,
+    variant: str,
+) -> Dict[str, Optional[float]]:
+    """
+    Compute display fields for a single exchange given spot and funding rates.
+
+    Returns a dict with keys:
+      - funding_text (str)
+      - arb_value (float | None)
+      - calc_text (str)
+      - desc_text (str)
+    """
+    if funding_rate is None:
+        return {
+            "funding_text": "N/A",
+            "arb_value": None,
+            "calc_text": "N/A",
+            "desc_text": "",
+        }
+
+    arb_value = compute_net_arb(spot_rate, funding_rate, direction)
+    if direction == "Long":
+        calc_text = f"({-spot_rate:.1f}%) + ({funding_rate:.1f}%) = {-arb_value:.1f}%"
+        desc_text = (
+            f"Long {variant} on Asgard {-spot_rate:.1f}% • Short {asset_name} on {exchange_name} {funding_rate:.1f}%"
+        )
+    else:
+        calc_text = f"({-spot_rate:.1f}%) + ({-funding_rate:.1f}%) = {-arb_value:.1f}%"
+        desc_text = (
+            f"Short {variant} on Asgard {-spot_rate:.1f}% • Long {asset_name} on {exchange_name} {-funding_rate:.1f}%"
+        )
+
+    # If not profitable (arb_value >= 0), update description accordingly
+    if arb_value is None or arb_value >= 0:
+        desc_text = "No Arb Available(Not Profitable)"
+
+    return {
+        "funding_text": f"{funding_rate:.1f}%",
+        "arb_value": arb_value,
+        "calc_text": calc_text,
+        "desc_text": desc_text,
+    }
+
+
 def find_best_spot_rate_across_leverages(
     token_config: dict,
     rates_data: dict,
@@ -50,7 +102,6 @@ def create_curated_arbitrage_table(
     drift_data: dict,
     target_hours: int = DEFAULT_TARGET_HOURS,
     max_leverage: int = 5,
-    perps_exchange: str = "Hyperliquid",
 ) -> pd.DataFrame:
     rows: List[Dict] = []
     row_group_id = 0
@@ -63,8 +114,14 @@ def create_curated_arbitrage_table(
     }
 
     for asset_name, (asset_variants, asset_type) in asset_configs.items():
-        perps_rates = get_perps_rates_for_asset(hyperliquid_data, drift_data, asset_type, target_hours)
-        if "Hyperliquid" not in perps_rates and "Drift" not in perps_rates:
+        perps_rates = get_perps_rates_for_asset(
+            hyperliquid_data, drift_data, asset_type, target_hours
+        )
+        if (
+            "Hyperliquid" not in perps_rates
+            and "Drift" not in perps_rates
+            and "Lighter" not in perps_rates
+        ):
             continue
 
         hyperliquid_rate = perps_rates.get("Hyperliquid")
@@ -81,29 +138,13 @@ def create_curated_arbitrage_table(
             spot_rate = best_spot_info['rate']
             variant = best_spot_info['variant']
 
-            hyperliquid_arb = None
-            hyperliquid_calc = "N/A"
-            hyperliquid_desc = ""
-            if hyperliquid_rate is not None:
-                hyperliquid_arb = compute_net_arb(spot_rate, hyperliquid_rate, direction)
-                if direction == "Long":
-                    hyperliquid_calc = f"({-spot_rate:.1f}%) + ({hyperliquid_rate:.1f}%) = {-hyperliquid_arb:.1f}%"
-                    hyperliquid_desc = f"Long {variant} on Asgard {-spot_rate:.1f}% • Short {asset_name} on Hyperliquid {hyperliquid_rate:.1f}%"
-                else:
-                    hyperliquid_calc = f"({-spot_rate:.1f}%) + ({-hyperliquid_rate:.1f}%) = {-hyperliquid_arb:.1f}%"
-                    hyperliquid_desc = f"Short {variant} on Asgard {-spot_rate:.1f}% • Long {asset_name} on Hyperliquid {-hyperliquid_rate:.1f}%"
-
-            drift_arb = None
-            drift_calc = "N/A"
-            drift_desc = ""
-            if drift_rate is not None:
-                drift_arb = compute_net_arb(spot_rate, drift_rate, direction)
-                if direction == "Long":
-                    drift_calc = f"({-spot_rate:.1f}%) + ({drift_rate:.1f}%) = {-drift_arb:.1f}%"
-                    drift_desc = f"Long {variant} on Asgard {-spot_rate:.1f}% • Short {asset_name} on Drift {drift_rate:.1f}%"
-                else:
-                    drift_calc = f"({-spot_rate:.1f}%) + ({-drift_rate:.1f}%) = {-drift_arb:.1f}%"
-                    drift_desc = f"Short {variant} on Asgard {-spot_rate:.1f}% • Long {asset_name} on Drift {-drift_rate:.1f}%"
+            # Dynamic per-exchange computations
+            exchange_fields: Dict[str, Dict[str, Optional[float]]] = {}
+            for exchange_name in EXCHANGES:
+                rate_value = perps_rates.get(exchange_name)
+                exchange_fields[exchange_name] = _compute_exchange_fields(
+                    exchange_name, rate_value, spot_rate, direction, asset_name, variant
+                )
 
             spot_display = f"{best_spot_info['rate']:.1f}%(via {best_spot_info['variant']}/{best_spot_info['pair_asset']}) {best_spot_info['leverage']}x"
 
@@ -111,30 +152,28 @@ def create_curated_arbitrage_table(
                 "Coin": asset_name,
                 "Direction": f"Best {direction.lower()}",
                 "Asgard Spot Margin Borrow Rate": spot_display,
-                "Hyperliquid Funding Rate": f"{hyperliquid_rate:.1f}%" if hyperliquid_rate is not None else "N/A",
-                "Asgard - Hyperliquid Arb": hyperliquid_calc,
-                "Drift Funding Rate": f"{drift_rate:.1f}%" if drift_rate is not None else "N/A",
-                "Asgard - Drift Arb": drift_calc,
-                "Hyperliquid_Arb_Rate": hyperliquid_arb,
-                "Drift_Arb_Rate": drift_arb,
                 "Row_Group_ID": row_group_id,
                 "Row_Type": "main",
             }
+            for ex in EXCHANGES:
+                fields = exchange_fields.get(ex, {})
+                row[f"{ex} Funding Rate"] = fields.get("funding_text", "N/A")
+                row[f"Asgard - {ex} Arb"] = fields.get("calc_text", "N/A")
+                row[f"{ex}_Arb_Rate"] = fields.get("arb_value")
             rows.append(row)
 
             desc_row = {
                 "Coin": "",
                 "Direction": "",
                 "Asgard Spot Margin Borrow Rate": "",
-                "Hyperliquid Funding Rate": "",
-                "Asgard - Hyperliquid Arb": hyperliquid_desc,
-                "Drift Funding Rate": "",
-                "Asgard - Drift Arb": drift_desc,
-                "Hyperliquid_Arb_Rate": None,
-                "Drift_Arb_Rate": None,
                 "Row_Group_ID": row_group_id,
                 "Row_Type": "description",
             }
+            for ex in EXCHANGES:
+                fields = exchange_fields.get(ex, {})
+                desc_row[f"{ex} Funding Rate"] = ""
+                desc_row[f"Asgard - {ex} Arb"] = fields.get("desc_text", "")
+                desc_row[f"{ex}_Arb_Rate"] = None
             rows.append(desc_row)
             row_group_id += 1
 
@@ -149,7 +188,8 @@ def create_curated_arbitrage_table(
             if row['Coin'] == prev_coin:
                 df_display.at[i, 'Coin'] = ""
             prev_coin = row['Coin']
-    df_display = df_display.drop(['Hyperliquid_Arb_Rate', 'Drift_Arb_Rate', 'Row_Group_ID', 'Row_Type'], axis=1)
+    hidden_cols = [f"{ex}_Arb_Rate" for ex in EXCHANGES] + ["Row_Group_ID", "Row_Type"]
+    df_display = df_display.drop(hidden_cols, axis=1)
     return df_display
 
 
@@ -160,7 +200,6 @@ def display_curated_arbitrage_section(
     hyperliquid_data: dict,
     drift_data: dict,
     target_hours: int = DEFAULT_TARGET_HOURS,
-    perps_exchange: str = "Hyperliquid",
 ) -> None:
     import streamlit as st
 
@@ -187,27 +226,33 @@ def display_curated_arbitrage_section(
         drift_data,
         target_hours,
         max_leverage,
-        perps_exchange,
     )
 
     if curated_df.empty:
-        st.info(f"No arbitrage opportunities found between Asgard and {perps_exchange}")
+        st.info("No arbitrage opportunities found between Asgard and perps exchanges")
         st.markdown("<br>", unsafe_allow_html=True)
         return
+
+    column_config = {
+        "Coin": st.column_config.TextColumn("Coin", pinned=True, width=80),
+        "Direction": st.column_config.TextColumn("Direction", width=120),
+        "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
+            "Asgard Spot Margin Borrow Rate", width=300
+        ),
+    }
+    for ex in EXCHANGES:
+        column_config[f"{ex} Funding Rate"] = st.column_config.TextColumn(
+            f"{ex} Funding Rate", width=150
+        )
+        column_config[f"Asgard - {ex} Arb"] = st.column_config.TextColumn(
+            f"Asgard - {ex} Arb", width=400
+        )
 
     st.dataframe(
         curated_df,
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "Coin": st.column_config.TextColumn("Coin", pinned=True, width=80),
-            "Direction": st.column_config.TextColumn("Direction", width=120),
-            "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn("Asgard Spot Margin Borrow Rate", width=300),
-            "Hyperliquid Funding Rate": st.column_config.TextColumn("Hyperliquid Funding Rate", width=150),
-            "Asgard - Hyperliquid Arb": st.column_config.TextColumn("Asgard - Hyperliquid Arb", width=400),
-            "Drift Funding Rate": st.column_config.TextColumn("Drift Funding Rate", width=150),
-            "Asgard - Drift Arb": st.column_config.TextColumn("Asgard - Drift Arb", width=400),
-        },
+        column_config=column_config,
     )
 
     with st.expander("ℹ️ How to read this table"):
