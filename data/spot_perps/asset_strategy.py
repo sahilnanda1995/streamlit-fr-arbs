@@ -249,7 +249,6 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         st.metric(f"{asset_symbol} lent (USD) now", (f"${now_usd:,.2f}" if pd.notna(now_usd) else "N/A"))
 
     col6, col7 = st.columns(2)
-    total_interest_sum = float(earn_df["total_interest_usd"].sum())
     now_net_value = float(earn_df["net_value_usd"].dropna().iloc[-1]) if "net_value_usd" in earn_df.columns and not earn_df["net_value_usd"].dropna().empty else float("nan")
     if pd.notna(now_net_value):
         profit = now_net_value - float(base_usd)
