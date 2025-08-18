@@ -178,6 +178,11 @@
         "bank": "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59"
       },
       {
+        "protocol": "kamino",
+        "market": "Adrena Market",
+        "bank": "5bgPMvzZv29jkFEuMwxQRJQf64gKcPfLEEUHhyrP8tce"
+      },
+      {
         "protocol": "drift",
         "market": "Main Market",
         "bank": "0"
@@ -320,7 +325,7 @@
     "banks": [
       {
         "protocol": "kamino",
-        "market": "Main Market",
+        "market": "Adrena Market",
         "bank": "D1ZdZSNfn6nfzEyK6uvFCcRi8SzihnPdYHLtnjBjwxGn",
         "maxLeverage": { "long": 2.5, "short": 1 }
       }
