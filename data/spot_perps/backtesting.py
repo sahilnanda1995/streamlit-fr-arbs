@@ -222,13 +222,20 @@ def display_backtesting_section(
         df_calc["spot_capital_usd"] = float(spot_cap)
         df_calc["perps_capital_usd"] = float(perps_cap)
 
-        col_a, col_b, col_c = st.columns(3)
+        col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
             st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
         with col_b:
             st.metric("Funding interest (sum)", f"${df_calc['funding_interest_usd'].sum():,.2f}")
         with col_c:
             st.metric("Total interest (sum)", f"${df_calc['total_interest_usd'].sum():,.2f}")
+        with col_d:
+            total_hours = len(df_calc) * 4.0
+            deployed_notional = total_cap
+            implied_apy = 0.0
+            if deployed_notional > 0 and total_hours > 0:
+                implied_apy = (df_calc['total_interest_usd'].sum() / (deployed_notional * (total_hours / (365.0 * 24.0)))) * 100.0
+            st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
 
         st.markdown("**Breakdown**")
         tbl = df_calc[[
@@ -251,6 +258,28 @@ def display_backtesting_section(
             "funding_interest_usd": 2,
             "total_interest_usd": 2,
         })
-        st.dataframe(tbl, use_container_width=True, hide_index=True)
+        # Color earnings: green for earned, red for paid
+        def _style_series(s):
+            col = s.name
+            styles = []
+            for v in s:
+                if pd.isna(v):
+                    styles.append("")
+                else:
+                    if col == "spot_interest_usd":
+                        # spot: positive => earned
+                        styles.append("color: #16a34a" if v > 0 else ("color: #dc2626" if v < 0 else ""))
+                    else:
+                        # funding & total: positive => earned
+                        styles.append("color: #16a34a" if v > 0 else ("color: #dc2626" if v < 0 else ""))
+            return styles
+
+        styled_tbl = (
+            tbl.style
+            .apply(_style_series, subset=["spot_interest_usd"])
+            .apply(_style_series, subset=["funding_interest_usd"])
+            .apply(_style_series, subset=["total_interest_usd"])
+        )
+        st.dataframe(styled_tbl, use_container_width=True, hide_index=True)
 
 
