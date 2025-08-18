@@ -79,75 +79,150 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         st.info("No matching asset/USDC banks found for the selected protocol/market.")
         return
 
+    # Actions: require explicit Analyze; Refresh/Retry only shown on failures
+    col_x, _ = st.columns([1, 3])
+    analyze_clicked = col_x.button("Analyze", key=f"{asset_symbol}_analyze_btn")
+
+    analyzed_state_key = f"{asset_symbol}_analyzed"
+    if analyze_clicked:
+        st.session_state[analyzed_state_key] = True
+
+    if not st.session_state.get(analyzed_state_key, False):
+        st.info("Click Analyze to fetch data and render the strategy analysis.")
+        return
+
+    def _render_refresh_button():
+        btn = st.button("Refresh / Retry", key=f"{asset_symbol}_refresh_btn")
+        if btn:
+            try:
+                st.cache_data.clear()
+            except Exception:
+                pass
+            st.session_state[analyzed_state_key] = True
+            try:
+                st.rerun()
+            except Exception:
+                try:
+                    st.experimental_rerun()  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
+    # Initialize variables to satisfy static analysis on early-return paths
+    df: pd.DataFrame = pd.DataFrame()
+    earn_df: pd.DataFrame = pd.DataFrame()
+    asset_tokens: float = float("nan")
+    # Pre-compute notional amounts used in later blocks
+    asset_collateral_usd = float(base_usd) * float(leverage)
+    usdc_borrowed_usd = float(base_usd) * max(float(leverage) - 1.0, 0.0)
+
     # Build spot APY series (4H centered)
-    with st.spinner("Loading series..."):
-        df = build_spot_history_series(
-            token_config,
-            asset=asset_symbol,
-            protocol=protocol,
-            market=market_name or "",
-            direction="long",
-            leverage=leverage,
-            limit=int(points),
-        )
+    try:
+        with st.spinner("Loading series..."):
+            df = build_spot_history_series(
+                token_config,
+                asset=asset_symbol,
+                protocol=protocol,
+                market=market_name or "",
+                direction="long",
+                leverage=leverage,
+                limit=int(points),
+            )
+    except Exception:
+        st.error("Failed to load spot series.")
+        _render_refresh_button()
+        return
 
     if df.empty:
         st.info("No historical data available for the selection.")
         return
 
     # Fetch hourly lending/borrowing
-    with st.spinner("Computing earnings..."):
-        asset_hist: List[Dict[str, Any]] = fetch_hourly_rates(asset_bank, protocol, int(points)) or []
-        usdc_hist: List[Dict[str, Any]] = fetch_hourly_rates(usdc_bank, protocol, int(points)) or []
+    try:
+        with st.spinner("Computing earnings..."):
+            asset_hist: List[Dict[str, Any]] = fetch_hourly_rates(asset_bank, protocol, int(points)) or []
+            usdc_hist: List[Dict[str, Any]] = fetch_hourly_rates(usdc_bank, protocol, int(points)) or []
+    except Exception:
+        st.error("Failed to load hourly rates.")
+        _render_refresh_button()
+        return
 
-        def _to_hourly_df(records: List[Dict[str, Any]], prefix: str) -> pd.DataFrame:
-            if not records:
-                return pd.DataFrame(columns=["time", f"{prefix}_lend_pct", f"{prefix}_borrow_pct"])
-            d = pd.DataFrame(records)
-            d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-            d[f"{prefix}_lend_pct"] = pd.to_numeric(d.get("avgLendingRate", 0), errors="coerce")
-            d[f"{prefix}_borrow_pct"] = pd.to_numeric(d.get("avgBorrowingRate", 0), errors="coerce")
-            return d[["time", f"{prefix}_lend_pct", f"{prefix}_borrow_pct"]].dropna().sort_values("time")
+    def _to_hourly_df(records: List[Dict[str, Any]], prefix: str) -> pd.DataFrame:
+        if not records:
+            return pd.DataFrame(columns=["time", f"{prefix}_lend_apy", f"{prefix}_borrow_apy"])
+        d = pd.DataFrame(records)
+        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+        d[f"{prefix}_lend_apy"] = pd.to_numeric(d.get("avgLendingRate", 0), errors="coerce")
+        d[f"{prefix}_borrow_apy"] = pd.to_numeric(d.get("avgBorrowingRate", 0), errors="coerce")
+        return d[["time", f"{prefix}_lend_apy", f"{prefix}_borrow_apy"]].sort_values("time")
 
-        df_asset = _to_hourly_df(asset_hist, "asset")
-        df_usdc = _to_hourly_df(usdc_hist, "usdc")
-        earn_df = df_asset.merge(df_usdc, on="time", how="inner")
-        if earn_df.empty or base_usd <= 0:
-            st.info("No earnings data available for the selection.")
-            return
+    df_asset = _to_hourly_df(asset_hist, "asset")
+    df_usdc = _to_hourly_df(usdc_hist, "usdc")
+    # Aggregate hourly APR% to 4H buckets (centered +2h)
+    if not df_asset.empty:
+        df_asset = df_asset.copy()
+        df_asset["time_4h"] = df_asset["time"].dt.floor("4H")
+        df_asset = (
+            df_asset.groupby("time_4h", as_index=False)["asset_lend_apy"].mean()
+            .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
+            .drop(columns=["time_4h"])
+        )
+    if not df_usdc.empty:
+        df_usdc = df_usdc.copy()
+        df_usdc["time_4h"] = df_usdc["time"].dt.floor("4H")
+        df_usdc = (
+            df_usdc.groupby("time_4h", as_index=False)["usdc_borrow_apy"].mean()
+            .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
+            .drop(columns=["time_4h"])
+        )
+    earn_df = pd.merge(df_asset, df_usdc, on="time", how="inner")
+    if earn_df.empty or base_usd <= 0:
+        st.info("No earnings data available for the selection.")
+        return
 
-        asset_collateral_usd = base_usd * float(leverage)
-        usdc_borrowed_usd = base_usd * max(float(leverage) - 1.0, 0.0)
-        bucket_factor_hourly = 1.0 / (365.0 * 24.0)
+    # 4-hour bucket factor
+    bucket_factor_4h = 4.0 / (365.0 * 24.0)
 
-        earn_df["asset_interest_usd"] = asset_collateral_usd * (earn_df["asset_lend_pct"] / 100.0) * bucket_factor_hourly
-        earn_df["usdc_interest_usd"] = - usdc_borrowed_usd * (earn_df["usdc_borrow_pct"] / 100.0) * bucket_factor_hourly
-        earn_df["total_interest_usd"] = earn_df["asset_interest_usd"] + earn_df["usdc_interest_usd"]
+    earn_df = earn_df.sort_values("time").reset_index(drop=True)
+    # Asset interest remains simple interest on constant deployed notional per 4H bucket
+    earn_df["asset_interest_usd"] = asset_collateral_usd * (earn_df["asset_lend_apy"] / 100.0) * bucket_factor_4h
+    # USDC: interest compounds principal per 4H bucket; compute growth and principal path
+    earn_df["usdc_growth_factor"] = 1.0 + (earn_df["usdc_borrow_apy"] / 100.0) * bucket_factor_4h
+    earn_df["usdc_principal_usd"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_factor"].cumprod()
+    # Previous principal (initial for first row)
+    earn_df["usdc_principal_prev"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
+    earn_df["usdc_principal_prev"] = earn_df["usdc_principal_prev"].astype(float) * 1.0  # ensure dtype
+    # Per-bucket interest equals increase in principal; keep sign negative (interest paid)
+    earn_df["usdc_interest_usd"] = - (earn_df["usdc_principal_usd"] - earn_df["usdc_principal_prev"])
+    # Total net interest
+    earn_df["total_interest_usd"] = earn_df["asset_interest_usd"] + earn_df["usdc_interest_usd"]
 
-        # Price series (1H) for asset
-        mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
-        start_ts = int(pd.to_datetime(earn_df["time"].min()).timestamp())
-        end_ts = int(pd.to_datetime(earn_df["time"].max()).timestamp())
-        price_points = fetch_birdeye_history_price(mint, start_ts, end_ts, bucket="2H") if (mint and start_ts and end_ts) else []
-        price_df = pd.DataFrame(price_points)
-        if not price_df.empty:
-            price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-            price_df = price_df.sort_values("time")[ ["time", "price"] ].rename(columns={"price": "asset_price"})
-            earn_df = pd.merge_asof(
-                earn_df.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
-            )
-        else:
-            earn_df["asset_price"] = float("nan")
+    # Price series (4H) for asset
+    mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
+    start_ts = int(pd.to_datetime(earn_df["time"].min()).timestamp())
+    end_ts = int(pd.to_datetime(earn_df["time"].max()).timestamp())
+    try:
+        price_points = fetch_birdeye_history_price(mint, start_ts, end_ts, bucket="4H") if (mint and start_ts and end_ts) else []
+    except Exception:
+        price_points = []
+    price_df = pd.DataFrame(price_points)
+    if not price_df.empty:
+        price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
+        price_df = price_df.sort_values("time")[ ["time", "price"] ].rename(columns={"price": "asset_price"})
+        earn_df = pd.merge_asof(
+            earn_df.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+        )
+    else:
+        earn_df["asset_price"] = float("nan")
 
-        # Tokens and MTM
-        first_price = None
-        if "asset_price" in earn_df.columns:
-            try:
-                first_price = float(earn_df["asset_price"].dropna().iloc[0])
-            except Exception:
-                first_price = None
-        asset_tokens = (asset_collateral_usd / first_price) if (first_price and first_price > 0) else float("nan")
-        earn_df["asset_lent_usd_now"] = earn_df.get("asset_price", pd.Series(dtype=float)) * asset_tokens
+    # Tokens and MTM
+    first_price = None
+    if "asset_price" in earn_df.columns:
+        try:
+            first_price = float(earn_df["asset_price"].dropna().iloc[0])
+        except Exception:
+            first_price = None
+    asset_tokens = (asset_collateral_usd / first_price) if (first_price and first_price > 0) else float("nan")
+    earn_df["asset_lent_usd_now"] = earn_df.get("asset_price", pd.Series(dtype=float)) * asset_tokens
 
     # Metrics
     col1, col2, col3 = st.columns(3)
@@ -181,64 +256,62 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         with col7:
             st.metric("Profit %", "N/A")
 
-    # 4H combined chart
+    # 4H combined chart (earn_df is already 4H)
     st.text(f"{asset_symbol}/USDC spot chart")
     res_for_chart = earn_df.dropna(subset=["asset_price"]).copy()
     if not res_for_chart.empty and pd.notna(asset_tokens):
-        res_for_chart["time_4h"] = res_for_chart["time"].dt.floor("4H")
         resampled_c = (
-            res_for_chart.groupby("time_4h", as_index=False)
+            res_for_chart.groupby("time", as_index=False)
             .agg({
                 "asset_price": "mean",
                 "asset_interest_usd": "sum",
                 "usdc_interest_usd": "sum",
+                "usdc_principal_usd": "last",
             })
+            .sort_values("time")
         )
-        resampled_c["time"] = pd.to_datetime(resampled_c["time_4h"]) + pd.Timedelta(hours=2)
-        resampled_c = resampled_c.drop(columns=["time_4h"]).sort_values("time")
         resampled_c["asset_lent_usd_now"] = resampled_c["asset_price"] * asset_tokens
-        resampled_c["cum_usdc_interest_pos"] = (-resampled_c["usdc_interest_usd"]).cumsum()
-        resampled_c["usdc_with_interest"] = float(usdc_borrowed_usd) + resampled_c["cum_usdc_interest_pos"]
-        resampled_c["spread_usd"] = resampled_c["asset_lent_usd_now"] - resampled_c["usdc_with_interest"]
+        # Use compounded principal (borrowed + accrued interest) per bucket
+        resampled_c["usdc_borrowed"] = resampled_c["usdc_principal_usd"]
+        resampled_c["spread_usd"] = resampled_c["asset_lent_usd_now"] - resampled_c["usdc_borrowed"]
 
         import plotly.graph_objects as go
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["asset_lent_usd_now"], name=f"{asset_symbol} (USD)", mode="lines", line=dict(color="#00CC96")))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_with_interest"], name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
+        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_borrowed"], name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
         fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Net value (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig2, use_container_width=True)
     else:
         st.info("Insufficient price data to build 4H chart.")
 
-    # 4H breakdown table
+    # 4H breakdown table (earn_df is already 4H)
     show_tbl = st.checkbox("Show earnings breakdown table", value=False, key=f"{asset_symbol}_show_tbl")
     if show_tbl:
-        tmp = earn_df.copy()
-        tmp["time_4h"] = tmp["time"].dt.floor("4H")
         resampled = (
-            tmp.groupby("time_4h", as_index=False)
+            earn_df.groupby("time", as_index=False)
             .agg({
                 "asset_price": "mean",
                 "asset_lent_usd_now": "mean",
-                "usdc_borrow_pct": "mean",
-                "asset_lend_pct": "mean",
+                "usdc_borrow_apy": "mean",
+                "asset_lend_apy": "mean",
                 "asset_interest_usd": "sum",
                 "usdc_interest_usd": "sum",
                 "total_interest_usd": "sum",
+                "usdc_principal_usd": "last",
             })
+            .sort_values("time")
         )
-        resampled["time"] = pd.to_datetime(resampled["time_4h"]) + pd.Timedelta(hours=2)
-        resampled = resampled.drop(columns=["time_4h"]).sort_values("time")
-        resampled["usdc_borrowed_usd"] = float(usdc_borrowed_usd)
+        # Current outstanding USDC principal per bucket
+        resampled["usdc_borrowed"] = resampled["usdc_principal_usd"]
 
         tbl = resampled[[
             "time",
             "asset_price",
             "asset_lent_usd_now",
-            "usdc_borrowed_usd",
-            "asset_lend_pct",
-            "usdc_borrow_pct",
+            "usdc_borrowed",
+            "asset_lend_apy",
+            "usdc_borrow_apy",
             "asset_interest_usd",
             "usdc_interest_usd",
             "total_interest_usd",
@@ -246,9 +319,9 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         tbl = tbl.round({
             "asset_price": 6,
             "asset_lent_usd_now": 2,
-            "usdc_borrowed_usd": 2,
-            "asset_lend_pct": 4,
-            "usdc_borrow_pct": 4,
+            "usdc_borrowed": 2,
+            "asset_lend_apy": 4,
+            "usdc_borrow_apy": 4,
             "asset_interest_usd": 2,
             "usdc_interest_usd": 2,
             "total_interest_usd": 2,
