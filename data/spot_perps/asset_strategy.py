@@ -183,18 +183,11 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     bucket_factor_4h = 4.0 / (365.0 * 24.0)
 
     earn_df = earn_df.sort_values("time").reset_index(drop=True)
-    # Asset interest remains simple interest on constant deployed notional per 4H bucket
-    earn_df["asset_interest_usd"] = asset_collateral_usd * (earn_df["asset_lend_apy"] / 100.0) * bucket_factor_4h
-    # USDC: interest compounds principal per 4H bucket; compute growth and principal path
+    # Build per-bucket growth factors and apply starting NEXT bucket (shifted cumprod)
+    earn_df["asset_growth_factor"] = 1.0 + (earn_df["asset_lend_apy"] / 100.0) * bucket_factor_4h
     earn_df["usdc_growth_factor"] = 1.0 + (earn_df["usdc_borrow_apy"] / 100.0) * bucket_factor_4h
-    earn_df["usdc_principal_usd"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_factor"].cumprod()
-    # Previous principal (initial for first row)
-    earn_df["usdc_principal_prev"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
-    earn_df["usdc_principal_prev"] = earn_df["usdc_principal_prev"].astype(float) * 1.0  # ensure dtype
-    # Per-bucket interest equals increase in principal; keep sign negative (interest paid)
-    earn_df["usdc_interest_usd"] = - (earn_df["usdc_principal_usd"] - earn_df["usdc_principal_prev"])
-    # Total net interest
-    earn_df["total_interest_usd"] = earn_df["asset_interest_usd"] + earn_df["usdc_interest_usd"]
+    earn_df["asset_growth_cum_shifted"] = earn_df["asset_growth_factor"].cumprod().shift(1).fillna(1.0)
+    earn_df["usdc_growth_cum_shifted"] = earn_df["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
 
     # Price series (4H) for asset
     mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
@@ -214,15 +207,29 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     else:
         earn_df["asset_price"] = float("nan")
 
-    # Tokens and MTM
+    # Tokens, principal and MTM using next-bucket application
     first_price = None
     if "asset_price" in earn_df.columns:
         try:
             first_price = float(earn_df["asset_price"].dropna().iloc[0])
         except Exception:
             first_price = None
-    asset_tokens = (asset_collateral_usd / first_price) if (first_price and first_price > 0) else float("nan")
-    earn_df["asset_lent_usd_now"] = earn_df.get("asset_price", pd.Series(dtype=float)) * asset_tokens
+    asset_tokens0 = (asset_collateral_usd / first_price) if (first_price and first_price > 0) else float("nan")
+    # Asset tokens grow from next bucket onward
+    earn_df["asset_tokens"] = float(asset_tokens0) * earn_df["asset_growth_cum_shifted"]
+    earn_df["asset_lent_usd_now"] = earn_df.get("asset_price", pd.Series(dtype=float)) * earn_df["asset_tokens"]
+    # Asset interest as token delta applied starting next bucket, valued at current price
+    earn_df["asset_tokens_prev"] = earn_df["asset_tokens"].shift(1).fillna(float(asset_tokens0))
+    earn_df["asset_interest_tokens"] = earn_df["asset_tokens"] - earn_df["asset_tokens_prev"]
+    earn_df["asset_interest_usd"] = earn_df["asset_interest_tokens"] * earn_df.get("asset_price", pd.Series(dtype=float))
+    # USDC principal grows from next bucket onward
+    earn_df["usdc_principal_usd"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_cum_shifted"]
+    earn_df["usdc_principal_prev"] = float(usdc_borrowed_usd) * earn_df["usdc_growth_cum_shifted"].shift(1).fillna(1.0)
+    earn_df["usdc_interest_usd"] = - (earn_df["usdc_principal_usd"] - earn_df["usdc_principal_prev"])
+    # Total net interest (for display)
+    earn_df["total_interest_usd"] = earn_df["asset_interest_usd"] + earn_df["usdc_interest_usd"]
+    # Net value series: asset value minus outstanding USDC principal
+    earn_df["net_value_usd"] = earn_df["asset_lent_usd_now"] - earn_df["usdc_principal_usd"]
 
     # Metrics
     col1, col2, col3 = st.columns(3)
@@ -243,8 +250,9 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
 
     col6, col7 = st.columns(2)
     total_interest_sum = float(earn_df["total_interest_usd"].sum())
-    if pd.notna(now_usd):
-        profit = now_usd + total_interest_sum - float(base_usd) - float(usdc_borrowed_usd)
+    now_net_value = float(earn_df["net_value_usd"].dropna().iloc[-1]) if "net_value_usd" in earn_df.columns and not earn_df["net_value_usd"].dropna().empty else float("nan")
+    if pd.notna(now_net_value):
+        profit = now_net_value - float(base_usd)
         profit_pct = (profit / float(base_usd) * 100.0) if float(base_usd) > 0 else float("nan")
         with col6:
             st.metric("Profit", f"${profit:,.2f}")
@@ -259,27 +267,15 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     # 4H combined chart (earn_df is already 4H)
     st.text(f"{asset_symbol}/USDC spot chart")
     res_for_chart = earn_df.dropna(subset=["asset_price"]).copy()
-    if not res_for_chart.empty and pd.notna(asset_tokens):
-        resampled_c = (
-            res_for_chart.groupby("time", as_index=False)
-            .agg({
-                "asset_price": "mean",
-                "asset_interest_usd": "sum",
-                "usdc_interest_usd": "sum",
-                "usdc_principal_usd": "last",
-            })
-            .sort_values("time")
-        )
-        resampled_c["asset_lent_usd_now"] = resampled_c["asset_price"] * asset_tokens
-        # Use compounded principal (borrowed + accrued interest) per bucket
-        resampled_c["usdc_borrowed"] = resampled_c["usdc_principal_usd"]
-        resampled_c["spread_usd"] = resampled_c["asset_lent_usd_now"] - resampled_c["usdc_borrowed"]
+    if not res_for_chart.empty:
+        plot_df = res_for_chart.sort_values("time")
+        plot_df = plot_df[["time", "asset_lent_usd_now", "usdc_principal_usd", "net_value_usd"]]
 
         import plotly.graph_objects as go
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["asset_lent_usd_now"], name=f"{asset_symbol} (USD)", mode="lines", line=dict(color="#00CC96")))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_borrowed"], name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Net value (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
+        fig2.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["asset_lent_usd_now"], name=f"{asset_symbol} (USD)", mode="lines", line=dict(color="#00CC96")))
+        fig2.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["usdc_principal_usd"], name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
+        fig2.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Net value (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig2, use_container_width=True)
     else:
@@ -293,12 +289,14 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
             .agg({
                 "asset_price": "mean",
                 "asset_lent_usd_now": "mean",
+                "asset_tokens": "last",
                 "usdc_borrow_apy": "mean",
                 "asset_lend_apy": "mean",
                 "asset_interest_usd": "sum",
                 "usdc_interest_usd": "sum",
                 "total_interest_usd": "sum",
                 "usdc_principal_usd": "last",
+                "net_value_usd": "last",
             })
             .sort_values("time")
         )
@@ -308,25 +306,50 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         tbl = resampled[[
             "time",
             "asset_price",
+            "asset_tokens",
             "asset_lent_usd_now",
             "usdc_borrowed",
+            "net_value_usd",
             "asset_lend_apy",
             "usdc_borrow_apy",
             "asset_interest_usd",
             "usdc_interest_usd",
             "total_interest_usd",
         ]].copy()
+        tbl = tbl.rename(columns={
+            "asset_tokens": "asset_lent_tokens",
+            "net_value_usd": "net_value",
+        })
         tbl = tbl.round({
             "asset_price": 6,
+            "asset_lent_tokens": 6,
             "asset_lent_usd_now": 2,
             "usdc_borrowed": 2,
+            "net_value": 2,
             "asset_lend_apy": 4,
             "usdc_borrow_apy": 4,
             "asset_interest_usd": 2,
             "usdc_interest_usd": 2,
             "total_interest_usd": 2,
         })
-        st.dataframe(tbl, use_container_width=True, hide_index=True)
+        st.dataframe(
+            tbl,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "time": st.column_config.DatetimeColumn("Time", width="small"),
+                "asset_price": st.column_config.NumberColumn(f"{asset_symbol} price", width="small", format="%.6f"),
+                "asset_lent_tokens": st.column_config.NumberColumn(f"{asset_symbol} amount", width="small", format="%.6f"),
+                "asset_lent_usd_now": st.column_config.NumberColumn(f"{asset_symbol} value (USD)", width="small", format="$%.2f"),
+                "usdc_borrowed": st.column_config.NumberColumn("USDC principal (USD)", width="small", format="$%.2f"),
+                "net_value": st.column_config.NumberColumn("Net value (USD)", width="small", format="$%.2f"),
+                "asset_lend_apy": st.column_config.NumberColumn(f"{asset_symbol} APY", width="small", format="%.2f%%"),
+                "usdc_borrow_apy": st.column_config.NumberColumn("USDC borrow APY", width="small", format="%.2f%%"),
+                "asset_interest_usd": st.column_config.NumberColumn(f"{asset_symbol} interest (USD)", width="small", format="$%.2f"),
+                "usdc_interest_usd": st.column_config.NumberColumn("USDC interest (USD)", width="small", format="$%.2f"),
+                "total_interest_usd": st.column_config.NumberColumn("Total interest (USD)", width="small", format="$%.2f"),
+            },
+        )
 
     # Spot APY chart (hidden by default)
     show_spot_chart = st.checkbox("Show spot APY chart", value=False, key=f"{asset_symbol}_show_spot_chart")
