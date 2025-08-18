@@ -148,7 +148,7 @@ def display_jlp_strategy_section(token_config: dict) -> None:
         jlp_mint = (token_config.get("JLP", {}) or {}).get("mint")
         price_points: List[Dict[str, Any]] = []
         if jlp_mint and start_ts and end_ts:
-            price_points = fetch_birdeye_history_price(jlp_mint, start_ts, end_ts, bucket="4H") or []
+            price_points = fetch_birdeye_history_price(jlp_mint, start_ts, end_ts, bucket="1H") or []
         price_df = pd.DataFrame(price_points)
         if not price_df.empty:
             price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
@@ -213,14 +213,34 @@ def display_jlp_strategy_section(token_config: dict) -> None:
     # Display breakdown table
     show_tbl = st.checkbox("Show earnings breakdown table", value=False, key="jlp_show_tbl")
     if show_tbl:
-        # Add constant notional columns and price for clarity
-        earn_df["jlp_lent_usd"] = float(jlp_collateral_usd)  # start value
-        earn_df["usdc_borrowed_usd"] = float(usdc_borrowed_usd)
+        # Aggregate to 4-hour buckets (centered +2h) for display
+        tmp = earn_df.copy()
+        tmp["time_4h"] = tmp["time"].dt.floor("4H")
+        resampled = (
+            tmp.groupby("time_4h", as_index=False)
+            .agg({
+                "jlp_price": "mean",
+                "jlp_lend_pct": "mean",
+                "usdc_borrow_pct": "mean",
+                "jlp_interest_usd": "sum",
+                "usdc_interest_usd": "sum",
+                "total_interest_usd": "sum",
+            })
+        )
+        # Center buckets by +2h to align with charts
+        resampled["time"] = pd.to_datetime(resampled["time_4h"]) + pd.Timedelta(hours=2)
+        resampled = resampled.drop(columns=["time_4h"]).sort_values("time")
 
-        tbl = earn_df[[
+        # Constants per bucket
+        resampled["usdc_borrowed_usd"] = float(usdc_borrowed_usd)
+        if "jlp_price" in resampled.columns and pd.notna(jlp_tokens):
+            resampled["jlp_lent_usd_now"] = resampled["jlp_price"] * jlp_tokens
+        else:
+            resampled["jlp_lent_usd_now"] = float("nan")
+
+        tbl = resampled[[
             "time",
             "jlp_price",
-            "jlp_lent_usd",
             "jlp_lent_usd_now",
             "usdc_borrowed_usd",
             "jlp_lend_pct",
@@ -231,7 +251,6 @@ def display_jlp_strategy_section(token_config: dict) -> None:
         ]].copy()
         tbl = tbl.round({
             "jlp_price": 6,
-            "jlp_lent_usd": 2,
             "jlp_lent_usd_now": 2,
             "usdc_borrowed_usd": 2,
             "jlp_lend_pct": 4,
