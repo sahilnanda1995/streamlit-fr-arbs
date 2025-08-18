@@ -134,8 +134,9 @@ def display_backtesting_section(
 
     # Spot Rate History (derived from best Asgard Spot vs Perps config)
     st.subheader("📈 Spot Rate History (Hourly)")
-    sh_limit = st.selectbox("Points (hours)", [168, 336, 720], index=2, key="spot_hist_limit")
-    perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0, key="spot_hist_perps")
+    row_sel_1, row_sel_2, row_sel_3 = st.columns([2, 1, 1])
+    # Fill the controls after building strategy options, in order:
+    # Strategy to backtest | Perps Exchange | Time Period
 
     # Build strategy choices from best configs per asset/direction
     strategy_options: List[Dict[str, Any]] = []
@@ -161,12 +162,20 @@ def display_backtesting_section(
         st.info("No valid strategies available to backtest.")
         return
 
-    selected_idx = st.selectbox(
-        "Strategy to backtest",
-        options=list(range(len(strategy_options))),
-        format_func=lambda i: strategy_options[i]["label"],
-        key="spot_hist_strategy",
-    )
+    with row_sel_1:
+        selected_idx = st.selectbox(
+            "Strategy to backtest",
+            options=list(range(len(strategy_options))),
+            format_func=lambda i: strategy_options[i]["label"],
+            key="spot_hist_strategy",
+        )
+    with row_sel_2:
+        perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0, key="spot_hist_perps")
+    with row_sel_3:
+        lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
+        lookback_labels = [label for label, _ in lookback_options]
+        selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="spot_hist_limit")
+        sh_limit = dict(lookback_options).get(selected_lookback, 720)
 
     choice = strategy_options[selected_idx]
     best = choice["best"]
