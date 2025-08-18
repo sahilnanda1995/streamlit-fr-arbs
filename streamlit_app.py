@@ -21,6 +21,11 @@ from data.spot_perps import (
     display_alp_strategy_section,
     display_asset_strategy_section,
 )
+from data.spot_perps.pair_strategy import (
+    display_weth_cbbtc_strategy_section,
+    display_sol_cbbtc_strategy_section,
+    display_jitosol_cbbtc_strategy_section,
+)
 
 def main():
     """Main application logic."""
@@ -56,6 +61,21 @@ def main():
 
     # === ALP strategy section ===
     display_alp_strategy_section(token_config)
+
+    st.divider()
+
+    # === WETH/CBBTC variable-asset strategy section ===
+    display_weth_cbbtc_strategy_section(token_config)
+
+    st.divider()
+
+    # === SOL/CBBTC variable-asset strategy section ===
+    display_sol_cbbtc_strategy_section(token_config)
+
+    st.divider()
+
+    # === JitoSOL/CBBTC variable-asset strategy section ===
+    display_jitosol_cbbtc_strategy_section(token_config)
 
 
 if __name__ == "__main__":
