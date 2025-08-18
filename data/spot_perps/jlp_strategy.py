@@ -46,7 +46,8 @@ def display_jlp_strategy_section(token_config: dict) -> None:
     with col_a:
         protocol = st.selectbox("Protocol", ["kamino", "drift"], index=0, key="jlp_proto")
     with col_b:
-        points = st.selectbox("Points (hours)", [168, 336, 720], index=2, key="jlp_points")
+        # Extend to 2 months (1440 hours) and default to 2 months
+        points = st.selectbox("Points (hours)", [168, 336, 720, 1440], index=3, key="jlp_points")
 
     # Resolve banks and effective leverage cap for long direction
     jlp_bank, usdc_bank = _find_isolated_jlp_pair_banks(token_config, protocol)
@@ -78,22 +79,24 @@ def display_jlp_strategy_section(token_config: dict) -> None:
         st.info("No historical data available for the selection.")
         return
 
-    # Plot
-    import plotly.graph_objects as go
-    plot_df = df.copy()
-    plot_df["time"] = pd.to_datetime(plot_df["time"])  # ensure dtype
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(x=plot_df["time"], y=plot_df["spot_rate_pct"], name="Spot % (APY)", mode="lines")
-    )
-    fig.update_layout(
-        height=280,
-        hovermode="x unified",
-        yaxis_title="APY (%)",
-        margin=dict(l=0, r=0, t=0, b=0),
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.caption("JLP/USDC long spot rate (APY%) per 4 hours")
+    # Optional: Spot APY chart (hidden by default)
+    show_spot_chart = st.checkbox("Show spot APY chart", value=False, key="jlp_show_spot_chart")
+    if show_spot_chart:
+        import plotly.graph_objects as go
+        plot_df = df.copy()
+        plot_df["time"] = pd.to_datetime(plot_df["time"])  # ensure dtype
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(x=plot_df["time"], y=plot_df["spot_rate_pct"], name="Spot % (APY)", mode="lines")
+        )
+        fig.update_layout(
+            height=280,
+            hovermode="x unified",
+            yaxis_title="APY (%)",
+            margin=dict(l=0, r=0, t=0, b=0),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("JLP/USDC long spot rate (APY%) per 4 hours")
 
     with st.expander("Show raw series"):
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -209,6 +212,43 @@ def display_jlp_strategy_section(token_config: dict) -> None:
             st.metric("Profit", "N/A")
         with col7:
             st.metric("Profit %", "N/A")
+
+    # 4H chart: JLP now vs USDC borrowed+interest, and the spread
+    st.subheader("JLP vs USDC (4H)")
+    res_for_chart = earn_df.copy()
+    # Require price to compute JLP line
+    res_for_chart = res_for_chart.dropna(subset=["jlp_price"]).copy()
+    if not res_for_chart.empty and pd.notna(jlp_tokens):
+        res_for_chart["time_4h"] = res_for_chart["time"].dt.floor("4H")
+        resampled_c = (
+            res_for_chart.groupby("time_4h", as_index=False)
+            .agg({
+                "jlp_price": "mean",
+                "jlp_interest_usd": "sum",
+                "usdc_interest_usd": "sum",
+            })
+        )
+        # Center buckets by +2h
+        resampled_c["time"] = pd.to_datetime(resampled_c["time_4h"]) + pd.Timedelta(hours=2)
+        resampled_c = resampled_c.drop(columns=["time_4h"]).sort_values("time")
+        # Compute JLP USD now from price and fixed token qty
+        resampled_c["jlp_lent_usd_now"] = resampled_c["jlp_price"] * jlp_tokens
+        # USDC borrowed + accrued interest (usdc_interest_usd is negative per hour)
+        resampled_c["cum_usdc_interest_pos"] = (-resampled_c["usdc_interest_usd"]).cumsum()
+        resampled_c["usdc_with_interest"] = float(usdc_borrowed_usd) + resampled_c["cum_usdc_interest_pos"]
+        # Spread
+        resampled_c["spread_usd"] = resampled_c["jlp_lent_usd_now"] - resampled_c["usdc_with_interest"]
+
+        # Plot
+        import plotly.graph_objects as go
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["jlp_lent_usd_now"], name="JLP (USD)", mode="lines"))
+        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_with_interest"], name="USDC borrowed + interest (USD)", mode="lines"))
+        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Spread (USD)", mode="lines"))
+        fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("Insufficient price data to build 4H chart.")
 
     # Display breakdown table
     show_tbl = st.checkbox("Show earnings breakdown table", value=False, key="jlp_show_tbl")
