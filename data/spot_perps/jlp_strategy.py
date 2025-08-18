@@ -213,7 +213,6 @@ def display_jlp_strategy_section(token_config: dict) -> None:
     # Display breakdown table
     show_tbl = st.checkbox("Show earnings breakdown table", value=False, key="jlp_show_tbl")
     if show_tbl:
-        # Aggregate to 4-hour buckets (centered +2h) for display
         tmp = earn_df.copy()
         tmp["time_4h"] = tmp["time"].dt.floor("4H")
         resampled = (
