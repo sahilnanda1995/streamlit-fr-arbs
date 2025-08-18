@@ -242,9 +242,19 @@ def display_jlp_strategy_section(token_config: dict) -> None:
         # Plot
         import plotly.graph_objects as go
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["jlp_lent_usd_now"], name="JLP (USD)", mode="lines"))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_with_interest"], name="USDC borrowed + interest (USD)", mode="lines"))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Spread (USD)", mode="lines"))
+        # Explicit colors using Plotly default palette, swapping USDC and Spread
+        fig2.add_trace(go.Scatter(
+            x=resampled_c["time"], y=resampled_c["jlp_lent_usd_now"],
+            name="JLP (USD)", mode="lines", line=dict(color="#00CC96")
+        ))
+        fig2.add_trace(go.Scatter(
+            x=resampled_c["time"], y=resampled_c["usdc_with_interest"],
+            name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")
+        ))
+        fig2.add_trace(go.Scatter(
+            x=resampled_c["time"], y=resampled_c["spread_usd"],
+            name="Spread (USD)", mode="lines", line=dict(color="#636EFA", width=2)
+        ))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig2, use_container_width=True)
     else:
