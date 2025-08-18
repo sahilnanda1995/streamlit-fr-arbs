@@ -202,4 +202,55 @@ def display_backtesting_section(
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Series: Spot Rate (APY%), Perps Funding (APY%), Net Arb (APY%) per 4 hours")
 
+        st.subheader("💰 Earnings Calculator")
+        total_cap = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="earn_total_cap")
+        spot_cap = total_cap / 2 * lev
+        perps_cap = total_cap / 2 * lev
+
+        # Per-bucket earnings from APY% over 4 hours
+        bucket_factor = 4.0 / (365.0 * 24.0)  # 4h as fraction of a year
+        df_calc = df_plot.copy()
+        # Spot: negative rate => interest earned, positive => paid
+        df_calc["spot_interest_usd"] = - spot_cap * (df_calc["spot_rate_pct"] / 100.0) * bucket_factor
+        # Perps funding:
+        #  - Long: positive funding => earned; negative => paid  (multiplier +1)
+        #  - Short: positive funding => paid;   negative => earned (multiplier -1)
+        fund_sign = 1.0 if dir_lower == "long" else -1.0
+        df_calc["funding_interest_usd"] = perps_cap * fund_sign * (df_calc["funding_pct"] / 100.0) * bucket_factor
+        df_calc["total_interest_usd"] = df_calc["spot_interest_usd"] + df_calc["funding_interest_usd"]
+        # Capital deployed columns (constant per bucket, shown for clarity)
+        df_calc["spot_capital_usd"] = float(spot_cap)
+        df_calc["perps_capital_usd"] = float(perps_cap)
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
+        with col_b:
+            st.metric("Funding interest (sum)", f"${df_calc['funding_interest_usd'].sum():,.2f}")
+        with col_c:
+            st.metric("Total interest (sum)", f"${df_calc['total_interest_usd'].sum():,.2f}")
+
+        st.markdown("**Breakdown**")
+        tbl = df_calc[[
+            "time",
+            "spot_rate_pct",
+            "funding_pct",
+            "net_arb_pct",
+            "spot_capital_usd",
+            "perps_capital_usd",
+            "spot_interest_usd",
+            "funding_interest_usd",
+            "total_interest_usd",
+        ]].round({
+            "spot_rate_pct": 3,
+            "funding_pct": 3,
+            "net_arb_pct": 3,
+            "spot_capital_usd": 2,
+            "perps_capital_usd": 2,
+            "spot_interest_usd": 2,
+            "funding_interest_usd": 2,
+            "total_interest_usd": 2,
+        })
+        st.dataframe(tbl, use_container_width=True, hide_index=True)
+
 
