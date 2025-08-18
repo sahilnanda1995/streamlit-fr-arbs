@@ -16,7 +16,7 @@ from api.endpoints import (
     fetch_asgard_current_rates,
     fetch_asgard_staking_rates
 )
-from data.spot_perps import display_curated_arbitrage_section
+from data.spot_perps import display_curated_arbitrage_section, display_jlp_strategy_section
 
 def main():
     """Main application logic."""
@@ -44,6 +44,9 @@ def main():
         hyperliquid_data,
         drift_data
     )
+
+    # === JLP strategy section (below backtesting) ===
+    display_jlp_strategy_section(token_config)
 
 
 if __name__ == "__main__":

@@ -136,7 +136,7 @@
   "JLP": {
     "symbol": "JLP",
     "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
-    "hasStakingYield": true,
+    "hasStakingYield": false,
     "banks": [
       {
         "protocol": "kamino",

@@ -57,7 +57,9 @@ from config.constants import (
     DRIFT_FUNDING_HISTORY_URL,
     ASGARD_CURRENT_RATES_URL,
     ASGARD_STAKING_RATES_URL,
-    LORIS_FUNDING_API_URL
+    LORIS_FUNDING_API_URL,
+    BIRDEYE_HISTORY_URL,
+    BIRDEYE_API_KEY,
 )
 
 @st.cache_data(ttl=300)
@@ -344,3 +346,54 @@ def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
     except ValueError as e:
         st.error(f"Invalid JSON response from Asgard staking rates API: {str(e)}")
         return []
+
+
+@st.cache_data(ttl=300)
+def fetch_birdeye_history_price(
+    mint_address: str,
+    time_from: int,
+    time_to: int,
+    bucket: str = "4H",
+) -> List[Dict[str, Any]]:
+    """
+    Fetch historical price series from Birdeye for a token mint.
+
+    Returns list of points with at least {t: seconds, price: float} when available.
+    """
+    try:
+        headers = {
+            "X-API-KEY": BIRDEYE_API_KEY,
+            "accept": "application/json",
+            "x-chain": "solana",
+        }
+        params = {
+            "address": mint_address,
+            "address_type": "token",
+            "type": bucket,
+            "time_from": time_from,
+            "time_to": time_to,
+            "ui_amount_mode": "raw",
+        }
+        resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        # Expected: { data: { items: [ { unixTime, value }, ... ] } }
+        items = (((data or {}).get("data") or {}).get("items") or [])
+        points: List[Dict[str, Any]] = []
+        for it in items:
+            t_raw = it.get("unixTime")
+            v_raw = it.get("value")
+            try:
+                t = int(t_raw)
+                p = float(v_raw)
+            except (TypeError, ValueError):
+                continue
+            points.append({"t": t, "price": p})
+        return points
+    except requests.exceptions.RequestException as e:
+        st.error(f"Birdeye price request failed: {str(e)}")
+        return []
+    except ValueError:
+        st.error("Error parsing Birdeye price response")
+        return []
+

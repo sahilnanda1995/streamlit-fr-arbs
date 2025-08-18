@@ -29,6 +29,11 @@ ASGARD_STAKING_RATES_URL = "https://historical-apy.asgard.finance/current-stakin
 ASGARD_HISTORICAL_RATES_URL="https://historical-apy.asgard.finance/rates/hourly-data"
 ASGARD_HISTORICAL_STAKING_RATES_URL="https://historical-apy.asgard.finance/staking/hourly-data"
 
+# Birdeye price API
+BIRDEYE_HISTORY_URL = "https://public-api.birdeye.so/defi/history_price"
+# NOTE: Provided by user for this project scope
+BIRDEYE_API_KEY = "4260d80716404833a7e798ec2cc16593"
+
 # HTTP Headers for Hyperliquid API
 HYPERLIQUID_HEADERS = {
     "Content-Type": "application/json",

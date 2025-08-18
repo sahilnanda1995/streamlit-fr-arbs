@@ -38,6 +38,9 @@ from .explorer import (
 from .backtesting import (
     display_backtesting_section,
 )
+from .jlp_strategy import (
+    display_jlp_strategy_section,
+)
 
 __all__ = [
     # helpers
@@ -66,6 +69,8 @@ __all__ = [
     "display_asset_top_opportunities",
     # backtesting
     "display_backtesting_section",
+    # jlp strategy
+    "display_jlp_strategy_section",
 ]
 
 
