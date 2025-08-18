@@ -63,7 +63,16 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     with col_b:
         protocol = st.selectbox("Protocol", supported, index=0, key=f"{asset_symbol}_proto")
     with col_c:
-        points = st.selectbox("Points (hours)", [168, 336, 720, 1440], index=3, key=f"{asset_symbol}_points")
+        lookback_options = [
+            ("2 months", 1440),
+            ("1 month", 720),
+            ("15 days", 360),
+            ("1 week", 168),
+        ]
+        lookback_labels = [label for label, _ in lookback_options]
+        selected_label = st.selectbox("Time Period", lookback_labels, index=0, key=f"{asset_symbol}_points")
+        points_map = {label: hours for label, hours in lookback_options}
+        points = points_map.get(selected_label, 1440)
 
     asset_bank, usdc_bank, market_name = _find_pair_banks(token_config, asset_symbol, protocol)
     eff_max = 1.0
