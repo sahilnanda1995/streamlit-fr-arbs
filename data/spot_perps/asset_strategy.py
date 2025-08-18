@@ -231,37 +231,38 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     # Net value series: asset value minus outstanding USDC principal
     earn_df["net_value_usd"] = earn_df["asset_lent_usd_now"] - earn_df["usdc_principal_usd"]
 
-    # Metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # Metrics (two rows)
+    row1_col1, row1_col2, row1_col3 = st.columns(3)
+    with row1_col1:
         st.metric(f"{asset_symbol} interest (sum)", f"${earn_df['asset_interest_usd'].sum():,.2f}")
-    with col2:
+    with row1_col2:
         st.metric("USDC interest (sum)", f"${earn_df['usdc_interest_usd'].sum():,.2f}")
-    with col3:
+    with row1_col3:
         st.metric("Total interest (sum)", f"${earn_df['total_interest_usd'].sum():,.2f}")
 
-    col4, col5 = st.columns(2)
-    with col4:
-        start_usd = float(asset_collateral_usd)
-        st.metric(f"{asset_symbol} lent (USD) at start", f"${start_usd:,.2f}")
-    with col5:
-        now_usd = float(earn_df["asset_lent_usd_now"].dropna().iloc[-1]) if "asset_lent_usd_now" in earn_df.columns and not earn_df["asset_lent_usd_now"].dropna().empty else float("nan")
-        st.metric(f"{asset_symbol} lent (USD) now", (f"${now_usd:,.2f}" if pd.notna(now_usd) else "N/A"))
-
-    col6, col7 = st.columns(2)
+    # Row 2: start/now asset USD, start/now USDC USD, Profit with % delta
+    start_asset_usd = float(asset_collateral_usd)
+    now_asset_usd = float(earn_df["asset_lent_usd_now"].dropna().iloc[-1]) if "asset_lent_usd_now" in earn_df.columns and not earn_df["asset_lent_usd_now"].dropna().empty else float("nan")
+    start_usdc_usd = float(usdc_borrowed_usd)
+    now_usdc_usd = float(earn_df["usdc_principal_usd"].dropna().iloc[-1]) if "usdc_principal_usd" in earn_df.columns and not earn_df["usdc_principal_usd"].dropna().empty else float("nan")
     now_net_value = float(earn_df["net_value_usd"].dropna().iloc[-1]) if "net_value_usd" in earn_df.columns and not earn_df["net_value_usd"].dropna().empty else float("nan")
-    if pd.notna(now_net_value):
-        profit = now_net_value - float(base_usd)
-        profit_pct = (profit / float(base_usd) * 100.0) if float(base_usd) > 0 else float("nan")
-        with col6:
-            st.metric("Profit", f"${profit:,.2f}")
-        with col7:
-            st.metric("Profit %", f"{profit_pct:.2f}%")
-    else:
-        with col6:
+
+    row2_col1, row2_col2, row2_col3, row2_col4, row2_col5 = st.columns(5)
+    with row2_col1:
+        st.metric(f"{asset_symbol} lent (USD) at start", f"${start_asset_usd:,.2f}")
+    with row2_col2:
+        st.metric(f"{asset_symbol} lent (USD) now", (f"${now_asset_usd:,.2f}" if pd.notna(now_asset_usd) else "N/A"))
+    with row2_col3:
+        st.metric("USDC borrowed (USD) at start", f"${start_usdc_usd:,.2f}")
+    with row2_col4:
+        st.metric("USDC borrowed (USD) now", (f"${now_usdc_usd:,.2f}" if pd.notna(now_usdc_usd) else "N/A"))
+    with row2_col5:
+        if pd.notna(now_net_value) and float(base_usd) > 0:
+            profit = now_net_value - float(base_usd)
+            profit_pct = (profit / float(base_usd) * 100.0)
+            st.metric("Profit", f"${profit:,.2f}", delta=f"{profit_pct:+.2f}%", delta_color="normal")
+        else:
             st.metric("Profit", "N/A")
-        with col7:
-            st.metric("Profit %", "N/A")
 
     # 4H combined chart (earn_df is already 4H)
     st.text(f"{asset_symbol}/USDC spot chart")
