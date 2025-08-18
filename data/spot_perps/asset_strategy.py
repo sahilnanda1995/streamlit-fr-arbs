@@ -144,7 +144,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
         start_ts = int(pd.to_datetime(earn_df["time"].min()).timestamp())
         end_ts = int(pd.to_datetime(earn_df["time"].max()).timestamp())
-        price_points = fetch_birdeye_history_price(mint, start_ts, end_ts, bucket="1H") if (mint and start_ts and end_ts) else []
+        price_points = fetch_birdeye_history_price(mint, start_ts, end_ts, bucket="2H") if (mint and start_ts and end_ts) else []
         price_df = pd.DataFrame(price_points)
         if not price_df.empty:
             price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
@@ -221,7 +221,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["asset_lent_usd_now"], name=f"{asset_symbol} (USD)", mode="lines", line=dict(color="#00CC96")))
         fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["usdc_with_interest"], name="USDC borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
-        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Spread (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
+        fig2.add_trace(go.Scatter(x=resampled_c["time"], y=resampled_c["spread_usd"], name="Net value (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig2, use_container_width=True)
     else:

@@ -1,6 +1,9 @@
 """
 Configuration constants for the funding rate comparison application.
+Loads sensitive values strictly from Streamlit secrets (no fallbacks).
 """
+
+import streamlit as st  # type: ignore
 
 # Funding interval options for user selection
 INTERVAL_OPTIONS = {
@@ -14,20 +17,20 @@ INTERVAL_OPTIONS = {
 # Default target hours (1 year)
 DEFAULT_TARGET_HOURS = INTERVAL_OPTIONS["1 yr"]
 
-# API Configuration
-HYPERLIQUID_API_URL = "https://api-ui.hyperliquid.xyz/info"
-HYPERLIQUID_CORE_API_URL = "https://api.hyperliquid.xyz/info"
-DRIFT_FUNDING_HISTORY_URL = "https://mainnet-beta.api.drift.trade/fundingRates"
-DRIFT_API_URL = "https://mainnet-beta.api.drift.trade/markets24h"
+# API Configuration (required from secrets)
+HYPERLIQUID_API_URL = st.secrets["api"]["HYPERLIQUID_API_URL"]
+HYPERLIQUID_CORE_API_URL = st.secrets["api"]["HYPERLIQUID_CORE_API_URL"]
+DRIFT_FUNDING_HISTORY_URL = st.secrets["api"]["DRIFT_FUNDING_HISTORY_URL"]
+DRIFT_API_URL = st.secrets["api"]["DRIFT_API_URL"]
 
-# Loris consolidated funding API (replaces Hyperliquid endpoint for funding data)
-LORIS_FUNDING_API_URL = "https://loris.tools/api/funding"
+# Loris consolidated funding API
+LORIS_FUNDING_API_URL = st.secrets["api"]["LORIS_FUNDING_API_URL"]
 
 # Asgard API Configuration
-ASGARD_CURRENT_RATES_URL = "https://historical-apy.asgard.finance/current-rates"
-ASGARD_STAKING_RATES_URL = "https://historical-apy.asgard.finance/current-staking-rates"
-ASGARD_HISTORICAL_RATES_URL="https://historical-apy.asgard.finance/rates/hourly-data"
-ASGARD_HISTORICAL_STAKING_RATES_URL="https://historical-apy.asgard.finance/staking/hourly-data"
+ASGARD_CURRENT_RATES_URL = st.secrets["api"]["ASGARD_CURRENT_RATES_URL"]
+ASGARD_STAKING_RATES_URL = st.secrets["api"]["ASGARD_STAKING_RATES_URL"]
+ASGARD_HISTORICAL_RATES_URL = st.secrets["api"]["ASGARD_HISTORICAL_RATES_URL"]
+ASGARD_HISTORICAL_STAKING_RATES_URL = st.secrets["api"]["ASGARD_HISTORICAL_STAKING_RATES_URL"]
 
 # Birdeye price API
 BIRDEYE_HISTORY_URL = "https://public-api.birdeye.so/defi/history_price"
@@ -124,3 +127,7 @@ DRIFT_MARKET_INDEX = {
 # Backtesting configuration
 BACKTEST_COINS = ["BTC", "SOL", "ETH"]
 BACKTEST_CAPTION = "Funding Rate shown as APY (%) over the past 1 month"
+
+# Birdeye price API
+BIRDEYE_HISTORY_URL = st.secrets["api"]["BIRDEYE_HISTORY_URL"]
+BIRDEYE_API_KEY = st.secrets["api"]["BIRDEYE_API_KEY"]

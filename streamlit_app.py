@@ -18,8 +18,8 @@ from api.endpoints import (
 )
 from data.spot_perps import (
     display_curated_arbitrage_section,
-    display_jlp_strategy_section,
     display_alp_strategy_section,
+    display_asset_strategy_section,
 )
 
 def main():
@@ -50,7 +50,7 @@ def main():
     )
 
     # === JLP strategy section (below backtesting) ===
-    display_jlp_strategy_section(token_config)
+    display_asset_strategy_section(token_config, "JLP")
 
     # === ALP strategy section ===
     display_alp_strategy_section(token_config)

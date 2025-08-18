@@ -38,9 +38,6 @@ from .explorer import (
 from .backtesting import (
     display_backtesting_section,
 )
-from .jlp_strategy import (
-    display_jlp_strategy_section,
-)
 from .asset_strategy import (
     display_asset_strategy_section,
     display_alp_strategy_section,
@@ -73,8 +70,6 @@ __all__ = [
     "display_asset_top_opportunities",
     # backtesting
     "display_backtesting_section",
-    # jlp strategy
-    "display_jlp_strategy_section",
     # generic asset strategy
     "display_asset_strategy_section",
     # alp strategy
