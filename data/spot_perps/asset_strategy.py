@@ -54,18 +54,22 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     st.subheader(f"{asset_symbol} strategy")
 
     # Controls
-    col_a, col_b, col_c = st.columns([1, 1, 1])
-    supported = _get_supported_protocols(token_config, asset_symbol)
+    col_a, col_b, col_c, col_d = st.columns([1, 1, 1, 1])
     with col_a:
-        protocol = st.selectbox("Protocol", supported, index=0, key=f"{asset_symbol}_proto")
+      base_usd = st.number_input(
+        "Input Amount (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key=f"{asset_symbol}_base_usd"
+    )
+    supported = _get_supported_protocols(token_config, asset_symbol)
     with col_b:
+        protocol = st.selectbox("Protocol", supported, index=0, key=f"{asset_symbol}_proto")
+    with col_c:
         points = st.selectbox("Points (hours)", [168, 336, 720, 1440], index=3, key=f"{asset_symbol}_points")
 
     asset_bank, usdc_bank, market_name = _find_pair_banks(token_config, asset_symbol, protocol)
     eff_max = 1.0
     if asset_bank and usdc_bank:
         eff_max = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "long")
-    with col_c:
+    with col_d:
         leverage = st.slider(
             "Leverage (long)", min_value=1.0, max_value=float(eff_max), value=min(2.0, float(eff_max)), step=0.5,
             key=f"{asset_symbol}_leverage",
@@ -90,26 +94,6 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     if df.empty:
         st.info("No historical data available for the selection.")
         return
-
-    # Spot APY chart (hidden by default)
-    show_spot_chart = st.checkbox("Show spot APY chart", value=False, key=f"{asset_symbol}_show_spot_chart")
-    if show_spot_chart:
-        import plotly.graph_objects as go
-        plot_df = df.copy()
-        plot_df["time"] = pd.to_datetime(plot_df["time"])  # ensure dtype
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(x=plot_df["time"], y=plot_df["spot_rate_pct"], name="Spot % (APY)", mode="lines")
-        )
-        fig.update_layout(height=280, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption(f"{asset_symbol}/USDC long spot rate (APY%) per 4 hours")
-
-    # Earnings breakdown inputs
-    st.subheader("Earnings breakdown")
-    base_usd = st.number_input(
-        "Base notional (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key=f"{asset_symbol}_base_usd"
-    )
 
     # Fetch hourly lending/borrowing
     with st.spinner("Computing earnings..."):
@@ -198,7 +182,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
             st.metric("Profit %", "N/A")
 
     # 4H combined chart
-    st.subheader(f"{asset_symbol} vs USDC (4H)")
+    st.text(f"{asset_symbol}/USDC spot chart")
     res_for_chart = earn_df.dropna(subset=["asset_price"]).copy()
     if not res_for_chart.empty and pd.notna(asset_tokens):
         res_for_chart["time_4h"] = res_for_chart["time"].dt.floor("4H")
@@ -271,6 +255,19 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         })
         st.dataframe(tbl, use_container_width=True, hide_index=True)
 
+    # Spot APY chart (hidden by default)
+    show_spot_chart = st.checkbox("Show spot APY chart", value=False, key=f"{asset_symbol}_show_spot_chart")
+    if show_spot_chart:
+        import plotly.graph_objects as go
+        plot_df = df.copy()
+        plot_df["time"] = pd.to_datetime(plot_df["time"])  # ensure dtype
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(x=plot_df["time"], y=plot_df["spot_rate_pct"], name="Spot % (APY)", mode="lines")
+        )
+        fig.update_layout(height=280, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(f"{asset_symbol}/USDC long spot rate (APY%) per 4 hours")
 
 def display_alp_strategy_section(token_config: dict) -> None:
     display_asset_strategy_section(token_config, "ALP")

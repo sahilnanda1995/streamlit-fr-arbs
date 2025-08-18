@@ -52,6 +52,8 @@ def main():
     # === JLP strategy section (below backtesting) ===
     display_asset_strategy_section(token_config, "JLP")
 
+    st.divider()
+
     # === ALP strategy section ===
     display_alp_strategy_section(token_config)
 
