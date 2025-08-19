@@ -15,7 +15,11 @@ from data.spot_perps.backtesting_utils import (
     build_breakdown_table_df,
     style_breakdown_table,
 )
-from data.spot_perps.helpers import get_protocol_market_pairs
+from data.spot_perps.helpers import (
+    get_protocol_market_pairs,
+    get_matching_usdc_bank,
+    compute_effective_max_leverage,
+)
 
 
 def _get_variant_choices(asset_type: str) -> list:
@@ -78,8 +82,33 @@ def main():
     with col_d:
         direction_label = st.selectbox("Direction", ["Long", "Short"], index=0)
         dir_lower = direction_label.lower()
+    # Compute effective max leverage for the selected variant/protocol/market and direction
+    # Find asset bank for this variant on the selected protocol/market
+    asset_bank = None
+    for p, m, bank in get_protocol_market_pairs(token_config, variant):
+        if p == protocol and m == market:
+            asset_bank = bank
+            break
+    usdc_bank = get_matching_usdc_bank(token_config, protocol, market)
+    eff_max = compute_effective_max_leverage(
+        token_config,
+        asset_bank or "",
+        usdc_bank or "",
+        dir_lower,
+    )
     with col_e:
-        leverage = st.slider("Leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
+        if float(eff_max) <= 1.0:
+            leverage = 1.0
+            st.metric("Leverage", "1.0x")
+            st.caption("Leverage capped at 1.0x for this selection.")
+        else:
+            leverage = st.slider(
+                "Leverage",
+                min_value=1.0,
+                max_value=float(eff_max),
+                value=min(2.0, float(eff_max)),
+                step=0.5,
+            )
     with col_f:
         perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0)
 
