@@ -453,13 +453,39 @@ def format_spot_arbitrage_dataframe(df: pd.DataFrame) -> Any:
     Returns:
         Styled DataFrame ready for st.dataframe()
     """
+    # Display-only: invert leverage columns (e.g., "1x", "1.5x", ...) without changing original df
+    display_df = df.copy()
+    for col in display_df.columns:
+        if col.endswith("x") and any(char.isdigit() for char in col):
+            display_df[col] = display_df[col].apply(lambda v: -v if pd.notna(v) else v)
+
     # Create format dictionary for leverage columns (columns ending with "x")
     format_dict = {}
-    for col in df.columns:
+    leverage_cols = []
+    for col in display_df.columns:
         if col.endswith("x") and any(char.isdigit() for char in col):
             format_dict[col] = "{:.2f}%"
+            leverage_cols.append(col)
 
-    # Apply formatting with None handling
-    styled_df = df.style.format(format_dict, na_rep="None")
+    # Highlighter: emphasize the maximum displayed leverage value per row
+    def _highlight_max(row):
+        if not leverage_cols:
+            return row
+        # row is the subset Series when used with subset=leverage_cols and axis=1
+        try:
+            max_val = row.max(skipna=True)
+        except Exception:
+            max_val = None
+        return [
+            "background-color: #16a34a; font-weight: 600" if (pd.notna(v) and v == max_val) else ""
+            for v in row
+        ]
+
+    # Apply formatting and highlight (display-only)
+    styled_df = (
+        display_df.style
+        .format(format_dict, na_rep="None")
+        .apply(_highlight_max, axis=1, subset=leverage_cols)
+    )
 
     return styled_df
