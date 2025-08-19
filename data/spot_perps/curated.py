@@ -24,14 +24,14 @@ def _compute_exchange_fields(
     Compute display fields for a single exchange given spot and funding rates.
 
     Returns a dict with keys:
-      - funding_text (str)
+      - funding_text (float | None)
       - arb_value (float | None)
       - calc_text (str)
       - desc_text (str)
     """
     if funding_rate is None:
         return {
-            "funding_text": "N/A",
+            "funding_text": None,
             "arb_value": None,
             "calc_text": "N/A",
             "desc_text": "",
@@ -54,7 +54,7 @@ def _compute_exchange_fields(
         desc_text = "No Arb Available(Not Profitable)"
 
     return {
-        "funding_text": f"{funding_rate:.1f}%",
+        "funding_text": funding_rate,
         "arb_value": arb_value,
         "calc_text": calc_text,
         "desc_text": desc_text,
@@ -147,7 +147,7 @@ def create_curated_arbitrage_table(
                     exchange_name, rate_value, spot_rate, direction, asset_name, variant
                 )
 
-            spot_display = f"{best_spot_info['rate']:.1f}%(via {best_spot_info['variant']}/{best_spot_info['pair_asset']}) {best_spot_info['leverage']}x"
+            spot_display = f"{-best_spot_info['rate']:.1f}%(via {best_spot_info['variant']}/{best_spot_info['pair_asset']}) {best_spot_info['leverage']}x"
 
             row = {
                 "Coin": asset_name,
@@ -158,7 +158,13 @@ def create_curated_arbitrage_table(
             }
             for ex in EXCHANGES:
                 fields = exchange_fields.get(ex, {})
-                row[f"{ex} Funding Rate"] = fields.get("funding_text", "N/A")
+                display_text = "N/A"
+                if fields.get("funding_text") is not None:
+                  if direction == "Long":
+                    display_text = f"{fields.get('funding_text'):.1f}%"
+                  else:
+                    display_text = f"{-fields.get('funding_text'):.1f}%"
+                row[f"{ex} Funding Rate"] = display_text
                 row[f"Asgard - {ex} Arb"] = fields.get("calc_text", "N/A")
                 row[f"{ex}_Arb_Rate"] = fields.get("arb_value")
             rows.append(row)
@@ -207,7 +213,7 @@ def display_curated_arbitrage_section(
 
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.subheader("📊 Asgard Spot vs Perps Arbitrage")
+        st.subheader("📊 Spot vs Perps Delta Neutral Strategies")
     with col2:
         max_leverage = st.slider(
             "Max Leverage",

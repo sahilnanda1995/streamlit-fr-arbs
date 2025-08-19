@@ -86,9 +86,9 @@ LORIS_ALLOWED_EXCHANGES = [
 ]
 
 # UI Configuration
-APP_TITLE = "📈 SPOT and Perps Arbitrage"
-APP_DESCRIPTION = "Checkout the arbitrage opportunities between Spot and Perps."
-PAGE_TITLE = "SPOT and Perps Arbitrage"
+APP_TITLE = "📈 Delta Neutral Strategies"
+APP_DESCRIPTION = "Checkout the delta neutral opportunities between Spot and Perps."
+PAGE_TITLE = "Delta Neutral Strategies"
 
 # Asset variants (single source)
 ASSET_VARIANTS = {

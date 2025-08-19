@@ -203,10 +203,14 @@ def display_backtesting_section(
         import plotly.graph_objects as go
         df_plot = series_df.copy()
         df_plot["time"] = pd.to_datetime(df_plot["time"])  # ensure dtype
+        # Display-only inversion of spot/net arb; conditionally invert funding for short direction
+        df_plot["spot_rate_pct_display"] = -df_plot["spot_rate_pct"]
+        df_plot["net_arb_pct_display"] = -df_plot["net_arb_pct"]
+        df_plot["funding_pct_display"] = df_plot["funding_pct"] if dir_lower == "long" else -df_plot["funding_pct"]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct"], name="Spot %", mode="lines"))
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct"], name="Perps %", mode="lines"))
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct"], name="Net Arb %", mode="lines"))
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct_display"], name="Spot %", mode="lines"))
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct_display"], name="Perps %", mode="lines"))
+        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct_display"], name="Net Arb %", mode="lines", line=dict(color="#16a34a")))
         fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Series: Spot Rate (APY%), Perps Funding (APY%), Net Arb (APY%) per 4 hours")
@@ -219,6 +223,10 @@ def display_backtesting_section(
         # Per-bucket earnings from APY% over 4 hours
         bucket_factor = 4.0 / (365.0 * 24.0)  # 4h as fraction of a year
         df_calc = df_plot.copy()
+        # Keep original values for all calculations; add display-only inverted columns if needed later
+        df_calc["spot_rate_pct_display"] = -df_calc["spot_rate_pct"]
+        df_calc["net_arb_pct_display"] = -df_calc["net_arb_pct"]
+        df_calc["funding_pct_display"] = df_calc["funding_pct"] if dir_lower == "long" else -df_calc["funding_pct"]
         # Spot: negative rate => interest earned, positive => paid
         df_calc["spot_interest_usd"] = - spot_cap * (df_calc["spot_rate_pct"] / 100.0) * bucket_factor
         # Perps funding:
@@ -247,6 +255,7 @@ def display_backtesting_section(
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
 
         st.markdown("**Breakdown**")
+        # Build table without rounding first so we can invert spot rate purely for display
         tbl = df_calc[[
             "time",
             "spot_rate_pct",
@@ -257,7 +266,12 @@ def display_backtesting_section(
             "spot_interest_usd",
             "funding_interest_usd",
             "total_interest_usd",
-        ]].round({
+        ]].copy()
+        # Display-only adjustments: invert spot/net arb always; funding only when short
+        tbl["spot_rate_pct"] = -tbl["spot_rate_pct"]
+        tbl["net_arb_pct"] = -tbl["net_arb_pct"]
+        tbl["funding_pct"] = df_calc["funding_pct_display"].values
+        tbl = tbl.round({
             "spot_rate_pct": 3,
             "funding_pct": 3,
             "net_arb_pct": 3,
@@ -283,8 +297,15 @@ def display_backtesting_section(
                         styles.append("color: #16a34a" if v > 0 else ("color: #dc2626" if v < 0 else ""))
             return styles
 
+        # Format percentage columns with % sign (display-only)
+        percent_format = {
+            "spot_rate_pct": "{:.2f}%",
+            "funding_pct": "{:.2f}%",
+            "net_arb_pct": "{:.2f}%",
+        }
         styled_tbl = (
             tbl.style
+            .format(percent_format)
             .apply(_style_series, subset=["spot_interest_usd"])
             .apply(_style_series, subset=["funding_interest_usd"])
             .apply(_style_series, subset=["total_interest_usd"])
