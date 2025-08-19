@@ -23,11 +23,6 @@
     "hasStakingYield": false,
     "banks": [
       {
-        "protocol": "marginfi",
-        "market": "Main Market",
-        "bank": "CCKtUs6Cgwo4aaQUmBPmyoApH2gUDErxNZCAntD6LYGh"
-      },
-      {
         "protocol": "kamino",
         "market": "Main Market",
         "bank": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
@@ -48,6 +43,11 @@
         "protocol": "solend",
         "market": "Main Market",
         "bank": "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
+      },
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "CCKtUs6Cgwo4aaQUmBPmyoApH2gUDErxNZCAntD6LYGh"
       }
     ]
   },
