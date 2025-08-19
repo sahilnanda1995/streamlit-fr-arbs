@@ -88,17 +88,8 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         st.info("No matching asset/USDC banks found for the selected protocol/market.")
         return
 
-    # Actions: require explicit Analyze; Refresh/Retry only shown on failures
-    col_x, _ = st.columns([1, 3])
-    analyze_clicked = col_x.button("Analyze", key=f"{asset_symbol}_analyze_btn")
-
+    # Render automatically; keep retry button for error handling
     analyzed_state_key = f"{asset_symbol}_analyzed"
-    if analyze_clicked:
-        st.session_state[analyzed_state_key] = True
-
-    if not st.session_state.get(analyzed_state_key, False):
-        st.info("Click Analyze to fetch data and render the strategy analysis.")
-        return
 
     def _render_refresh_button():
         btn = st.button("Refresh / Retry", key=f"{asset_symbol}_refresh_btn")

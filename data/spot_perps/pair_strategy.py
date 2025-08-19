@@ -102,15 +102,8 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
         st.info("No matching base/quote banks found for the selected protocol/market.")
         return
 
-    # Analyze gating
-    col_x, _ = st.columns([1, 3])
-    analyze_clicked = col_x.button("Analyze", key=f"{base_symbol}_{quote_symbol}_analyze_btn")
+    # Render automatically; keep retry button for error handling
     analyzed_state_key = f"{base_symbol}_{quote_symbol}_analyzed"
-    if analyze_clicked:
-        st.session_state[analyzed_state_key] = True
-    if not st.session_state.get(analyzed_state_key, False):
-        st.info("Click Analyze to fetch data and render the strategy analysis.")
-        return
 
     def _render_refresh_button():
         btn = st.button("Refresh / Retry", key=f"{base_symbol}_{quote_symbol}_refresh_btn")
