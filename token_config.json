@@ -57,11 +57,6 @@
     "hasStakingYield": true,
     "banks": [
       {
-        "protocol": "marginfi",
-        "market": "Main Market",
-        "bank": "Bohoc1ikHLD7xKJuzTyiTyCwzaL5N7ggJQu75A8mKYM8"
-      },
-      {
         "protocol": "kamino",
         "market": "Main Market",
         "bank": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
@@ -77,6 +72,11 @@
         "market": "Main Market",
         "bank": "6",
         "maxLeverage": { "long": 5, "short": 6 }
+      },
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "Bohoc1ikHLD7xKJuzTyiTyCwzaL5N7ggJQu75A8mKYM8"
       }
     ]
   },
@@ -86,14 +86,14 @@
     "hasStakingYield": true,
     "banks": [
       {
-        "protocol": "marginfi",
-        "market": "Main Market",
-        "bank": "22DcjMZrMwC5Bpa5AGBsmjc5V9VuQrXG6N9ZtdUNyYGE"
-      },
-      {
         "protocol": "kamino",
         "market": "Main Market",
         "bank": "FBSyPnxtHKLBZ4UeeUyAnbtFuAmTHLtso9YtsqRDRWpM"
+      },
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "22DcjMZrMwC5Bpa5AGBsmjc5V9VuQrXG6N9ZtdUNyYGE"
       }
     ]
   },
@@ -158,11 +158,6 @@
     "hasStakingYield": false,
     "banks": [
       {
-        "protocol": "marginfi",
-        "market": "Main Market",
-        "bank": "2s37akK2eyBbp8DZgCm7RtsaEz8eJP3Nxd4urLHQv7yB"
-      },
-      {
         "protocol": "kamino",
         "market": "Isolated JLP Market",
         "bank": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp"
@@ -186,6 +181,11 @@
         "protocol": "drift",
         "market": "Main Market",
         "bank": "0"
+      },
+      {
+        "protocol": "marginfi",
+        "market": "Main Market",
+        "bank": "2s37akK2eyBbp8DZgCm7RtsaEz8eJP3Nxd4urLHQv7yB"
       }
     ]
   },
