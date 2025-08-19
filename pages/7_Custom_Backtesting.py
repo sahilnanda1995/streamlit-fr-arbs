@@ -151,13 +151,13 @@ def main():
 
     col_a, col_b, col_c, col_d = st.columns(4)
     with col_a:
-        st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
+        st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
     with col_b:
         st.metric("Funding interest (sum)", f"${df_calc['funding_interest_usd'].sum():,.2f}")
     with col_c:
         st.metric("Total interest (sum)", f"${df_calc['total_interest_usd'].sum():,.2f}")
     with col_d:
-        st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
+        st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
 
     st.markdown("**Breakdown**")
     tbl = build_breakdown_table_df(df_calc, dir_lower)
