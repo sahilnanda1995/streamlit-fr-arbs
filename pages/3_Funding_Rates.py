@@ -82,6 +82,9 @@ def main():
             fig.update_layout(height=260, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
             st.plotly_chart(fig, use_container_width=True)
             st.caption("Hyperliquid funding APY (%)")
+            mean_rate = dfp["fundingRate"].mean()
+            median_rate = dfp["fundingRate"].median()
+            st.caption(f"Mean: {mean_rate:.2f}% • Median: {median_rate:.2f}%")
 
     with col_drift:
         st.markdown("**Drift**")
@@ -102,6 +105,9 @@ def main():
             fig.update_layout(height=260, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
             st.plotly_chart(fig, use_container_width=True)
             st.caption("Drift funding APY (%)")
+            mean_rate = dfp["fundingRate"].mean()
+            median_rate = dfp["fundingRate"].median()
+            st.caption(f"Mean: {mean_rate:.2f}% • Median: {median_rate:.2f}%")
 
 
 if __name__ == "__main__":
