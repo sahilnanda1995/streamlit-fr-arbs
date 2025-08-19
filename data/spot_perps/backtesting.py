@@ -19,6 +19,12 @@ from config.constants import (
 from utils.formatting import scale_funding_rate_to_percentage
 from .helpers import get_matching_usdc_bank, get_protocol_market_pairs
 from .spot_history import build_spot_history_series, build_arb_history_series
+from .backtesting_utils import (
+    prepare_display_series,
+    compute_earnings_and_implied_apy,
+    build_breakdown_table_df,
+    style_breakdown_table,
+)
 from .curated import find_best_spot_rate_across_leverages
 from config.constants import SPOT_PERPS_CONFIG
 
@@ -201,12 +207,7 @@ def display_backtesting_section(
         st.info("No historical data available for the selection.")
     else:
         import plotly.graph_objects as go
-        df_plot = series_df.copy()
-        df_plot["time"] = pd.to_datetime(df_plot["time"])  # ensure dtype
-        # Display-only inversion of spot/net arb; conditionally invert funding for short direction
-        df_plot["spot_rate_pct_display"] = -df_plot["spot_rate_pct"]
-        df_plot["net_arb_pct_display"] = -df_plot["net_arb_pct"]
-        df_plot["funding_pct_display"] = df_plot["funding_pct"] if dir_lower == "long" else -df_plot["funding_pct"]
+        df_plot = prepare_display_series(series_df, dir_lower)
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct_display"], name="Spot %", mode="lines"))
         fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct_display"], name="Perps %", mode="lines"))
@@ -217,27 +218,7 @@ def display_backtesting_section(
 
         st.subheader("💰 Earnings Calculator")
         total_cap = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="earn_total_cap")
-        spot_cap = total_cap / 2
-        perps_cap = total_cap / 2 * lev
-
-        # Per-bucket earnings from APY% over 4 hours
-        bucket_factor = 4.0 / (365.0 * 24.0)  # 4h as fraction of a year
-        df_calc = df_plot.copy()
-        # Keep original values for all calculations; add display-only inverted columns if needed later
-        df_calc["spot_rate_pct_display"] = -df_calc["spot_rate_pct"]
-        df_calc["net_arb_pct_display"] = -df_calc["net_arb_pct"]
-        df_calc["funding_pct_display"] = df_calc["funding_pct"] if dir_lower == "long" else -df_calc["funding_pct"]
-        # Spot: negative rate => interest earned, positive => paid
-        df_calc["spot_interest_usd"] = - spot_cap * (df_calc["spot_rate_pct"] / 100.0) * bucket_factor
-        # Perps funding:
-        #  - Long: positive funding => earned; negative => paid  (multiplier +1)
-        #  - Short: positive funding => paid;   negative => earned (multiplier -1)
-        fund_sign = 1.0 if dir_lower == "long" else -1.0
-        df_calc["funding_interest_usd"] = perps_cap * fund_sign * (df_calc["funding_pct"] / 100.0) * bucket_factor
-        df_calc["total_interest_usd"] = df_calc["spot_interest_usd"] + df_calc["funding_interest_usd"]
-        # Capital deployed columns (constant per bucket, shown for clarity)
-        df_calc["spot_capital_usd"] = float(spot_cap)
-        df_calc["perps_capital_usd"] = float(perps_cap)
+        df_calc, spot_cap, perps_cap, implied_apy = compute_earnings_and_implied_apy(df_plot, dir_lower, total_cap, lev)
 
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
@@ -247,69 +228,12 @@ def display_backtesting_section(
         with col_c:
             st.metric("Total interest (sum)", f"${df_calc['total_interest_usd'].sum():,.2f}")
         with col_d:
-            total_hours = len(df_calc) * 4.0
-            deployed_notional = total_cap
-            implied_apy = 0.0
-            if deployed_notional > 0 and total_hours > 0:
-                implied_apy = (df_calc['total_interest_usd'].sum() / (deployed_notional * (total_hours / (365.0 * 24.0)))) * 100.0
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
 
         st.markdown("**Breakdown**")
-        # Build table without rounding first so we can invert spot rate purely for display
-        tbl = df_calc[[
-            "time",
-            "spot_rate_pct",
-            "funding_pct",
-            "net_arb_pct",
-            "spot_capital_usd",
-            "perps_capital_usd",
-            "spot_interest_usd",
-            "funding_interest_usd",
-            "total_interest_usd",
-        ]].copy()
-        # Display-only adjustments: invert spot/net arb always; funding only when short
-        tbl["spot_rate_pct"] = -tbl["spot_rate_pct"]
-        tbl["net_arb_pct"] = -tbl["net_arb_pct"]
-        tbl["funding_pct"] = df_calc["funding_pct_display"].values
-        tbl = tbl.round({
-            "spot_rate_pct": 3,
-            "funding_pct": 3,
-            "net_arb_pct": 3,
-            "spot_capital_usd": 2,
-            "perps_capital_usd": 2,
-            "spot_interest_usd": 2,
-            "funding_interest_usd": 2,
-            "total_interest_usd": 2,
-        })
-        # Color earnings: green for earned, red for paid
-        def _style_series(s):
-            col = s.name
-            styles = []
-            for v in s:
-                if pd.isna(v):
-                    styles.append("")
-                else:
-                    if col == "spot_interest_usd":
-                        # spot: positive => earned
-                        styles.append("color: #16a34a" if v > 0 else ("color: #dc2626" if v < 0 else ""))
-                    else:
-                        # funding & total: positive => earned
-                        styles.append("color: #16a34a" if v > 0 else ("color: #dc2626" if v < 0 else ""))
-            return styles
-
-        # Format percentage columns with % sign (display-only)
-        percent_format = {
-            "spot_rate_pct": "{:.2f}%",
-            "funding_pct": "{:.2f}%",
-            "net_arb_pct": "{:.2f}%",
-        }
-        styled_tbl = (
-            tbl.style
-            .format(percent_format)
-            .apply(_style_series, subset=["spot_interest_usd"])
-            .apply(_style_series, subset=["funding_interest_usd"])
-            .apply(_style_series, subset=["total_interest_usd"])
-        )
+        # Build and style breakdown table using shared helpers
+        tbl = build_breakdown_table_df(df_calc, dir_lower)
+        styled_tbl = style_breakdown_table(tbl)
         st.dataframe(styled_tbl, use_container_width=True, hide_index=True)
 
 
