@@ -217,7 +217,7 @@ def display_backtesting_section(
 
         st.subheader("💰 Earnings Calculator")
         total_cap = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="earn_total_cap")
-        spot_cap = total_cap / 2 * lev
+        spot_cap = total_cap / 2
         perps_cap = total_cap / 2 * lev
 
         # Per-bucket earnings from APY% over 4 hours
