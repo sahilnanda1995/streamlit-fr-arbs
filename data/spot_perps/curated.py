@@ -19,6 +19,7 @@ def _compute_exchange_fields(
     direction: str,
     asset_name: str,
     variant: str,
+    leverage: float,
 ) -> Dict[str, Optional[float]]:
     """
     Compute display fields for a single exchange given spot and funding rates.
@@ -37,16 +38,21 @@ def _compute_exchange_fields(
             "desc_text": "",
         }
 
-    arb_value = compute_net_arb(spot_rate, funding_rate, direction)
+    # Compute effective perps funding based on spot leverage
+    # Long: perps notional ~ L; Short: perps notional ~ max(L-1, 0)
+    perps_factor = leverage if direction == "Long" else max(float(leverage) - 1.0, 0.0)
+    effective_funding = funding_rate * perps_factor
+
+    arb_value = compute_net_arb(spot_rate, effective_funding, direction)
     if direction == "Long":
-        calc_text = f"({-spot_rate:.1f}%) + ({funding_rate:.1f}%) = {-arb_value:.1f}%"
+        calc_text = f"({-spot_rate:.1f}%) + ({effective_funding:.1f}%) = {-arb_value:.1f}%"
         desc_text = (
-            f"Long {variant} on Asgard {-spot_rate:.1f}% • Short {asset_name} on {exchange_name} {funding_rate:.1f}%"
+            f"Long {variant} on Asgard {-spot_rate:.1f}% • Short {asset_name} on {exchange_name} {effective_funding:.1f}% (effective)"
         )
     else:
-        calc_text = f"({-spot_rate:.1f}%) + ({-funding_rate:.1f}%) = {-arb_value:.1f}%"
+        calc_text = f"({-spot_rate:.1f}%) + ({-effective_funding:.1f}%) = {-arb_value:.1f}%"
         desc_text = (
-            f"Short {variant} on Asgard {-spot_rate:.1f}% • Long {asset_name} on {exchange_name} {-funding_rate:.1f}%"
+            f"Short {variant} on Asgard {-spot_rate:.1f}% • Long {asset_name} on {exchange_name} {-effective_funding:.1f}% (effective)"
         )
 
     # If not profitable (arb_value >= 0), update description accordingly
@@ -54,7 +60,8 @@ def _compute_exchange_fields(
         desc_text = "No Arb Available(Not Profitable)"
 
     return {
-        "funding_text": funding_rate,
+        # Store effective funding (unsigned; display sign handled later)
+        "funding_text": effective_funding,
         "arb_value": arb_value,
         "calc_text": calc_text,
         "desc_text": desc_text,
@@ -144,14 +151,23 @@ def create_curated_arbitrage_table(
             for exchange_name in EXCHANGES:
                 rate_value = perps_rates.get(exchange_name)
                 exchange_fields[exchange_name] = _compute_exchange_fields(
-                    exchange_name, rate_value, spot_rate, direction, asset_name, variant
+                    exchange_name,
+                    rate_value,
+                    spot_rate,
+                    direction,
+                    asset_name,
+                    variant,
+                    best_spot_info['leverage'],
                 )
 
-            spot_display = f"{-best_spot_info['rate']:.1f}%(via {best_spot_info['variant']}/{best_spot_info['pair_asset']}) {best_spot_info['leverage']}x"
+            # Display format: "Long JUPSOL/USDC at 2.0x -> 10.7%"
+            spot_display = (
+                f"{direction} {best_spot_info['variant']}/{best_spot_info['pair_asset']} "
+                f"at {float(best_spot_info['leverage']):.1f}x -> {-best_spot_info['rate']:.1f}%"
+            )
 
             row = {
                 "Coin": asset_name,
-                "Direction": f"Best {direction.lower()}",
                 "Asgard Spot Margin Borrow Rate": spot_display,
                 "Row_Group_ID": row_group_id,
                 "Row_Type": "main",
@@ -160,10 +176,11 @@ def create_curated_arbitrage_table(
                 fields = exchange_fields.get(ex, {})
                 display_text = "N/A"
                 if fields.get("funding_text") is not None:
-                  if direction == "Long":
-                    display_text = f"{fields.get('funding_text'):.1f}%"
-                  else:
-                    display_text = f"{-fields.get('funding_text'):.1f}%"
+                    # Display effective funding with direction sign
+                    if direction == "Long":
+                        display_text = f"{fields.get('funding_text'):.1f}%"
+                    else:
+                        display_text = f"{-fields.get('funding_text'):.1f}%"
                 row[f"{ex} Funding Rate"] = display_text
                 row[f"Asgard - {ex} Arb"] = fields.get("calc_text", "N/A")
                 row[f"{ex}_Arb_Rate"] = fields.get("arb_value")
@@ -171,7 +188,6 @@ def create_curated_arbitrage_table(
 
             desc_row = {
                 "Coin": "",
-                "Direction": "",
                 "Asgard Spot Margin Borrow Rate": "",
                 "Row_Group_ID": row_group_id,
                 "Row_Type": "description",
@@ -252,9 +268,8 @@ def display_curated_arbitrage_section(
 
     column_config = {
         "Coin": st.column_config.TextColumn("Coin", pinned=True, width=80),
-        "Direction": st.column_config.TextColumn("Direction", width=120),
         "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
-            "Asgard Spot Margin Borrow Rate", width=300
+            "Asgard Spot Margin Borrow Rate", width=360
         ),
     }
     for ex in EXCHANGES:
@@ -282,12 +297,12 @@ def display_curated_arbitrage_section(
             """
             **Asgard Spot Margin Borrow Rate**: Best yearly rate across variants, protocols, and leverage levels
 
-            **Format**: `Rate%(via variant/pair) leverage`
-            - Example: `10%(via JUPSOL/USDC) 2x` means 10% yearly rate using JUPSOL/USDC pair at 2x leverage
+            **Format**: `Long VARIANT/PAIR at Lx -> RATE%`
+            - Example: `Long JUPSOL/USDC at 2.0x -> 10.7%` means 10.7% yearly rate using JUPSOL/USDC pair at 2.0x
 
-            **Arbitrage Calculation**:
-            - Long: Asgard rate - Perps funding = Net arbitrage
-            - Short: Asgard rate + Perps funding = Net arbitrage
+            **Arbitrage Calculation (using effective funding):**
+            - Long: Asgard rate - (Perps funding × L) = Net arbitrage
+            - Short: Asgard rate + (Perps funding × max(L-1, 0)) = Net arbitrage
             """
         )
 

@@ -28,9 +28,12 @@ def compute_earnings_and_implied_apy(
     Compute per-bucket earnings and implied APY using the same semantics as backtesting.
     Returns (df_calc, spot_cap, perps_cap, implied_apy).
     """
-    # Match existing backtesting allocation
+    # Match existing backtesting allocation, with perps notional adjusted for short direction
     spot_cap = total_cap / 2
-    perps_cap = total_cap / 2 * float(leverage)
+    if dir_lower == "short":
+        perps_cap = total_cap / 2 * max(0.0, float(leverage) - 1.0)
+    else:
+        perps_cap = total_cap / 2 * float(leverage)
 
     # 4h as fraction of a year
     bucket_factor = 4.0 / (365.0 * 24.0)
