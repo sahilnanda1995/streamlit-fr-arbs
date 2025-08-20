@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import pandas as pd
 import streamlit as st
 
-from .helpers import compute_effective_max_leverage, get_protocol_market_pairs
+from .helpers import compute_effective_max_leverage, get_protocol_market_pairs, get_bank_record_by_address
 from .spot_history import build_spot_history_series
 from api.endpoints import fetch_hourly_rates, fetch_birdeye_history_price
 
@@ -110,7 +110,6 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     # Initialize variables to satisfy static analysis on early-return paths
     df: pd.DataFrame = pd.DataFrame()
     earn_df: pd.DataFrame = pd.DataFrame()
-    asset_tokens: float = float("nan")
     # Pre-compute notional amounts used in later blocks
     asset_collateral_usd = float(base_usd) * float(leverage)
     usdc_borrowed_usd = float(base_usd) * max(float(leverage) - 1.0, 0.0)
@@ -239,6 +238,13 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     now_net_value = float(earn_df["net_value_usd"].dropna().iloc[-1]) if "net_value_usd" in earn_df.columns and not earn_df["net_value_usd"].dropna().empty else float("nan")
     profit = (now_net_value - float(base_usd)) if pd.notna(now_net_value) else float("nan")
     profit_pct = ((profit / float(base_usd)) * 100.0) if (pd.notna(profit) and float(base_usd) > 0) else float("nan")
+    # Implied APY over observed period (4H buckets)
+    total_hours_obs = float(len(earn_df) * 4.0)
+    implied_apy = (
+        ((float(profit) / float(base_usd)) / (total_hours_obs / (365.0 * 24.0)) * 100.0)
+        if (pd.notna(profit) and float(base_usd) > 0 and total_hours_obs > 0)
+        else 0.0
+    )
 
     # Metrics (first row with ROE leading)
     row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
@@ -248,7 +254,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         else:
             st.metric("ROE", "N/A")
     with row1_col2:
-        st.metric(f"{asset_symbol} interest (sum)", f"${earn_df['asset_interest_usd'].sum():,.2f}")
+        st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
     with row1_col3:
         st.metric("USDC interest (sum)", f"${earn_df['usdc_interest_usd'].sum():,.2f}")
     with row1_col4:
@@ -264,6 +270,8 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         st.metric("USDC borrowed (USD) at start", f"${start_usdc_usd:,.2f}")
     with row2_col4:
         st.metric("USDC borrowed (USD) now", (f"${now_usdc_usd:,.2f}" if pd.notna(now_usdc_usd) else "N/A"))
+
+    # (Liquidation logic moved to the summary table below to avoid duplication)
 
     # 4H combined chart (earn_df is already 4H)
     st.text(f"{asset_symbol}/USDC spot chart")
@@ -351,6 +359,90 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
                 "total_interest_usd": st.column_config.NumberColumn("Total interest (USD)", width="small", format="$%.2f"),
             },
         )
+
+    # Summary table over all available leverages up to effective max
+    total_hours = float(len(earn_df) * 4.0)
+    growth_asset = earn_df.get("asset_growth_cum_shifted", pd.Series(dtype=float)).astype(float)
+    growth_usdc = earn_df.get("usdc_growth_cum_shifted", pd.Series(dtype=float)).astype(float)
+    price_series = earn_df.get("asset_price", pd.Series(dtype=float)).astype(float)
+    # tokens per $1 collateral at start
+    tokens_per_usd0 = (1.0 / float(first_price)) if (isinstance(first_price, (int, float)) and float(first_price) > 0) else (
+        (1.0 / float(price_series.dropna().iloc[0])) if not price_series.dropna().empty and float(price_series.dropna().iloc[0]) > 0 else 0.0
+    )
+
+    # Weights for liquidation
+    try:
+        asset_rec = get_bank_record_by_address(token_config, asset_bank)
+        usdc_rec = get_bank_record_by_address(token_config, usdc_bank)
+        aw_l = float(((asset_rec or {}).get("assetWeight") or {}).get("lent", 0))
+        bw_b = float(((usdc_rec or {}).get("assetWeight") or {}).get("borrowed", 0))
+    except Exception:
+        aw_l, bw_b = 0.0, 0.0
+
+    rows: List[dict] = []
+    # Build dynamic leverage levels from 1.0 up to the effective max in 0.5x steps
+    leverage_list: List[float] = []
+    try:
+        cur = 1.0
+        while cur <= float(eff_max) + 1e-9:
+            leverage_list.append(round(cur, 1))
+            cur += 0.5
+    except Exception:
+        leverage_list = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+
+    for lev in leverage_list:
+        lev = float(lev)
+        asset_tokens_series = float(base_usd) * lev * tokens_per_usd0 * growth_asset
+        asset_lent_usd_series = price_series * asset_tokens_series
+        usdc_principal_series = float(base_usd) * max(lev - 1.0, 0.0) * growth_usdc
+        if asset_lent_usd_series.dropna().empty or usdc_principal_series.dropna().empty:
+            profit_usd = 0.0
+            liquidated_flag = False
+        else:
+            net_value_series = asset_lent_usd_series - usdc_principal_series
+            try:
+                profit_usd = float(net_value_series.dropna().iloc[-1]) - float(base_usd)
+            except Exception:
+                profit_usd = 0.0
+            # liquidation condition for this leverage
+            try:
+                asset_weighted = asset_lent_usd_series.fillna(0.0) * aw_l
+                usdc_weighted = usdc_principal_series.fillna(0.0) * bw_b
+                liquidated_flag = bool((asset_weighted < usdc_weighted).any())
+            except Exception:
+                liquidated_flag = False
+
+        roe_pct = (profit_usd / float(base_usd) * 100.0) if float(base_usd) > 0 else 0.0
+        implied_apy = ((profit_usd / float(base_usd)) / (total_hours / (365.0 * 24.0)) * 100.0) if (float(base_usd) > 0 and total_hours > 0) else 0.0
+        rows.append({
+            "asset": asset_symbol,
+            "leverage": lev,
+            "roe in %": float(roe_pct),
+            "Total APY (implied)": float(implied_apy),
+            "liquidated": ("Yes" if liquidated_flag else "No"),
+        })
+
+    summary_df = pd.DataFrame(rows)
+
+    # Highlight liquidated rows in red
+    def _style_liquidated(row: pd.Series):
+        color = "background-color: #991b1b; color: white" if row.get("liquidated") == "Yes" else ""
+        return [color] * len(row)
+
+    styled_summary = summary_df.style.apply(_style_liquidated, axis=1)
+
+    st.dataframe(
+        styled_summary,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "asset": st.column_config.TextColumn("asset", width="small"),
+            "leverage": st.column_config.NumberColumn("leverage", format="%.1fx", width="small"),
+            "roe in %": st.column_config.NumberColumn("roe in %", format="%.2f%%", width="small"),
+            "Total APY (implied)": st.column_config.NumberColumn("Total APY (implied)", format="%.2f%%", width="small"),
+            "liquidated": st.column_config.TextColumn("liquidated", width="small"),
+        },
+    )
 
     # Spot APY chart (hidden by default)
     show_spot_chart = st.checkbox("Show spot APY chart", value=False, key=f"{asset_symbol}_show_spot_chart")
