@@ -64,6 +64,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         protocol = st.selectbox("Protocol", supported, index=0, key=f"{asset_symbol}_proto")
     with col_c:
         lookback_options = [
+            ("3 months", 2160),
             ("2 months", 1440),
             ("1 month", 720),
             ("15 days", 360),
@@ -72,7 +73,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         lookback_labels = [label for label, _ in lookback_options]
         selected_label = st.selectbox("Time Period", lookback_labels, index=0, key=f"{asset_symbol}_points")
         points_map = {label: hours for label, hours in lookback_options}
-        points = points_map.get(selected_label, 1440)
+        points = points_map.get(selected_label, 2160)
 
     asset_bank, usdc_bank, market_name = _find_pair_banks(token_config, asset_symbol, protocol)
     eff_max = 1.0
@@ -174,6 +175,11 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
             .drop(columns=["time_4h"])
         )
     earn_df = pd.merge(df_asset, df_usdc, on="time", how="inner")
+    # Restrict to buckets where spot rates exist (align with spot series)
+    try:
+        earn_df = pd.merge(earn_df, df[["time"]], on="time", how="inner")
+    except Exception:
+        pass
     if earn_df.empty or base_usd <= 0:
         st.info("No earnings data available for the selection.")
         return
