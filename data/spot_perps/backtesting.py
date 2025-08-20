@@ -219,10 +219,13 @@ def display_backtesting_section(
         with col_c:
             st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
 
-        st.markdown("**Breakdown**")
-        # Build and style breakdown table using shared helpers
-        tbl = build_breakdown_table_df(df_calc, dir_lower)
-        styled_tbl = style_breakdown_table(tbl)
-        st.dataframe(styled_tbl, use_container_width=True, hide_index=True)
+        # Optional breakdown table (hidden by default)
+        show_tbl = st.checkbox("Show earnings breakdown table", value=False, key="backtesting_show_tbl")
+        if show_tbl:
+            st.markdown("**Breakdown**")
+            # Build and style breakdown table using shared helpers
+            tbl = build_breakdown_table_df(df_calc, dir_lower)
+            styled_tbl = style_breakdown_table(tbl)
+            st.dataframe(styled_tbl, use_container_width=True, hide_index=True)
 
 
