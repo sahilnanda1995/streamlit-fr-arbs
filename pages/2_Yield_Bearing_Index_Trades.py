@@ -13,7 +13,7 @@ from data.spot_perps import (
 
 def main():
     st.set_page_config(page_title="Yield Bearing Index Trades (JLP/ALP)", layout="wide")
-    st.title("🌾 Yield Bearing Index Trades (JLP/ALP)")
+    st.title("Yield Bearing Index Trades (JLP/ALP)")
     st.write("Explore lending/borrowing yield strategies with compounding and P&L breakdowns.")
 
     token_config = get_token_config()

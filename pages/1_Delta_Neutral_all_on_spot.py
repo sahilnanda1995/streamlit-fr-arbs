@@ -16,7 +16,7 @@ from data.spot_perps.helpers import (
     get_matching_usdc_bank,
     compute_effective_max_leverage,
 )
-from api.endpoints import fetch_hourly_rates
+from api.endpoints import fetch_hourly_rates, fetch_hourly_staking
 
 
 def _parse_protocol_market(proto_market: str) -> Tuple[str, str]:
@@ -77,6 +77,32 @@ def _build_short_vs_hodl_series(
     df_asset = _to_df(asset_hist, "asset_lend_apy", "asset_borrow_apy")
     df_usdc = _to_df(usdc_hist, "usdc_lend_apy", "usdc_borrow_apy")
 
+    # Staking yields (hourly) and convert to percentage APY
+    asset_mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
+    usdc_mint = (token_config.get("USDC", {}) or {}).get("mint")
+    asset_has_staking = bool((token_config.get(asset_symbol, {}) or {}).get("hasStakingYield", False))
+    usdc_has_staking = bool((token_config.get("USDC", {}) or {}).get("hasStakingYield", False))
+    try:
+        asset_stk = fetch_hourly_staking(asset_mint, int(points_hours)) if (asset_mint and asset_has_staking) else []
+    except Exception:
+        asset_stk = []
+    try:
+        usdc_stk = fetch_hourly_staking(usdc_mint, int(points_hours)) if (usdc_mint and usdc_has_staking) else []
+    except Exception:
+        usdc_stk = []
+
+    def _stk_to_df(records: List[Dict[str, Any]], col: str) -> pd.DataFrame:
+        if not records:
+            return pd.DataFrame(columns=["time", col])
+        d = pd.DataFrame(records)
+        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+        # avgApy is decimal (e.g., 0.05 for 5%), convert to %
+        d[col] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+        return d[["time", col]].sort_values("time")
+
+    df_asset_stk = _stk_to_df(asset_stk, "asset_stk_pct")
+    df_usdc_stk = _stk_to_df(usdc_stk, "usdc_stk_pct")
+
     # Aggregate hourly to 4H centered buckets
     def _agg_4h(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
         if df.empty:
@@ -92,7 +118,19 @@ def _build_short_vs_hodl_series(
 
     df_asset_4h = _agg_4h(df_asset, ["asset_lend_apy", "asset_borrow_apy"]) if not df_asset.empty else df_asset
     df_usdc_4h = _agg_4h(df_usdc, ["usdc_lend_apy", "usdc_borrow_apy"]) if not df_usdc.empty else df_usdc
+    df_asset_stk_4h = _agg_4h(df_asset_stk, ["asset_stk_pct"]) if not df_asset_stk.empty else df_asset_stk
+    df_usdc_stk_4h = _agg_4h(df_usdc_stk, ["usdc_stk_pct"]) if not df_usdc_stk.empty else df_usdc_stk
+
     earn = pd.merge(df_asset_4h, df_usdc_4h, on="time", how="inner")
+    # Merge staking percentages
+    if not df_asset_stk_4h.empty:
+        earn = pd.merge_asof(earn.sort_values("time"), df_asset_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+    else:
+        earn["asset_stk_pct"] = 0.0
+    if not df_usdc_stk_4h.empty:
+        earn = pd.merge_asof(earn.sort_values("time"), df_usdc_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+    else:
+        earn["usdc_stk_pct"] = 0.0
     if earn.empty:
         return pd.DataFrame(columns=[
             "time", "usdc_lend_apy", "asset_borrow_apy", "asset_price",
@@ -127,10 +165,15 @@ def _build_short_vs_hodl_series(
     # Growth factors per 4h bucket
     bucket_factor_4h = 4.0 / (365.0 * 24.0)
     earn = earn.sort_values("time").reset_index(drop=True)
-    earn["usdc_growth_factor"] = 1.0 + (earn["usdc_lend_apy"] / 100.0) * bucket_factor_4h
-    earn["asset_borrow_growth_factor"] = 1.0 + (earn["asset_borrow_apy"] / 100.0) * bucket_factor_4h
+    # Effective lending/borrowing includes staking yields (as done in Spot_Margin_Rates)
+    earn["usdc_growth_factor"] = 1.0 + ((earn["usdc_lend_apy"] + earn.get("usdc_stk_pct", 0.0)) / 100.0) * bucket_factor_4h
+    earn["asset_borrow_growth_factor"] = 1.0 + ((earn["asset_borrow_apy"] + earn.get("asset_stk_pct", 0.0)) / 100.0) * bucket_factor_4h
     earn["usdc_growth_cum_shifted"] = earn["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
     earn["asset_borrow_growth_cum_shifted"] = earn["asset_borrow_growth_factor"].cumprod().shift(1).fillna(1.0)
+
+    # For display, reflect effective asset borrow APY (borrow + staking)
+    if "asset_stk_pct" in earn.columns:
+        earn["asset_borrow_apy"] = earn["asset_borrow_apy"].fillna(0.0) + earn["asset_stk_pct"].fillna(0.0)
 
     # Leverage split per requirement:
     # wallet_amount = (L - 1) / L * T, used_capital = T - wallet_amount = T / L
@@ -162,7 +205,7 @@ def _build_short_vs_hodl_series(
 
 
 def display_delta_neutral_spot_page() -> None:
-    st.title("Delta Neutral all on Spot (Short vs HODL)")
+    st.title("Delta Neutral all on Spot")
     st.caption("Compare spot short strategies against a simple HODL baseline. No perps or funding rates involved.")
 
     # Data
@@ -171,36 +214,44 @@ def display_delta_neutral_spot_page() -> None:
         staking_data = fetch_asgard_staking_rates()
         token_config = get_token_config()
 
-    # Build strategy choices from best SHORT configs per asset
-    strategy_options: List[Dict[str, Any]] = []
+    # Build eligible asset variants: require at least 2x short leverage on any protocol/market
+    eligible_variants: Dict[str, Dict[str, Any]] = {}
     for asset_type in ["SOL", "BTC"]:
         variants = SPOT_PERPS_CONFIG["SOL_ASSETS"] if asset_type == "SOL" else SPOT_PERPS_CONFIG["BTC_ASSETS"]
-        best = find_best_spot_rate_across_leverages(
-            token_config, rates_data, staking_data,
-            variants, "short", DEFAULT_TARGET_HOURS, max_leverage=5,
-            logger=None,
-        )
-        if not best:
-            continue
-        label = f"{best['variant']}/USDC at {float(best['leverage']):.1f}x"
-        strategy_options.append({
-            "label": label,
-            "asset_type": asset_type,
-            "best": best,
-        })
+        for variant_name in variants:
+            # Find the protocol/market pair with the highest effective short cap
+            best_pair = None
+            best_cap = 0.0
+            asset_pairs = get_protocol_market_pairs(token_config, variant_name)
+            for p, m, asset_bank in asset_pairs:
+                usdc_bank = get_matching_usdc_bank(token_config, p, m)
+                if not usdc_bank:
+                    continue
+                eff_cap = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "short")
+                if eff_cap is not None and float(eff_cap) >= 2.0 and float(eff_cap) > float(best_cap):
+                    best_cap = float(eff_cap)
+                    best_pair = (p, m)
+            if best_pair is not None:
+                eligible_variants[variant_name] = {
+                    "asset_type": asset_type,
+                    "protocol": best_pair[0],
+                    "market": best_pair[1],
+                    "eff_cap": best_cap,
+                }
 
-    if not strategy_options:
-        st.info("No valid spot short strategies available.")
+    if not eligible_variants:
+        st.info("No assets have at least 2x short leverage available.")
         return
 
     # Controls
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     with col1:
-        selected_idx = st.selectbox(
-            "Strategy",
-            options=list(range(len(strategy_options))),
-            format_func=lambda i: strategy_options[i]["label"],
-            key="spot_only_strategy",
+        eligible_names = sorted(list(eligible_variants.keys()))
+        selected_variant = st.selectbox(
+            "Asset",
+            options=eligible_names,
+            index=0,
+            key="spot_only_asset",
         )
     with col2:
         lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
@@ -210,11 +261,9 @@ def display_delta_neutral_spot_page() -> None:
     with col3:
         base_usd = st.number_input("Capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="spot_only_base")
 
-    choice = strategy_options[selected_idx]
-    best = choice["best"]
-    proto_market = best.get("protocol", "")
-    proto, market = _parse_protocol_market(proto_market)
-    variant = best.get("variant")
+    variant = selected_variant
+    proto = eligible_variants[variant]["protocol"]
+    market = eligible_variants[variant]["market"]
 
     # Determine max leverage for short direction
     asset_pairs = get_protocol_market_pairs(token_config, variant)
@@ -230,11 +279,19 @@ def display_delta_neutral_spot_page() -> None:
 
     with col4:
         lev = st.slider(
-            "Leverage (short)", min_value=1.0, max_value=float(eff_max), value=min(float(best.get("leverage", 2.0)), float(eff_max)), step=0.5,
+            "Leverage (short)", min_value=2.0, max_value=float(eff_max), value=min(2.0, float(eff_max)), step=0.5,
             key="spot_only_leverage",
         )
 
-    st.caption(f"Using: {variant} • {proto} ({market}) • Short • {lev:.1f}x")
+    # Descriptive caption reflecting capital split and effective short exposure
+    _lev_f = float(lev)
+    _base_f = float(base_usd)
+    _wallet_amt = (max(_lev_f - 1.0, 0.0) / _lev_f) * _base_f if _lev_f > 0 else 0.0
+    _used_cap = _base_f - _wallet_amt
+    _perps_eff = max(_lev_f - 1.0, 0.0)
+    st.caption(
+        f"Dividing ${_base_f:,.0f} between ${_wallet_amt:,.0f} on spot holding and ${_used_cap:,.0f} to place short with {_perps_eff:.0f}x exposure to create a delta neutral position"
+    )
 
     # Build time series
     with st.spinner("Building series..."):
@@ -271,18 +328,22 @@ def display_delta_neutral_spot_page() -> None:
         total_pnl = short_leg_pnl + hodl_pnl
 
         st.markdown("**Metrics**")
-        # Only the requested metrics, in the specified order
+        # Only the requested metrics, plus implied APY after ROE
         short_net_initial = float(initial_usdc_lent) - float(initial_asset_borrow_usd)
+        total_hours = float(len(plot_df) * 4.0)
+        implied_apy = ((total_pnl / base_f) / (total_hours / (365.0 * 24.0)) * 100.0) if (base_f > 0 and total_hours > 0) else 0.0
 
         # Row 1
-        r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+        r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
         with r1c1:
             st.metric("ROE", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
         with r1c2:
-            st.metric("Asset USD in wallet (initial)", f"${wallet_amount_usd:,.2f}")
+            st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
         with r1c3:
-            st.metric("Asset value in wallet (now)", f"${hodl_value_now:,.2f}")
+            st.metric("Asset USD in wallet (initial)", f"${wallet_amount_usd:,.2f}")
         with r1c4:
+            st.metric("Asset value in wallet (now)", f"${hodl_value_now:,.2f}")
+        with r1c5:
             st.metric("Asset borrowed value in short (initial)", f"${initial_asset_borrow_usd:,.2f}")
 
         # Row 2

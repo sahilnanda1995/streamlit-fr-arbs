@@ -139,16 +139,18 @@
     "hasStakingYield": false,
     "banks": [
       {
-        "protocol": "kamino",
-        "market": "Isolated JLP Market",
-        "bank": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP",
-        "maxLeverage": { "long": 6, "short": 1 }
-      },
-      {
         "protocol": "drift",
         "market": "Isolated JLP Market",
         "bank": "33",
-        "maxLeverage": { "long": 10, "short": 10 }
+        "maxLeverage": { "long": 10, "short": 10 },
+        "assetWeight": { "lent": 0.9, "borrowed": 1 }
+      },
+      {
+        "protocol": "kamino",
+        "market": "Isolated JLP Market",
+        "bank": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QoP",
+        "maxLeverage": { "long": 6, "short": 1 },
+        "assetWeight": { "lent": 0.85, "borrowed": 0 }
       }
     ]
   },
@@ -160,7 +162,8 @@
       {
         "protocol": "kamino",
         "market": "Isolated JLP Market",
-        "bank": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp"
+        "bank": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+        "assetWeight": { "lent": 1, "borrowed": 1 }
       },
       {
         "protocol": "drift",
