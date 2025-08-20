@@ -58,7 +58,7 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
     col_a, col_b, col_c, col_d = st.columns([1, 1, 1, 1])
     with col_a:
         base_usd = st.number_input(
-            "Input Amount (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key=f"{base_symbol}_{quote_symbol}_base_usd"
+            "Input Amount (USD)", min_value=0.0, value=10_000.0, step=1_000.0, key=f"{base_symbol}_{quote_symbol}_base_usd"
         )
     # Normalize keys for token_config lookups (config loader uppercases keys)
     base_key = base_symbol.upper()

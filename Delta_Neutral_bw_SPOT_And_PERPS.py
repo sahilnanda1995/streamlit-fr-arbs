@@ -25,7 +25,6 @@ def main():
     """Main application logic."""
     st.set_page_config(page_title=PAGE_TITLE, layout="wide")
     st.title(APP_TITLE)
-    st.write(APP_DESCRIPTION)
 
     # === DATA FETCHING AT THE TOP ===
     with st.spinner("Loading..."):

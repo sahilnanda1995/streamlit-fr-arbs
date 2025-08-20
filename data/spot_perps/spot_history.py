@@ -254,6 +254,9 @@ def build_arb_history_series(
     else:
         df["net_arb_pct"] = df["spot_rate_pct"] + df["funding_pct"]
 
+    # Only consider buckets where spot rate is available
+    df = df.dropna(subset=["spot_rate_pct"])  # ensures ROE, charts, and tables use valid spot buckets only
+
     return df[["time", "spot_rate_pct", "funding_pct", "net_arb_pct"]].sort_values("time")
 
 

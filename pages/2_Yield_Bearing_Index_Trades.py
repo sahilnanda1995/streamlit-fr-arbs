@@ -18,14 +18,10 @@ def main():
 
     token_config = get_token_config()
 
-    # JLP strategy
-    st.subheader("JLP Strategy")
     display_asset_strategy_section(token_config, "JLP")
 
     st.divider()
 
-    # ALP strategy
-    st.subheader("ALP Strategy")
     display_alp_strategy_section(token_config)
 
 

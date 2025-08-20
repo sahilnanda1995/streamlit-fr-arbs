@@ -132,7 +132,7 @@ def display_backtesting_section(
     strategies_by_roe: Optional[List[Dict[str, Any]]] = None,
     key_prefix: Optional[str] = None,
 ) -> None:
-    st.subheader("🧪 Backtesting (1M)")
+    st.markdown("##### Backtesting")
 
     # Controls
 
@@ -140,7 +140,6 @@ def display_backtesting_section(
     st.caption("Perps historical charts are available on the Funding Rates page.")
 
     # Spot Rate History (derived from curated strategies)
-    st.subheader("📈 Spot Rate History (Hourly)")
     if not strategies_by_roe or len(strategies_by_roe) == 0:
         st.info("No strategies available to backtest. Please select filters above or ensure curated section loaded.")
         return
@@ -158,10 +157,16 @@ def display_backtesting_section(
             key=(f"{key_prefix}_spot_hist_strategy" if key_prefix else "spot_hist_strategy"),
         )
     with row_sel_3:
-        lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
+        lookback_options = [
+            ("1 week", 168),
+            ("2 weeks", 336),
+            ("1 month", 720),
+            ("2 months", 1440),
+            ("3 months", 2160),
+        ]
         lookback_labels = [label for label, _ in lookback_options]
         selected_lookback = st.selectbox(
-            "Time Period", lookback_labels, index=2,
+            "Time Period", lookback_labels, index=4,
             key=(f"{key_prefix}_spot_hist_limit" if key_prefix else "spot_hist_limit")
         )
         sh_limit = dict(lookback_options).get(selected_lookback, 720)
@@ -204,7 +209,7 @@ def display_backtesting_section(
         st.plotly_chart(fig2, use_container_width=True)
         st.caption("Series: Net Arb (APY%) per 4 hours")
 
-        st.subheader("💰 Earnings Calculator")
+        st.markdown("##### Earnings Calculator")
         total_cap = st.number_input(
             "Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0,
             key=(f"{key_prefix}_earn_total_cap" if key_prefix else "earn_total_cap")

@@ -439,16 +439,6 @@ def display_curated_arbitrage_section(
     import streamlit as st
     from .backtesting import display_backtesting_section
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.subheader("📊 Spot vs Perps Delta Neutral Strategies")
-    with col2:
-        lookback_choice = st.selectbox("Lookback", ["1 week", "2 weeks", "1 month"], index=2)
-    lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720}
-    lookback_hours = lookback_map.get(lookback_choice, 720)
-
-    total_capital_usd = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="curated_total_cap")
-
     st.caption("Best rates across all variants, protocols, and leverage levels")
 
     # Sidebar: missing data diagnostics option
@@ -460,7 +450,23 @@ def display_curated_arbitrage_section(
 
     # Render per-asset sections: SOL and BTC
     for section_asset in ["SOL", "BTC"]:
+        if section_asset == "BTC":
+            st.divider()
         st.subheader(f"{section_asset} Delta Neutral Opportunities")
+        # Per-asset controls
+        col_a, col_b = st.columns([2, 1])
+        with col_a:
+            total_capital_usd_asset = st.number_input(
+                "Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0,
+                key=f"curated_total_cap_{section_asset.lower()}"
+            )
+        with col_b:
+            lookback_choice_asset = st.selectbox(
+                "Lookback", ["1 week", "2 weeks", "1 month", "2 months", "3 months"], index=4,
+                key=f"curated_lookback_{section_asset.lower()}"
+            )
+        lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720, "2 months": 1440, "3 months": 2160}
+        lookback_hours_asset = lookback_map.get(lookback_choice_asset, 720)
         logs: List[str] = []
         curated_df = create_curated_arbitrage_table(
             token_config=token_config,
@@ -470,8 +476,8 @@ def display_curated_arbitrage_section(
             drift_data=drift_data,
             target_hours=target_hours,
             logger=(logs.append if show_missing else None),
-            lookback_hours=lookback_hours,
-            total_capital_usd=total_capital_usd,
+            lookback_hours=lookback_hours_asset,
+            total_capital_usd=total_capital_usd_asset,
             perps_exchanges=["Hyperliquid", "Drift"],
             asset_names=[section_asset],
         )
@@ -519,8 +525,8 @@ def display_curated_arbitrage_section(
                 asset_variants=asset_variants,
                 direction=direction,
                 max_leverage=DEFAULT_MAX_LEVERAGE,
-                lookback_hours=lookback_hours,
-                total_cap=total_capital_usd,
+                lookback_hours=lookback_hours_asset,
+                total_cap=total_capital_usd_asset,
                 perps_exchanges=["Hyperliquid", "Drift"],
                 logger=(logs.append if show_missing else None),
             )

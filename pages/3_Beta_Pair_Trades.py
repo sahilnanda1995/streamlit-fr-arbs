@@ -19,20 +19,14 @@ def main():
 
     token_config = get_token_config()
 
-    # WETH/CBBTC
-    st.subheader("WETH / CBBTC")
     display_weth_cbbtc_strategy_section(token_config)
 
     st.divider()
 
-    # SOL/CBBTC
-    st.subheader("SOL / CBBTC")
     display_sol_cbbtc_strategy_section(token_config)
 
     st.divider()
 
-    # JitoSOL/CBBTC
-    st.subheader("JitoSOL / CBBTC")
     display_jitosol_cbbtc_strategy_section(token_config)
 
 
