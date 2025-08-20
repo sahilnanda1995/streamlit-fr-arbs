@@ -53,15 +53,13 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     """
     st.subheader(f"{asset_symbol} strategy")
 
-    # Controls
-    col_a, col_b, col_c, col_d = st.columns([1, 1, 1, 1])
+    # Controls (protocol is auto-selected; no user input)
+    col_a, col_c, col_d = st.columns([1, 1, 1])
     with col_a:
       base_usd = st.number_input(
         "Input Amount (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key=f"{asset_symbol}_base_usd"
     )
     supported = _get_supported_protocols(token_config, asset_symbol)
-    with col_b:
-        protocol = st.selectbox("Protocol", supported, index=0, key=f"{asset_symbol}_proto")
     with col_c:
         lookback_options = [
             ("3 months", 2160),
@@ -75,13 +73,24 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         points_map = {label: hours for label, hours in lookback_options}
         points = points_map.get(selected_label, 2160)
 
-    asset_bank, usdc_bank, market_name = _find_pair_banks(token_config, asset_symbol, protocol)
+    # Auto-select the first protocol/market where both asset and USDC banks exist
+    protocol = None
+    market_name = None
+    asset_bank = None
+    usdc_bank = None
+    for p in supported:
+        ab, ub, mn = _find_pair_banks(token_config, asset_symbol, p)
+        if ab and ub:
+            protocol = p
+            market_name = mn
+            asset_bank, usdc_bank = ab, ub
+            break
     eff_max = 1.0
     if asset_bank and usdc_bank:
         eff_max = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "long")
     with col_d:
         leverage = st.slider(
-            "Leverage (long)", min_value=1.0, max_value=float(eff_max), value=float(eff_max), step=0.5,
+            "Leverage (long)", min_value=1.0, max_value=float(eff_max), value=min(5.0, float(eff_max)), step=0.5,
             key=f"{asset_symbol}_leverage",
         )
 
@@ -253,7 +262,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     )
 
     # Metrics (first row with ROE leading)
-    row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
+    row1_col1, row1_col2 = st.columns([1, 3])
     with row1_col1:
         if pd.notna(profit) and pd.notna(profit_pct):
             st.metric("ROE", f"${profit:,.2f}", delta=f"{profit_pct:+.2f}%")
@@ -261,10 +270,6 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
             st.metric("ROE", "N/A")
     with row1_col2:
         st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
-    with row1_col3:
-        st.metric("USDC interest (sum)", f"${earn_df['usdc_interest_usd'].sum():,.2f}")
-    with row1_col4:
-        st.metric("Total interest (sum)", f"${earn_df['total_interest_usd'].sum():,.2f}")
 
     # Row 2: start/now asset USD, start/now USDC USD
     row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
@@ -296,75 +301,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     else:
         st.info("Insufficient price data to build 4H chart.")
 
-    # 4H breakdown table (earn_df is already 4H)
-    show_tbl = st.checkbox("Show earnings breakdown table", value=False, key=f"{asset_symbol}_show_tbl")
-    if show_tbl:
-        resampled = (
-            earn_df.groupby("time", as_index=False)
-            .agg({
-                "asset_price": "mean",
-                "asset_lent_usd_now": "mean",
-                "asset_tokens": "last",
-                "usdc_borrow_apy": "mean",
-                "asset_lend_apy": "mean",
-                "asset_interest_usd": "sum",
-                "usdc_interest_usd": "sum",
-                "total_interest_usd": "sum",
-                "usdc_principal_usd": "last",
-                "net_value_usd": "last",
-            })
-            .sort_values("time")
-        )
-        # Current outstanding USDC principal per bucket
-        resampled["usdc_borrowed"] = resampled["usdc_principal_usd"]
-
-        tbl = resampled[[
-            "time",
-            "asset_price",
-            "asset_tokens",
-            "asset_lent_usd_now",
-            "usdc_borrowed",
-            "net_value_usd",
-            "asset_lend_apy",
-            "usdc_borrow_apy",
-            "asset_interest_usd",
-            "usdc_interest_usd",
-            "total_interest_usd",
-        ]].copy()
-        tbl = tbl.rename(columns={
-            "asset_tokens": "asset_lent_tokens",
-            "net_value_usd": "net_value",
-        })
-        tbl = tbl.round({
-            "asset_price": 6,
-            "asset_lent_tokens": 6,
-            "asset_lent_usd_now": 2,
-            "usdc_borrowed": 2,
-            "net_value": 2,
-            "asset_lend_apy": 4,
-            "usdc_borrow_apy": 4,
-            "asset_interest_usd": 2,
-            "usdc_interest_usd": 2,
-            "total_interest_usd": 2,
-        })
-        st.dataframe(
-            tbl,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "time": st.column_config.DatetimeColumn("Time", width="small"),
-                "asset_price": st.column_config.NumberColumn(f"{asset_symbol} price", width="small", format="%.6f"),
-                "asset_lent_tokens": st.column_config.NumberColumn(f"{asset_symbol} amount", width="small", format="%.6f"),
-                "asset_lent_usd_now": st.column_config.NumberColumn(f"{asset_symbol} value (USD)", width="small", format="$%.2f"),
-                "usdc_borrowed": st.column_config.NumberColumn("USDC principal (USD)", width="small", format="$%.2f"),
-                "net_value": st.column_config.NumberColumn("Net value (USD)", width="small", format="$%.2f"),
-                "asset_lend_apy": st.column_config.NumberColumn(f"{asset_symbol} APY", width="small", format="%.2f%%"),
-                "usdc_borrow_apy": st.column_config.NumberColumn("USDC borrow APY", width="small", format="%.2f%%"),
-                "asset_interest_usd": st.column_config.NumberColumn(f"{asset_symbol} interest (USD)", width="small", format="$%.2f"),
-                "usdc_interest_usd": st.column_config.NumberColumn("USDC interest (USD)", width="small", format="$%.2f"),
-                "total_interest_usd": st.column_config.NumberColumn("Total interest (USD)", width="small", format="$%.2f"),
-            },
-        )
+    # (Breakdown table moved below the liquidation table)
 
     # Summary table over all available leverages up to effective max
     total_hours = float(len(earn_df) * 4.0)
@@ -435,6 +372,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         color = "background-color: #991b1b; color: white" if row.get("liquidated") == "Yes" else ""
         return [color] * len(row)
 
+    st.subheader("ROE and Liquidation summary by leverage")
     styled_summary = summary_df.style.apply(_style_liquidated, axis=1)
 
     st.dataframe(
@@ -449,6 +387,75 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
             "liquidated": st.column_config.TextColumn("liquidated", width="small"),
         },
     )
+
+    # 4H breakdown table (moved below liquidation table)
+    show_tbl = st.checkbox("Show earnings breakdown table", value=False, key=f"{asset_symbol}_show_tbl")
+    if show_tbl:
+        resampled = (
+            earn_df.groupby("time", as_index=False)
+            .agg({
+                "asset_price": "mean",
+                "asset_lent_usd_now": "mean",
+                "asset_tokens": "last",
+                "usdc_borrow_apy": "mean",
+                "asset_lend_apy": "mean",
+                "asset_interest_usd": "sum",
+                "usdc_interest_usd": "sum",
+                "total_interest_usd": "sum",
+                "usdc_principal_usd": "last",
+                "net_value_usd": "last",
+            })
+            .sort_values("time")
+        )
+        resampled["usdc_borrowed"] = resampled["usdc_principal_usd"]
+
+        tbl = resampled[[
+            "time",
+            "asset_price",
+            "asset_tokens",
+            "asset_lent_usd_now",
+            "usdc_borrowed",
+            "net_value_usd",
+            "asset_lend_apy",
+            "usdc_borrow_apy",
+            "asset_interest_usd",
+            "usdc_interest_usd",
+            "total_interest_usd",
+        ]].copy()
+        tbl = tbl.rename(columns={
+            "asset_tokens": "asset_lent_tokens",
+            "net_value_usd": "net_value",
+        })
+        tbl = tbl.round({
+            "asset_price": 6,
+            "asset_lent_tokens": 6,
+            "asset_lent_usd_now": 2,
+            "usdc_borrowed": 2,
+            "net_value": 2,
+            "asset_lend_apy": 4,
+            "usdc_borrow_apy": 4,
+            "asset_interest_usd": 2,
+            "usdc_interest_usd": 2,
+            "total_interest_usd": 2,
+        })
+        st.dataframe(
+            tbl,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "time": st.column_config.DatetimeColumn("Time", width="small"),
+                "asset_price": st.column_config.NumberColumn(f"{asset_symbol} price", width="small", format="%.6f"),
+                "asset_lent_tokens": st.column_config.NumberColumn(f"{asset_symbol} amount", width="small", format="%.6f"),
+                "asset_lent_usd_now": st.column_config.NumberColumn(f"{asset_symbol} value (USD)", width="small", format="$%.2f"),
+                "usdc_borrowed": st.column_config.NumberColumn("USDC principal (USD)", width="small", format="$%.2f"),
+                "net_value": st.column_config.NumberColumn("Net value (USD)", width="small", format="$%.2f"),
+                "asset_lend_apy": st.column_config.NumberColumn(f"{asset_symbol} APY", width="small", format="%.2f%%"),
+                "usdc_borrow_apy": st.column_config.NumberColumn("USDC borrow APY", width="small", format="%.2f%%"),
+                "asset_interest_usd": st.column_config.NumberColumn(f"{asset_symbol} interest (USD)", width="small", format="$%.2f"),
+                "usdc_interest_usd": st.column_config.NumberColumn("USDC interest (USD)", width="small", format="$%.2f"),
+                "total_interest_usd": st.column_config.NumberColumn("Total interest (USD)", width="small", format="$%.2f"),
+            },
+        )
 
     # Spot APY chart (hidden by default)
     show_spot_chart = st.checkbox("Show spot APY chart", value=False, key=f"{asset_symbol}_show_spot_chart")
