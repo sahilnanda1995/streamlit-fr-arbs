@@ -343,16 +343,16 @@ def display_delta_neutral_spot_page() -> None:
         with r1c2:
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
         with r1c3:
-            st.metric("Asset USD in wallet (initial)", f"${wallet_amount_usd:,.0f}")
+            st.metric(f"{variant} value in wallet (initial)", f"${wallet_amount_usd:,.0f}")
         with r1c4:
-            st.metric("Asset value in wallet (now)", f"${hodl_value_now:,.0f}")
+            st.metric(f"{variant} value in wallet (now)", f"${hodl_value_now:,.0f}")
 
         # Row 2
         r2c1, r2c2, r2c3, r2c4 = st.columns(4)
         with r2c1:
-            st.metric("Asset borrowed value in short (initial)", f"${initial_asset_borrow_usd:,.0f}")
+            st.metric(f"{variant} borrowed value in short (initial)", f"${initial_asset_borrow_usd:,.0f}")
         with r2c2:
-            st.metric("Asset borrowed value in short (now)", f"${close_cost_now:,.0f}")
+            st.metric(f"{variant} borrowed value in short (now)", f"${close_cost_now:,.0f}")
         with r2c3:
             st.metric("Short position net value (initial)", f"${short_net_initial:,.0f}")
         with r2c4:
@@ -363,22 +363,22 @@ def display_delta_neutral_spot_page() -> None:
         "time", "asset_price", "usdc_principal_usd", "asset_tokens_owed", "close_cost_usd",
         "usdc_lend_apy", "asset_borrow_apy", "net_value_usd", "hodl_value_usd",
     ]].rename(columns={
-        "asset_price": "asset price",
+        "asset_price": f"{variant} price",
         "usdc_principal_usd": "usdc lent",
-        "asset_tokens_owed": "asset borrowed",
-        "close_cost_usd": "asset borrowed in usd",
+        "asset_tokens_owed": f"{variant} borrowed",
+        "close_cost_usd": f"{variant} borrowed in usd",
         "usdc_lend_apy": "usdc lent apy",
-        "asset_borrow_apy": "asset borrow apy",
+        "asset_borrow_apy": f"{variant} borrow apy",
         "net_value_usd": "spot position net value",
         "hodl_value_usd": "wallet hodl net value",
     })
     tbl = tbl.round({
-        "asset price": 6,
+        f"{variant} price": 6,
         "usdc lent": 2,
-        "asset borrowed": 6,
-        "asset borrowed in usd": 2,
+        f"{variant} borrowed": 6,
+        f"{variant} borrowed in usd": 2,
         "usdc lent apy": 3,
-        "asset borrow apy": 3,
+        f"{variant} borrow apy": 3,
         "spot position net value": 2,
         "wallet hodl net value": 2,
     })
