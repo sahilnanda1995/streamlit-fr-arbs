@@ -208,19 +208,36 @@ def display_backtesting_section(
     else:
         import plotly.graph_objects as go
         df_plot = prepare_display_series(series_df, dir_lower)
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct_display"], name="Spot %", mode="lines"))
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct_display"], name="Perps %", mode="lines"))
-        fig.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct_display"], name="Net Arb %", mode="lines", line=dict(color="#16a34a")))
-        fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption("Series: Spot Rate (APY%), Perps Funding (APY%), Net Arb (APY%) per 4 hours")
+
+        # Chart 1: Spot vs FR APY
+        st.markdown("**Spot vs FR APY**")
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct_display"], name="Spot %", mode="lines"))
+        fig1.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct_display"], name="Perps %", mode="lines"))
+        fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig1, use_container_width=True)
+        st.caption("Series: Spot Rate (APY%), Perps Funding (APY%) per 4 hours")
+
+        # Chart 2: Net yield
+        st.markdown("**Net yield**")
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct_display"], name="Net Arb %", mode="lines", line=dict(color="#16a34a")))
+        fig2.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig2, use_container_width=True)
+        st.caption("Series: Net Arb (APY%) per 4 hours")
 
         st.subheader("💰 Earnings Calculator")
         total_cap = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="earn_total_cap")
         df_calc, spot_cap, perps_cap, implied_apy = compute_earnings_and_implied_apy(df_plot, dir_lower, total_cap, lev)
 
-        col_a, col_b, col_c, col_d = st.columns(4)
+        # ROE over selected time period (first metric): Profit and Profit %
+        profit_usd = float(df_calc["total_interest_usd"].sum())
+        roe_pct = (profit_usd / total_cap * 100.0) if total_cap > 0 else 0.0
+        roe_label = f"ROE ({selected_lookback})"
+
+        col_roe, col_a, col_b, col_c, col_d = st.columns(5)
+        with col_roe:
+            st.metric(roe_label, f"${profit_usd:,.2f}", delta=f"{roe_pct:.2f}%")
         with col_a:
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
         with col_b:
