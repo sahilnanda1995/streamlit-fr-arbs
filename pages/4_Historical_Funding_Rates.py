@@ -27,8 +27,8 @@ from utils.formatting import (
 
 def main():
     """Main page logic for Funding Rates."""
-    st.set_page_config(page_title="Funding Rates", layout="wide")
-    st.title("📈 Funding Rates")
+    st.set_page_config(page_title="Historical Funding Rates", layout="wide")
+    st.title("📈 Historical Funding Rates")
     st.write("Compare perpetual funding rates across exchanges with flexible time intervals.")
 
     # === DATA FETCHING ===

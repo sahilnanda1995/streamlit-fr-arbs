@@ -17,8 +17,8 @@ from data.spot_arbitrage import display_spot_arbitrage_section
 
 def main():
     """Main page logic for Spot Hourly Fee Rates."""
-    st.set_page_config(page_title="Spot Hourly Fee Rates", layout="wide")
-    st.title("💰 Spot Hourly Fee Rates")
+    st.set_page_config(page_title="Spot Margin Rates", layout="wide")
+    st.title("💰 Spot Margin Rates")
     st.write("Calculate arbitrage opportunities between spot lending/borrowing markets with different leverage levels.")
 
     # === DATA FETCHING ===

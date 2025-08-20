@@ -162,7 +162,7 @@ def _build_short_vs_hodl_series(
 
 
 def display_delta_neutral_spot_page() -> None:
-    st.title("Delta Neutral Spot (Short vs HODL)")
+    st.title("Delta Neutral all on Spot (Short vs HODL)")
     st.caption("Compare spot short strategies against a simple HODL baseline. No perps or funding rates involved.")
 
     # Data
