@@ -14,7 +14,7 @@ from data.spot_perps.pair_strategy import (
 
 def main():
     st.set_page_config(page_title="Beta Pair Trades", layout="wide")
-    st.title("🤝 Beta Pair Trades")
+    st.title("Beta Pair Trades")
     st.write("Analyze base/quote long strategies with per-asset compounding, prices, and P&L.")
 
     token_config = get_token_config()

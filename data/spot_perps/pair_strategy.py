@@ -250,37 +250,40 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
     earn_df["total_interest_usd"] = earn_df["base_interest_usd"] + earn_df["quote_interest_usd"]
     earn_df["net_value_usd"] = earn_df["base_value_usd"] - earn_df["quote_value_usd"]
 
-    # Metrics (two rows)
-    row1_col1, row1_col2, row1_col3 = st.columns(3)
-    with row1_col1:
-        st.metric(f"{base_symbol} interest (sum)", f"${earn_df['base_interest_usd'].sum():,.2f}")
-    with row1_col2:
-        st.metric(f"{quote_symbol} interest (sum)", f"${earn_df['quote_interest_usd'].sum():,.2f}")
-    with row1_col3:
-        st.metric("Total interest (sum)", f"${earn_df['total_interest_usd'].sum():,.2f}")
-
+    # Metrics aligned to Delta Neutral/Yield pages
     start_base_usd = float(base_collateral_usd)
     now_base_usd = float(earn_df["base_value_usd"].dropna().iloc[-1]) if not earn_df["base_value_usd"].dropna().empty else float("nan")
     start_quote_usd = float(quote_borrowed_usd)
     now_quote_usd = float(earn_df["quote_value_usd"].dropna().iloc[-1]) if not earn_df["quote_value_usd"].dropna().empty else float("nan")
     now_net_value = float(earn_df["net_value_usd"].dropna().iloc[-1]) if not earn_df["net_value_usd"].dropna().empty else float("nan")
 
-    row2_col1, row2_col2, row2_col3, row2_col4, row2_col5 = st.columns(5)
-    with row2_col1:
-        st.metric(f"{base_symbol} value (USD) at start", f"${start_base_usd:,.2f}")
-    with row2_col2:
-        st.metric(f"{base_symbol} value (USD) now", (f"${now_base_usd:,.2f}" if pd.notna(now_base_usd) else "N/A"))
-    with row2_col3:
-        st.metric(f"{quote_symbol} borrowed (USD) at start", f"${start_quote_usd:,.2f}")
-    with row2_col4:
-        st.metric(f"{quote_symbol} borrowed (USD) now", (f"${now_quote_usd:,.2f}" if pd.notna(now_quote_usd) else "N/A"))
-    with row2_col5:
-        if pd.notna(now_net_value) and float(base_usd) > 0:
-            profit = now_net_value - float(base_usd)
-            profit_pct = (profit / float(base_usd) * 100.0)
-            st.metric("Profit", f"${profit:,.2f}", delta=f"{profit_pct:+.2f}%", delta_color="normal")
+    profit = (now_net_value - float(base_usd)) if pd.notna(now_net_value) else float("nan")
+    profit_pct = ((profit / float(base_usd)) * 100.0) if (pd.notna(profit) and float(base_usd) > 0) else float("nan")
+    total_hours_obs = float(len(earn_df) * 4.0)
+    implied_apy = (
+        ((float(profit) / float(base_usd)) / (total_hours_obs / (365.0 * 24.0)) * 100.0)
+        if (pd.notna(profit) and float(base_usd) > 0 and total_hours_obs > 0)
+        else 0.0
+    )
+
+    row1_col1, row1_col2 = st.columns([1, 3])
+    with row1_col1:
+        if pd.notna(profit) and pd.notna(profit_pct):
+            st.metric("ROE", f"${profit:,.2f}", delta=f"{profit_pct:+.2f}%")
         else:
-            st.metric("Profit", "N/A")
+            st.metric("ROE", "N/A")
+    with row1_col2:
+        st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
+
+    row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
+    with row2_col1:
+        st.metric(f"{base_symbol} lent (USD) at start", f"${start_base_usd:,.0f}")
+    with row2_col2:
+        st.metric(f"{base_symbol} lent (USD) now", (f"${now_base_usd:,.0f}" if pd.notna(now_base_usd) else "N/A"))
+    with row2_col3:
+        st.metric(f"{quote_symbol} borrowed (USD) at start", f"${start_quote_usd:,.0f}")
+    with row2_col4:
+        st.metric(f"{quote_symbol} borrowed (USD) now", (f"${now_quote_usd:,.0f}" if pd.notna(now_quote_usd) else "N/A"))
 
     # Combined chart
     st.text(f"{base_symbol}/{quote_symbol} spot chart")

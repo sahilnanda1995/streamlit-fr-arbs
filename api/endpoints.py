@@ -1,9 +1,11 @@
 import requests
+import time
 import streamlit as st
 from typing import List, Dict, Any
 
 # Create a persistent session for connection reuse
 session = requests.Session()
+_BIRDEYE_LAST_CALL_TS: float = 0.0  # simple 1 rps throttle
 
 @st.cache_data(ttl=300)
 def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> List[Dict[str, Any]]:
@@ -374,22 +376,49 @@ def fetch_birdeye_history_price(
             "time_to": time_to,
             "ui_amount_mode": "raw",
         }
-        resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        # Expected: { data: { items: [ { unixTime, value }, ... ] } }
-        items = (((data or {}).get("data") or {}).get("items") or [])
-        points: List[Dict[str, Any]] = []
-        for it in items:
-            t_raw = it.get("unixTime")
-            v_raw = it.get("value")
+        # Simple retry with exponential backoff to handle 429s
+        attempts = 0
+        backoff = 1.2
+        # Max 10 attempts
+        while attempts < 10:
             try:
-                t = int(t_raw)
-                p = float(v_raw)
-            except (TypeError, ValueError):
-                continue
-            points.append({"t": t, "price": p})
-        return points
+                # Enforce 1 rps pacing across the app
+                global _BIRDEYE_LAST_CALL_TS
+                now = time.time()
+                elapsed = now - _BIRDEYE_LAST_CALL_TS
+                if elapsed < 1.05:
+                    time.sleep(1.05 - elapsed)
+                resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=12)
+                _BIRDEYE_LAST_CALL_TS = time.time()
+                if resp.status_code == 429:
+                    attempts += 1
+                    if attempts >= 10:
+                        resp.raise_for_status()
+                    time.sleep(backoff)
+                    backoff *= 1.7
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                items = (((data or {}).get("data") or {}).get("items") or [])
+                points: List[Dict[str, Any]] = []
+                for it in items:
+                    t_raw = it.get("unixTime")
+                    v_raw = it.get("value")
+                    try:
+                        t = int(t_raw)
+                        p = float(v_raw)
+                    except (TypeError, ValueError):
+                        continue
+                    points.append({"t": t, "price": p})
+                return points
+            except requests.exceptions.RequestException as re:
+                attempts += 1
+                if attempts >= 10:
+                    raise re
+                time.sleep(backoff)
+                backoff *= 1.7
+        # Fallthrough if loop exits without return
+        return []
     except requests.exceptions.RequestException as e:
         st.error(f"Birdeye price request failed: {str(e)}")
         return []
