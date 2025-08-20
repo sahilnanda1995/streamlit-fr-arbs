@@ -298,6 +298,7 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
         fig2.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["quote_value_usd"], name=f"{quote_symbol} borrowed + interest (USD)", mode="lines", line=dict(color="#EF553B")))
         fig2.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Net value (USD)", mode="lines", line=dict(color="#636EFA", width=2)))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="USD", margin=dict(l=0, r=0, t=0, b=0))
+        fig2.update_yaxes(zeroline=True, zerolinecolor="#9CA3AF", zerolinewidth=1)
         st.plotly_chart(fig2, use_container_width=True)
     else:
         st.info("Insufficient price data to build 4H chart.")

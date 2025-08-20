@@ -198,14 +198,33 @@ def display_backtesting_section(
         fig1.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["spot_rate_pct_display"], name="Spot %", mode="lines"))
         fig1.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["funding_pct_display"], name="Perps %", mode="lines"))
         fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        fig1.update_yaxes(zeroline=True, zerolinecolor="#9CA3AF", zerolinewidth=1)
         st.plotly_chart(fig1, use_container_width=True)
         st.caption("Series: Spot Rate (APY%), Perps Funding (APY%) per 4 hours")
+        # Standard deviation for lines (display values), rendered as centered text
+        try:
+            spot_std = float(pd.to_numeric(df_plot["spot_rate_pct_display"], errors="coerce").dropna().std())
+        except Exception:
+            spot_std = float("nan")
+        try:
+            perps_std = float(pd.to_numeric(df_plot["funding_pct_display"], errors="coerce").dropna().std())
+        except Exception:
+            perps_std = float("nan")
+        spot_std_txt = f"{spot_std:.2f}%" if pd.notna(spot_std) else "N/A"
+        perps_std_txt = f"{perps_std:.2f}%" if pd.notna(perps_std) else "N/A"
+        st.markdown(
+            f"<div style='text-align:center; color:#666; margin-top:4px;'>"
+            f"Std dev — Spot: {spot_std_txt} • Perps: {perps_std_txt}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
         # Chart 2: Net yield
         st.markdown("**Net yield**")
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=df_plot["time"], y=df_plot["net_arb_pct_display"], name="Net Arb %", mode="lines", line=dict(color="#16a34a")))
         fig2.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        fig2.update_yaxes(zeroline=True, zerolinecolor="#9CA3AF", zerolinewidth=1)
         st.plotly_chart(fig2, use_container_width=True)
         st.caption("Series: Net Arb (APY%) per 4 hours")
 
