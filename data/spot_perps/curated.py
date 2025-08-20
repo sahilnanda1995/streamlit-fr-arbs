@@ -501,20 +501,6 @@ def display_curated_arbitrage_section(
             for line in logs:
                 st.write("- ", line)
 
-    with st.expander("ℹ️ How to read this table"):
-        st.markdown(
-            """
-            **Asgard Spot Margin Borrow Rate**: Best yearly rate across variants, protocols, and leverage levels
-
-            **Format**: `Long VARIANT/PAIR at Lx -> RATE%`
-            - Example: `Long JUPSOL/USDC at 2.0x -> 10.7%` means 10.7% yearly rate using JUPSOL/USDC pair at 2.0x
-
-            **Arbitrage Calculation (using effective funding):**
-            - Long: Asgard rate - (Perps funding × L) = Net arbitrage
-            - Short: Asgard rate + (Perps funding × max(L-1, 0)) = Net arbitrage
-            """
-        )
-
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Build all strategies by ROE to feed backtesting selector
