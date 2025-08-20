@@ -80,7 +80,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         eff_max = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "long")
     with col_d:
         leverage = st.slider(
-            "Leverage (long)", min_value=1.0, max_value=float(eff_max), value=min(2.0, float(eff_max)), step=0.5,
+            "Leverage (long)", min_value=1.0, max_value=float(eff_max), value=float(eff_max), step=0.5,
             key=f"{asset_symbol}_leverage",
         )
 

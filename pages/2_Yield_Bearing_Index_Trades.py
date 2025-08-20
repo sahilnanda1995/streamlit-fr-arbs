@@ -22,7 +22,7 @@ def main():
 
     st.divider()
 
-    display_alp_strategy_section(token_config)
+    display_asset_strategy_section(token_config, "ALP")
 
 
 if __name__ == "__main__":
