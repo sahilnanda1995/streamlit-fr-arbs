@@ -1,12 +1,23 @@
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Tuple
 
 import pandas as pd
 
-from config.constants import DEFAULT_TARGET_HOURS
+from config.constants import DEFAULT_TARGET_HOURS, SPOT_PERPS_CONFIG
 from .calculations import (
     get_perps_rates_for_asset,
+    calculate_spot_rate_with_direction,
 )
-from .helpers import compute_net_arb
+from .helpers import (
+    compute_net_arb,
+    get_protocol_market_pairs,
+    get_matching_usdc_bank,
+    compute_effective_max_leverage,
+)
+from .spot_history import build_arb_history_series
+from .backtesting_utils import (
+    prepare_display_series,
+    compute_earnings_and_implied_apy,
+)
 
 
 EXCHANGES: List[str] = ["Hyperliquid", "Lighter", "Drift"]
@@ -103,6 +114,172 @@ def find_best_spot_rate_across_leverages(
     return best_info
 
 
+def find_best_config_by_historical_roe(
+    token_config: dict,
+    asset_variants: list,
+    direction: str,
+    max_leverage: int,
+    lookback_hours: int,
+    total_cap: float,
+    perps_exchanges: Optional[List[str]] = None,
+    logger: Optional[Callable[[str], None]] = None,
+) -> Optional[dict]:
+    """
+    Search across variants, protocol/markets, leverages, and perps exchanges to find
+    the configuration with the best ROE over the historical lookback window.
+    """
+    from config.constants import SPOT_LEVERAGE_LEVELS
+
+    candidates_perps = perps_exchanges or ["Hyperliquid", "Drift"]
+    best: Optional[dict] = None
+    best_roe_pct: float = float("-inf")
+
+    dir_lower = direction.lower()
+
+    for variant in asset_variants:
+        pairs: List[Tuple[str, str, str]] = get_protocol_market_pairs(token_config, variant)
+        for protocol, market, asset_bank in pairs:
+            usdc_bank = get_matching_usdc_bank(token_config, protocol, market)
+            if not usdc_bank:
+                if logger:
+                    logger(f"Skipping {variant} at {protocol}({market}): missing USDC bank")
+                continue
+
+            # Effective max leverage guard
+            eff_max = compute_effective_max_leverage(
+                token_config,
+                asset_bank if dir_lower == "long" else usdc_bank,
+                usdc_bank if dir_lower == "long" else asset_bank,
+                dir_lower,
+            )
+
+            for leverage in [lev for lev in SPOT_LEVERAGE_LEVELS if lev <= max_leverage]:
+                if float(leverage) > float(eff_max):
+                    continue
+
+                for perps_ex in candidates_perps:
+                    # Build historical arbitrage series
+                    series_df = build_arb_history_series(
+                        token_config,
+                        variant,
+                        protocol,
+                        market,
+                        dir_lower,
+                        float(leverage),
+                        perps_ex,
+                        int(lookback_hours),
+                    )
+                    if series_df.empty:
+                        continue
+
+                    df_plot = prepare_display_series(series_df, dir_lower)
+                    df_calc, _, _, _ = compute_earnings_and_implied_apy(
+                        df_plot, dir_lower, float(total_cap), float(leverage)
+                    )
+                    profit_usd = float(df_calc["total_interest_usd"].sum())
+                    roe_pct = (profit_usd / float(total_cap) * 100.0) if float(total_cap) > 0 else 0.0
+
+                    if roe_pct > best_roe_pct:
+                        best_roe_pct = roe_pct
+                        best = {
+                            "variant": variant,
+                            "protocol": protocol,
+                            "market": market,
+                            "leverage": float(leverage),
+                            "perps_exchange": perps_ex,
+                            "roe_pct": float(roe_pct),
+                            "profit_usd": float(profit_usd),
+                            "pair_asset": "USDC",
+                        }
+
+    return best
+
+
+def enumerate_configs_by_historical_roe(
+    token_config: dict,
+    asset_type: str,
+    asset_variants: list,
+    direction: str,
+    max_leverage: int,
+    lookback_hours: int,
+    total_cap: float,
+    perps_exchanges: Optional[List[str]] = None,
+    logger: Optional[Callable[[str], None]] = None,
+) -> List[dict]:
+    """
+    Enumerate all feasible strategies for given asset/direction and compute ROE using
+    historical backtesting utilities. Returns list of dicts sorted by ROE desc.
+    """
+    from config.constants import SPOT_LEVERAGE_LEVELS
+
+    candidates_perps = perps_exchanges or ["Hyperliquid", "Drift"]
+    results: List[dict] = []
+    dir_lower = direction.lower()
+
+    for variant in asset_variants:
+        pairs: List[Tuple[str, str, str]] = get_protocol_market_pairs(token_config, variant)
+        for protocol, market, asset_bank in pairs:
+            usdc_bank = get_matching_usdc_bank(token_config, protocol, market)
+            if not usdc_bank:
+                if logger:
+                    logger(f"Skipping {variant} at {protocol}({market}): missing USDC bank")
+                continue
+
+            eff_max = compute_effective_max_leverage(
+                token_config,
+                asset_bank if dir_lower == "long" else usdc_bank,
+                usdc_bank if dir_lower == "long" else asset_bank,
+                dir_lower,
+            )
+
+            for leverage in [lev for lev in SPOT_LEVERAGE_LEVELS if lev <= max_leverage]:
+                if float(leverage) > float(eff_max):
+                    continue
+                for perps_ex in candidates_perps:
+                    series_df = build_arb_history_series(
+                        token_config,
+                        variant,
+                        protocol,
+                        market,
+                        dir_lower,
+                        float(leverage),
+                        perps_ex,
+                        int(lookback_hours),
+                    )
+                    if series_df.empty:
+                        continue
+                    df_plot = prepare_display_series(series_df, dir_lower)
+                    df_calc, _, _, _ = compute_earnings_and_implied_apy(
+                        df_plot, dir_lower, float(total_cap), float(leverage)
+                    )
+                    profit_usd = float(df_calc["total_interest_usd"].sum())
+                    roe_pct = (profit_usd / float(total_cap) * 100.0) if float(total_cap) > 0 else 0.0
+
+                    # Build label including perps leg with effective notional factor
+                    perps_factor = float(leverage) if dir_lower == "long" else max(float(leverage) - 1.0, 0.0)
+                    perps_dir = "Short" if dir_lower == "long" else "Long"
+                    label = (
+                        f"{direction} {variant}/USDC at {float(leverage):.1f}x - "
+                        f"{perps_dir} {asset_type} {perps_ex} at {perps_factor:.1f}x"
+                    )
+
+                    results.append({
+                        "label": label,
+                        "asset_type": asset_type,
+                        "variant": variant,
+                        "protocol": protocol,
+                        "market": market,
+                        "direction": dir_lower,
+                        "leverage": float(leverage),
+                        "perps_exchange": perps_ex,
+                        "roe_pct": float(roe_pct),
+                        "profit_usd": float(profit_usd),
+                    })
+
+    # Sort by ROE descending
+    results.sort(key=lambda x: x.get("roe_pct", 0.0), reverse=True)
+    return results
+
 def create_curated_arbitrage_table(
     token_config: dict,
     rates_data: dict,
@@ -112,6 +289,9 @@ def create_curated_arbitrage_table(
     target_hours: int = DEFAULT_TARGET_HOURS,
     max_leverage: int = 5,
     logger: Optional[Callable[[str], None]] = None,
+    lookback_hours: int = 720,
+    total_capital_usd: float = 100_000.0,
+    perps_exchanges: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     rows: List[Dict] = []
     row_group_id = 0
@@ -135,16 +315,37 @@ def create_curated_arbitrage_table(
             continue
 
         for direction in ["Long", "Short"]:
-            best_spot_info = find_best_spot_rate_across_leverages(
-                token_config, rates_data, staking_data,
-                asset_variants, direction.lower(), target_hours, max_leverage,
+            # Choose best configuration by historical ROE instead of best spot APY
+            best_cfg = find_best_config_by_historical_roe(
+                token_config=token_config,
+                asset_variants=asset_variants,
+                direction=direction,
+                max_leverage=max_leverage,
+                lookback_hours=lookback_hours,
+                total_cap=total_capital_usd,
+                perps_exchanges=perps_exchanges or ["Hyperliquid", "Drift"],
                 logger=logger,
             )
-            if best_spot_info is None:
+            if best_cfg is None:
                 continue
 
-            spot_rate = best_spot_info['rate']
-            variant = best_spot_info['variant']
+            variant = best_cfg['variant']
+            leverage = float(best_cfg['leverage'])
+            proto = best_cfg['protocol']
+            market = best_cfg['market']
+
+            # Compute current spot rate for display (keeps existing column semantics)
+            variant_spot_rates = calculate_spot_rate_with_direction(
+                token_config, rates_data, staking_data,
+                variant, leverage, direction.lower(), target_hours,
+            )
+            spot_key = f"{proto}({market})"
+            spot_rate = variant_spot_rates.get(spot_key)
+            if spot_rate is None:
+                # Fallback: skip if we cannot compute display spot rate
+                if logger:
+                    logger(f"Skipping {variant} {direction} {spot_key}: no current spot rate for display")
+                continue
 
             # Dynamic per-exchange computations
             exchange_fields: Dict[str, Dict[str, Optional[float]]] = {}
@@ -157,18 +358,18 @@ def create_curated_arbitrage_table(
                     direction,
                     asset_name,
                     variant,
-                    best_spot_info['leverage'],
+                    leverage,
                 )
 
             # Display format: "Long JUPSOL/USDC at 2.0x -> 10.7%"
             spot_display = (
-                f"{direction} {best_spot_info['variant']}/{best_spot_info['pair_asset']} "
-                f"at {float(best_spot_info['leverage']):.1f}x -> {-best_spot_info['rate']:.1f}%"
+                f"{direction} {variant}/{ 'USDC' } at {leverage:.1f}x -> {-spot_rate:.1f}%"
             )
 
             row = {
                 "Coin": asset_name,
                 "Asgard Spot Margin Borrow Rate": spot_display,
+                "Best ROE (period)": f"{best_cfg['roe_pct']:.2f}%",
                 "Row_Group_ID": row_group_id,
                 "Row_Type": "main",
             }
@@ -176,11 +377,12 @@ def create_curated_arbitrage_table(
                 fields = exchange_fields.get(ex, {})
                 display_text = "N/A"
                 if fields.get("funding_text") is not None:
-                    # Display effective funding with direction sign
-                    if direction == "Long":
-                        display_text = f"{fields.get('funding_text'):.1f}%"
-                    else:
-                        display_text = f"{-fields.get('funding_text'):.1f}%"
+                    # Perps leg direction and effective notional factor
+                    perps_dir = "Short" if direction == "Long" else "Long"
+                    perps_factor = leverage if direction == "Long" else max(float(leverage) - 1.0, 0.0)
+                    # Effective funding sign per spot direction
+                    eff_funding_display = fields.get("funding_text") if direction == "Long" else -fields.get("funding_text")
+                    display_text = f"{perps_dir} {asset_name} at {perps_factor:.1f}x -> {eff_funding_display:.1f}%"
                 row[f"{ex} Funding Rate"] = display_text
                 row[f"Asgard - {ex} Arb"] = fields.get("calc_text", "N/A")
                 row[f"{ex}_Arb_Rate"] = fields.get("arb_value")
@@ -227,7 +429,7 @@ def display_curated_arbitrage_section(
     import streamlit as st
     from .backtesting import display_backtesting_section
 
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         st.subheader("📊 Spot vs Perps Delta Neutral Strategies")
     with col2:
@@ -239,6 +441,12 @@ def display_curated_arbitrage_section(
             step=1,
             help="Maximum leverage level to consider for curated arbitrage analysis",
         )
+    with col3:
+        lookback_choice = st.selectbox("Lookback", ["1 week", "2 weeks", "1 month"], index=2)
+    lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720}
+    lookback_hours = lookback_map.get(lookback_choice, 720)
+
+    total_capital_usd = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="curated_total_cap")
 
     st.caption(f"Best rates across all variants, protocols, and leverage levels (1x-{max_leverage}x)")
 
@@ -259,6 +467,9 @@ def display_curated_arbitrage_section(
         target_hours,
         max_leverage,
         logger=(logs.append if show_missing else None),
+        lookback_hours=lookback_hours,
+        total_capital_usd=total_capital_usd,
+        perps_exchanges=["Hyperliquid", "Drift"],
     )
 
     if curated_df.empty:
@@ -271,6 +482,7 @@ def display_curated_arbitrage_section(
         "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
             "Asgard Spot Margin Borrow Rate", width=360
         ),
+        "Best ROE (period)": st.column_config.TextColumn("Best ROE (period)", width=140),
     }
     for ex in EXCHANGES:
         column_config[f"{ex} Funding Rate"] = st.column_config.TextColumn(
@@ -308,13 +520,34 @@ def display_curated_arbitrage_section(
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Backtesting section below curated
+    # Build all strategies by ROE to feed backtesting selector
+    asset_configs = {
+        "SOL": (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL"),
+        "BTC": (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC"),
+    }
+    all_strategies: List[dict] = []
+    for asset_name, (asset_variants, _) in asset_configs.items():
+        for direction in ["Long", "Short"]:
+            all_strategies += enumerate_configs_by_historical_roe(
+                token_config=token_config,
+                asset_type=asset_name,
+                asset_variants=asset_variants,
+                direction=direction,
+                max_leverage=max_leverage,
+                lookback_hours=lookback_hours,
+                total_cap=total_capital_usd,
+                perps_exchanges=["Hyperliquid", "Drift"],
+                logger=(logs.append if show_missing else None),
+            )
+
+    # Backtesting section below curated with precomputed strategies
     display_backtesting_section(
         token_config,
         rates_data,
         staking_data,
         hyperliquid_data,
         drift_data,
+        strategies_by_roe=all_strategies,
     )
 
 

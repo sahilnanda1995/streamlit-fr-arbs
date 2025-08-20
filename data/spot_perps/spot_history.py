@@ -17,6 +17,10 @@ from data.spot_perps.helpers import compute_effective_max_leverage
 from config.constants import DEFAULT_TARGET_HOURS, DRIFT_MARKET_INDEX, ASSET_VARIANTS
 from utils.formatting import scale_funding_rate_to_percentage
 
+# Simple in-memory caches to avoid recomputing/refetching within a session
+_PERPS_SERIES_CACHE: Dict[Tuple[str, str, int], pd.DataFrame] = {}
+_SPOT_SERIES_CACHE: Dict[Tuple[str, str, str, str, float, int], pd.DataFrame] = {}
+
 
 def _find_banks_for_pair(token_config: dict, asset: str, protocol: str, market: str) -> Tuple[Optional[str], Optional[str]]:
     asset_pairs = get_protocol_market_pairs(token_config, asset)
@@ -67,6 +71,10 @@ def build_spot_history_series(
     Builds a per-hour historical spot rate series as APY (%), using hourly averages.
     direction: "long" or "short"
     """
+    cache_key = (asset, protocol, market, direction.lower(), float(leverage), int(limit))
+    if cache_key in _SPOT_SERIES_CACHE:
+        return _SPOT_SERIES_CACHE[cache_key]
+
     asset_bank, usdc_bank = _find_banks_for_pair(token_config, asset, protocol, market)
     if not asset_bank or not usdc_bank:
         return pd.DataFrame(columns=["time", "spot_rate_pct"]).astype({"spot_rate_pct": float})
@@ -127,6 +135,7 @@ def build_spot_history_series(
 
     df = df[["time", "spot_rate_pct"]].sort_values("time")
     df = _resample_to_4h_center(df, ["spot_rate_pct"])  # 4H centered buckets
+    _SPOT_SERIES_CACHE[cache_key] = df
     return df
 
 
@@ -192,12 +201,21 @@ def _build_drift_perps_series(asset_type: str, limit: int) -> pd.DataFrame:
 
 
 def build_perps_history_series(perps_exchange: str, asset_type: str, limit: int = 720) -> pd.DataFrame:
+    cache_key = (perps_exchange, asset_type, int(limit))
+    if cache_key in _PERPS_SERIES_CACHE:
+        return _PERPS_SERIES_CACHE[cache_key]
     if perps_exchange == "Hyperliquid":
-        return _build_hl_perps_series(asset_type, limit)
+        df = _build_hl_perps_series(asset_type, limit)
+        _PERPS_SERIES_CACHE[cache_key] = df
+        return df
     if perps_exchange == "Drift":
-        return _build_drift_perps_series(asset_type, limit)
+        df = _build_drift_perps_series(asset_type, limit)
+        _PERPS_SERIES_CACHE[cache_key] = df
+        return df
     # For unsupported exchanges, return empty
-    return pd.DataFrame(columns=["time", "funding_pct"])
+    df_empty = pd.DataFrame(columns=["time", "funding_pct"])
+    _PERPS_SERIES_CACHE[cache_key] = df_empty
+    return df_empty
 
 
 def build_arb_history_series(

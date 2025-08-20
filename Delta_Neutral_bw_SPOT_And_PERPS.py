@@ -45,7 +45,7 @@ def main():
         rates_data,
         staking_data,
         hyperliquid_data,
-        drift_data
+        drift_data,
     )
 
 

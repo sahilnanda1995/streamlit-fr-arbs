@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import time
 from datetime import datetime, timedelta, timezone
@@ -130,6 +130,7 @@ def display_backtesting_section(
     staking_data: dict,
     hyperliquid_data: dict,
     drift_data: dict,
+    strategies_by_roe: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     st.subheader("🧪 Backtesting (1M)")
 
@@ -140,64 +141,92 @@ def display_backtesting_section(
 
     # Spot Rate History (derived from best Asgard Spot vs Perps config)
     st.subheader("📈 Spot Rate History (Hourly)")
-    row_sel_1, row_sel_2, row_sel_3 = st.columns([2, 1, 1])
+    if strategies_by_roe:
+        row_sel_1, row_sel_3 = st.columns([3, 1])
+    else:
+        row_sel_1, row_sel_2, row_sel_3 = st.columns([2, 1, 1])
     # Fill the controls after building strategy options, in order:
-    # Strategy to backtest | Perps Exchange | Time Period
+    # Strategy to backtest | Perps Exchange (if needed) | Time Period
 
-    # Build strategy choices from best configs per asset/direction
+    # Build strategy choices from best configs per asset/direction when not provided
     strategy_options: List[Dict[str, Any]] = []
-    for asset_type in ["SOL", "BTC"]:
-        for dir_lower in ["long", "short"]:
-            variants = SPOT_PERPS_CONFIG["SOL_ASSETS"] if asset_type == "SOL" else SPOT_PERPS_CONFIG["BTC_ASSETS"]
-            best = find_best_spot_rate_across_leverages(
-                token_config, rates_data, staking_data,
-                variants, dir_lower, DEFAULT_TARGET_HOURS, max_leverage=5,
-                logger=None,
-            )
-            if not best:
-                continue
-            label = f"{best['variant']}/USDC at {float(best['leverage']):.1f}x"
-            strategy_options.append({
-                "label": label,
-                "asset_type": asset_type,
-                "direction": dir_lower,
-                "best": best,
-            })
-
-    if not strategy_options:
-        st.info("No valid strategies available to backtest.")
-        return
+    if not strategies_by_roe:
+        for asset_type in ["SOL", "BTC"]:
+            for dir_lower in ["long", "short"]:
+                variants = SPOT_PERPS_CONFIG["SOL_ASSETS"] if asset_type == "SOL" else SPOT_PERPS_CONFIG["BTC_ASSETS"]
+                best = find_best_spot_rate_across_leverages(
+                    token_config, rates_data, staking_data,
+                    variants, dir_lower, DEFAULT_TARGET_HOURS, max_leverage=5,
+                    logger=None,
+                )
+                if not best:
+                    continue
+                label = f"{best['variant']}/USDC at {float(best['leverage']):.1f}x"
+                strategy_options.append({
+                    "label": label,
+                    "asset_type": asset_type,
+                    "direction": dir_lower,
+                    "best": best,
+                })
+        if not strategy_options:
+            st.info("No valid strategies available to backtest.")
+            return
+    else:
+        if len(strategies_by_roe) == 0:
+            st.info("No strategies available to backtest.")
+            return
 
     with row_sel_1:
-        selected_idx = st.selectbox(
-            "Strategy to backtest",
-            options=list(range(len(strategy_options))),
-            format_func=lambda i: strategy_options[i]["label"],
-            key="spot_hist_strategy",
-        )
-    with row_sel_2:
-        perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0, key="spot_hist_perps")
+        if strategies_by_roe:
+            labels = [s.get("label", "") for s in strategies_by_roe]
+            selected_idx = st.selectbox(
+                "Strategy to backtest",
+                options=list(range(len(labels))),
+                format_func=lambda i: labels[i],
+                key="spot_hist_strategy",
+            )
+        else:
+            selected_idx = st.selectbox(
+                "Strategy to backtest",
+                options=list(range(len(strategy_options))),
+                format_func=lambda i: strategy_options[i]["label"],
+                key="spot_hist_strategy",
+            )
+    if not strategies_by_roe:
+        with row_sel_2:
+            perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0, key="spot_hist_perps")
     with row_sel_3:
         lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
         lookback_labels = [label for label, _ in lookback_options]
         selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="spot_hist_limit")
         sh_limit = dict(lookback_options).get(selected_lookback, 720)
 
-    choice = strategy_options[selected_idx]
-    best = choice["best"]
-    direction = choice["direction"].title()
-    dir_lower = choice["direction"]
-    proto_market = best.get("protocol", "")
-    if "(" in proto_market and ")" in proto_market:
-        proto = proto_market.split("(")[0]
-        market = proto_market.split("(")[1].split(")")[0]
+    if strategies_by_roe:
+        choice = strategies_by_roe[selected_idx]
+        direction = choice["direction"].title()
+        dir_lower = choice["direction"]
+        proto = choice["protocol"]
+        market = choice["market"]
+        variant = choice["variant"]
+        lev = float(choice.get("leverage", 2))
+        perps_exchange = choice.get("perps_exchange", "Hyperliquid")
     else:
-        proto = proto_market
-        market = ""
-    variant = best.get("variant")
-    lev = float(best.get("leverage", 2))
+        choice = strategy_options[selected_idx]
+        best = choice["best"]
+        direction = choice["direction"].title()
+        dir_lower = choice["direction"]
+        proto_market = best.get("protocol", "")
+        if "(" in proto_market and ")" in proto_market:
+            proto = proto_market.split("(")[0]
+            market = proto_market.split("(")[1].split(")")[0]
+        else:
+            proto = proto_market
+            market = ""
+        variant = best.get("variant")
+        lev = float(best.get("leverage", 2))
+        perps_exchange = st.session_state.get("spot_hist_perps", "Hyperliquid")
 
-    st.caption(f"Using: {variant} • {proto} ({market}) • {direction} • {lev}x")
+    st.caption(f"Using: {variant} • {proto} ({market}) • {direction} • {lev}x • Perps: {perps_exchange}")
 
     with st.spinner("Loading historical series..."):
         series_df = build_arb_history_series(
@@ -235,7 +264,7 @@ def display_backtesting_section(
         roe_pct = (profit_usd / total_cap * 100.0) if total_cap > 0 else 0.0
         roe_label = f"ROE ({selected_lookback})"
 
-        col_roe, col_a, col_b, col_c, col_d = st.columns(5)
+        col_roe, col_a, col_b, col_c = st.columns(4)
         with col_roe:
             st.metric(roe_label, f"${profit_usd:,.2f}", delta=f"{roe_pct:.2f}%")
         with col_a:
@@ -244,8 +273,6 @@ def display_backtesting_section(
             st.metric("Funding interest (sum)", f"${df_calc['funding_interest_usd'].sum():,.2f}")
         with col_c:
             st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
-        with col_d:
-            st.metric("Total interest (sum)", f"${df_calc['total_interest_usd'].sum():,.2f}")
 
         st.markdown("**Breakdown**")
         # Build and style breakdown table using shared helpers
