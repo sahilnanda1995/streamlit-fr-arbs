@@ -274,13 +274,13 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     # Row 2: start/now asset USD, start/now USDC USD
     row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
     with row2_col1:
-        st.metric(f"{asset_symbol} lent (USD) at start", f"${start_asset_usd:,.2f}")
+        st.metric(f"{asset_symbol} lent (USD) at start", f"${start_asset_usd:,.0f}")
     with row2_col2:
-        st.metric(f"{asset_symbol} lent (USD) now", (f"${now_asset_usd:,.2f}" if pd.notna(now_asset_usd) else "N/A"))
+        st.metric(f"{asset_symbol} lent (USD) now", (f"${now_asset_usd:,.0f}" if pd.notna(now_asset_usd) else "N/A"))
     with row2_col3:
-        st.metric("USDC borrowed (USD) at start", f"${start_usdc_usd:,.2f}")
+        st.metric("USDC borrowed (USD) at start", f"${start_usdc_usd:,.0f}")
     with row2_col4:
-        st.metric("USDC borrowed (USD) now", (f"${now_usdc_usd:,.2f}" if pd.notna(now_usdc_usd) else "N/A"))
+        st.metric("USDC borrowed (USD) now", (f"${now_usdc_usd:,.0f}" if pd.notna(now_usdc_usd) else "N/A"))
 
     # (Liquidation logic moved to the summary table below to avoid duplication)
 
