@@ -295,7 +295,6 @@ def create_curated_arbitrage_table(
     hyperliquid_data: dict,
     drift_data: dict,
     target_hours: int = DEFAULT_TARGET_HOURS,
-    max_leverage: int = 5,
     logger: Optional[Callable[[str], None]] = None,
     lookback_hours: int = 720,
     total_capital_usd: float = 100_000.0,
@@ -328,7 +327,7 @@ def create_curated_arbitrage_table(
                 token_config=token_config,
                 asset_variants=asset_variants,
                 direction=direction,
-                max_leverage=max_leverage,
+                max_leverage=5,
                 lookback_hours=lookback_hours,
                 total_cap=total_capital_usd,
                 perps_exchanges=perps_exchanges or ["Hyperliquid", "Drift"],
@@ -437,26 +436,17 @@ def display_curated_arbitrage_section(
     import streamlit as st
     from .backtesting import display_backtesting_section
 
-    col1, col2, col3 = st.columns([3, 1, 1])
+    col1, col2 = st.columns([3, 1])
     with col1:
         st.subheader("📊 Spot vs Perps Delta Neutral Strategies")
     with col2:
-        max_leverage = st.slider(
-            "Max Leverage",
-            min_value=1,
-            max_value=5,
-            value=5,
-            step=1,
-            help="Maximum leverage level to consider for curated arbitrage analysis",
-        )
-    with col3:
         lookback_choice = st.selectbox("Lookback", ["1 week", "2 weeks", "1 month"], index=2)
     lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720}
     lookback_hours = lookback_map.get(lookback_choice, 720)
 
     total_capital_usd = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="curated_total_cap")
 
-    st.caption(f"Best rates across all variants, protocols, and leverage levels (1x-{max_leverage}x)")
+    st.caption("Best rates across all variants, protocols, and leverage levels")
 
     # Sidebar: missing data diagnostics option
     show_missing = st.sidebar.checkbox(
@@ -467,13 +457,12 @@ def display_curated_arbitrage_section(
     logs: List[str] = []
 
     curated_df = create_curated_arbitrage_table(
-        token_config,
-        rates_data,
-        staking_data,
-        hyperliquid_data,
-        drift_data,
-        target_hours,
-        max_leverage,
+        token_config=token_config,
+        rates_data=rates_data,
+        staking_data=staking_data,
+        hyperliquid_data=hyperliquid_data,
+        drift_data=drift_data,
+        target_hours=target_hours,
         logger=(logs.append if show_missing else None),
         lookback_hours=lookback_hours,
         total_capital_usd=total_capital_usd,
@@ -534,6 +523,7 @@ def display_curated_arbitrage_section(
         "BTC": (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC"),
     }
     all_strategies: List[dict] = []
+    DEFAULT_MAX_LEVERAGE = 5
     for asset_name, (asset_variants, _) in asset_configs.items():
         for direction in ["Long", "Short"]:
             all_strategies += enumerate_configs_by_historical_roe(
@@ -541,7 +531,7 @@ def display_curated_arbitrage_section(
                 asset_type=asset_name,
                 asset_variants=asset_variants,
                 direction=direction,
-                max_leverage=max_leverage,
+                max_leverage=DEFAULT_MAX_LEVERAGE,
                 lookback_hours=lookback_hours,
                 total_cap=total_capital_usd,
                 perps_exchanges=["Hyperliquid", "Drift"],
