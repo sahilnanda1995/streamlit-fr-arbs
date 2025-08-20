@@ -86,7 +86,7 @@ LORIS_ALLOWED_EXCHANGES = [
 ]
 
 # UI Configuration
-APP_TITLE = "📈 Delta Neutral Strategies"
+APP_TITLE = "Delta Neutral Strategies"
 APP_DESCRIPTION = "Checkout the delta neutral opportunities between Spot and Perps."
 PAGE_TITLE = "Delta Neutral Strategies"
 
