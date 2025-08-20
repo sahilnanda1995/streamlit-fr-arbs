@@ -130,6 +130,7 @@ def display_backtesting_section(
     hyperliquid_data: dict,
     drift_data: dict,
     strategies_by_roe: Optional[List[Dict[str, Any]]] = None,
+    key_prefix: Optional[str] = None,
 ) -> None:
     st.subheader("🧪 Backtesting (1M)")
 
@@ -154,12 +155,15 @@ def display_backtesting_section(
             "Strategy to backtest",
             options=list(range(len(labels))),
             format_func=lambda i: labels[i],
-            key="spot_hist_strategy",
+            key=(f"{key_prefix}_spot_hist_strategy" if key_prefix else "spot_hist_strategy"),
         )
     with row_sel_3:
         lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
         lookback_labels = [label for label, _ in lookback_options]
-        selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="spot_hist_limit")
+        selected_lookback = st.selectbox(
+            "Time Period", lookback_labels, index=2,
+            key=(f"{key_prefix}_spot_hist_limit" if key_prefix else "spot_hist_limit")
+        )
         sh_limit = dict(lookback_options).get(selected_lookback, 720)
 
     choice = strategies_by_roe[selected_idx]
@@ -201,7 +205,10 @@ def display_backtesting_section(
         st.caption("Series: Net Arb (APY%) per 4 hours")
 
         st.subheader("💰 Earnings Calculator")
-        total_cap = st.number_input("Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="earn_total_cap")
+        total_cap = st.number_input(
+            "Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0,
+            key=(f"{key_prefix}_earn_total_cap" if key_prefix else "earn_total_cap")
+        )
         df_calc, spot_cap, perps_cap, implied_apy = compute_earnings_and_implied_apy(df_plot, dir_lower, total_cap, lev)
 
         # ROE over selected time period (first metric): Profit and Profit %
@@ -220,7 +227,10 @@ def display_backtesting_section(
             st.metric("Spot interest (sum)", f"${df_calc['spot_interest_usd'].sum():,.2f}")
 
         # Optional breakdown table (hidden by default)
-        show_tbl = st.checkbox("Show earnings breakdown table", value=False, key="backtesting_show_tbl")
+        show_tbl = st.checkbox(
+            "Show earnings breakdown table", value=False,
+            key=(f"{key_prefix}_backtesting_show_tbl" if key_prefix else "backtesting_show_tbl")
+        )
         if show_tbl:
             st.markdown("**Breakdown**")
             # Build and style breakdown table using shared helpers

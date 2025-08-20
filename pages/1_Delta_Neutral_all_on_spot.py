@@ -271,56 +271,28 @@ def display_delta_neutral_spot_page() -> None:
         total_pnl = short_leg_pnl + hodl_pnl
 
         st.markdown("**Metrics**")
+        # Only the requested metrics, in the specified order
+        short_net_initial = float(initial_usdc_lent) - float(initial_asset_borrow_usd)
+
+        # Row 1
         r1c1, r1c2, r1c3, r1c4 = st.columns(4)
         with r1c1:
-            st.metric("Start price", f"${start_price:,.4f}")
+            st.metric("ROE", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
         with r1c2:
-            st.metric("Current price", f"${asset_price_now:,.4f}")
+            st.metric("Asset USD in wallet (initial)", f"${wallet_amount_usd:,.2f}")
         with r1c3:
-            st.metric("Wallet amount (USD)", f"${wallet_amount_usd:,.2f}")
+            st.metric("Asset value in wallet (now)", f"${hodl_value_now:,.2f}")
         with r1c4:
-            st.metric("Used capital (USD)", f"${used_capital_usd:,.2f}")
+            st.metric("Asset borrowed value in short (initial)", f"${initial_asset_borrow_usd:,.2f}")
 
-        r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+        # Row 2
+        r2c1, r2c2, r2c3 = st.columns(3)
         with r2c1:
-            st.metric("Initial USDC lent", f"${initial_usdc_lent:,.2f}")
+            st.metric("Asset borrowed value in short (now)", f"${close_cost_now:,.2f}")
         with r2c2:
-            st.metric("Initial asset borrowed (USD)", f"${initial_asset_borrow_usd:,.2f}")
+            st.metric("Short position net value (initial)", f"${short_net_initial:,.2f}")
         with r2c3:
-            st.metric("HODL start tokens", f"{hodl_tokens0:,.6f}")
-        with r2c4:
-            st.metric("USDC lent now", f"${usdc_now:,.2f}")
-
-        r3c1, r3c2, r3c3, r3c4 = st.columns(4)
-        with r3c1:
-            st.metric("Asset owed now (tokens)", f"{tokens_owed_now:,.6f}")
-        with r3c2:
-            st.metric("Asset owed now (USD)", f"${close_cost_now:,.2f}")
-        with r3c3:
-            st.metric("Spot net value (short leg)", f"${net_value_now:,.2f}")
-        with r3c4:
-            st.metric("Wallet HODL value", f"${hodl_value_now:,.2f}")
-
-        r4c1, r4c2, r4c3 = st.columns(3)
-        with r4c1:
-            st.metric("Short leg PnL vs used", f"${short_leg_pnl:,.2f}")
-        with r4c2:
-            st.metric("HODL PnL vs wallet", f"${hodl_pnl:,.2f}")
-        with r4c3:
-            st.metric("Total PnL vs capital", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
-    last = plot_df.dropna(subset=["net_value_usd", "hodl_value_usd"]).tail(1)
-    if not last.empty:
-        last_short = float(last["net_value_usd"].iloc[0])
-        last_hodl = float(last["hodl_value_usd"].iloc[0])
-        total_now = last_short + last_hodl
-        pnl_total = total_now - float(base_usd)
-        m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric("Spot position net value", f"${last_short:,.2f}")
-        with m2:
-            st.metric("Wallet HODL net value", f"${last_hodl:,.2f}")
-        with m3:
-            st.metric("Total PnL vs capital", f"${pnl_total:,.2f}", delta=f"{(pnl_total/float(base_usd)*100.0):+.2f}%" if float(base_usd) > 0 else None)
+            st.metric("Short position net value (now)", f"${net_value_now:,.2f}")
 
     # Table with exact columns requested
     tbl = plot_df[[

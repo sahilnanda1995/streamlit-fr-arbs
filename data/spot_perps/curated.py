@@ -299,6 +299,7 @@ def create_curated_arbitrage_table(
     lookback_hours: int = 720,
     total_capital_usd: float = 100_000.0,
     perps_exchanges: Optional[List[str]] = None,
+    asset_names: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     rows: List[Dict] = []
     row_group_id = 0
@@ -311,6 +312,8 @@ def create_curated_arbitrage_table(
     }
 
     for asset_name, (asset_variants, asset_type) in asset_configs.items():
+        if asset_names is not None and asset_name not in set(asset_names):
+            continue
         perps_rates = get_perps_rates_for_asset(
             hyperliquid_data, drift_data, asset_type, target_hours
         )
@@ -454,67 +457,65 @@ def display_curated_arbitrage_section(
         value=False,
         help="Display which rows were skipped due to missing lending/borrowing or rate fields",
     )
-    logs: List[str] = []
 
-    curated_df = create_curated_arbitrage_table(
-        token_config=token_config,
-        rates_data=rates_data,
-        staking_data=staking_data,
-        hyperliquid_data=hyperliquid_data,
-        drift_data=drift_data,
-        target_hours=target_hours,
-        logger=(logs.append if show_missing else None),
-        lookback_hours=lookback_hours,
-        total_capital_usd=total_capital_usd,
-        perps_exchanges=["Hyperliquid", "Drift"],
-    )
-
-    if curated_df.empty:
-        st.info("No arbitrage opportunities found between Asgard and perps exchanges")
-        st.markdown("<br>", unsafe_allow_html=True)
-        return
-
-    column_config = {
-        "Coin": st.column_config.TextColumn("Coin", pinned=True, width=80),
-        "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
-            "Asgard Spot Margin Borrow Rate", width=360
-        ),
-        "Best ROE (period)": st.column_config.TextColumn("Best ROE (period)", width=140),
-    }
-    for ex in EXCHANGES:
-        column_config[f"{ex} Funding Rate"] = st.column_config.TextColumn(
-            f"{ex} Funding Rate", width=150
-        )
-        column_config[f"Asgard - {ex} Arb"] = st.column_config.TextColumn(
-            f"Asgard - {ex} Arb", width=400
+    # Render per-asset sections: SOL and BTC
+    for section_asset in ["SOL", "BTC"]:
+        st.subheader(f"{section_asset} Delta Neutral Opportunities")
+        logs: List[str] = []
+        curated_df = create_curated_arbitrage_table(
+            token_config=token_config,
+            rates_data=rates_data,
+            staking_data=staking_data,
+            hyperliquid_data=hyperliquid_data,
+            drift_data=drift_data,
+            target_hours=target_hours,
+            logger=(logs.append if show_missing else None),
+            lookback_hours=lookback_hours,
+            total_capital_usd=total_capital_usd,
+            perps_exchanges=["Hyperliquid", "Drift"],
+            asset_names=[section_asset],
         )
 
-    st.dataframe(
-        curated_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config=column_config,
-    )
+        if curated_df.empty:
+            st.info(f"No arbitrage opportunities found for {section_asset}")
+        else:
+            column_config = {
+                "Coin": st.column_config.TextColumn("Coin", pinned=True, width=80),
+                "Asgard Spot Margin Borrow Rate": st.column_config.TextColumn(
+                    "Asgard Spot Margin Borrow Rate", width=360
+                ),
+                "Best ROE (period)": st.column_config.TextColumn("Best ROE (period)", width=140),
+            }
+            for ex in EXCHANGES:
+                column_config[f"{ex} Funding Rate"] = st.column_config.TextColumn(
+                    f"{ex} Funding Rate", width=150
+                )
+                column_config[f"Asgard - {ex} Arb"] = st.column_config.TextColumn(
+                    f"Asgard - {ex} Arb", width=400
+                )
 
-    if show_missing and logs:
-        with st.expander("🔎 Missing data (Curated)"):
-            for line in logs:
-                st.write("- ", line)
+            st.dataframe(
+                curated_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config=column_config,
+            )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        if show_missing and logs:
+            with st.expander(f"🔎 Missing data ({section_asset})"):
+                for line in logs:
+                    st.write("- ", line)
 
-    # Build all strategies by ROE to feed backtesting selector
-    asset_configs = {
-        "SOL": (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL"),
-        "BTC": (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC"),
-    }
-    all_strategies: List[dict] = []
-    DEFAULT_MAX_LEVERAGE = 5
-    for asset_name, (asset_variants, _) in asset_configs.items():
+        # Build strategies by ROE for this asset only
+        asset_variants, _ = (
+            (SPOT_PERPS_CONFIG["SOL_ASSETS"], "SOL") if section_asset == "SOL" else (SPOT_PERPS_CONFIG["BTC_ASSETS"], "BTC")
+        )
+        strategies_for_asset: List[dict] = []
+        DEFAULT_MAX_LEVERAGE = 5
         for direction in ["Long", "Short"]:
-            all_strategies += enumerate_configs_by_historical_roe(
+            strategies_for_asset += enumerate_configs_by_historical_roe(
                 token_config=token_config,
-                asset_type=asset_name,
+                asset_type=section_asset,
                 asset_variants=asset_variants,
                 direction=direction,
                 max_leverage=DEFAULT_MAX_LEVERAGE,
@@ -524,14 +525,17 @@ def display_curated_arbitrage_section(
                 logger=(logs.append if show_missing else None),
             )
 
-    # Backtesting section below curated with precomputed strategies
-    display_backtesting_section(
-        token_config,
-        rates_data,
-        staking_data,
-        hyperliquid_data,
-        drift_data,
-        strategies_by_roe=all_strategies,
-    )
+        # Backtesting section for this asset
+        if strategies_for_asset:
+            display_backtesting_section(
+                token_config,
+                rates_data,
+                staking_data,
+                hyperliquid_data,
+                drift_data,
+                strategies_by_roe=strategies_for_asset,
+                key_prefix=section_asset.lower(),
+            )
+        st.markdown("<br>", unsafe_allow_html=True)
 
 
