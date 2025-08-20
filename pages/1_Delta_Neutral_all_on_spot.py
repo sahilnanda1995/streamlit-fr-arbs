@@ -289,8 +289,11 @@ def display_delta_neutral_spot_page() -> None:
     _wallet_amt = (max(_lev_f - 1.0, 0.0) / _lev_f) * _base_f if _lev_f > 0 else 0.0
     _used_cap = _base_f - _wallet_amt
     _perps_eff = max(_lev_f - 1.0, 0.0)
-    st.caption(
-        f"Dividing ${_base_f:,.0f} between ${_wallet_amt:,.0f} on spot holding and ${_used_cap:,.0f} to place short with {_perps_eff:.0f}x exposure to create a delta neutral position"
+    st.markdown(
+        f"<p style='font-size:0.9rem; margin-top:-4px; color: #666;'>"
+        f"Dividing ${_base_f:,.0f}: ${_wallet_amt:,.0f} on spot holding and ${_used_cap:,.0f} to place short with {_perps_eff:.0f}x exposure to create a delta neutral position"
+        f"</p>",
+        unsafe_allow_html=True,
     )
 
     # Build time series

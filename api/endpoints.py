@@ -275,79 +275,46 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
-    """
-    Fetch current lending and borrowing rates from Asgard API.
-
-    Returns:
-        List of rates data or empty list if request failed
-    """
-    try:
-        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=5)
-        response.raise_for_status()
-        response_data = response.json()
-
-        if response_data is not None and isinstance(response_data, dict):
-            return response_data.get("data", [])
-        return []
-
-    except requests.exceptions.Timeout:
-        st.error("Asgard current rates API request timed out after 5 seconds")
-        return []
-
-    except requests.exceptions.ConnectionError:
-        st.error("Failed to connect to Asgard current rates API endpoint")
-        return []
-
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Asgard current rates API HTTP error: {e.response.status_code}: {e.response.reason}")
-        return []
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Asgard current rates API request failed: {str(e)}")
-        return []
-
-    except ValueError as e:
-        st.error(f"Invalid JSON response from Asgard current rates API: {str(e)}")
-        return []
+    """Fetch current lending and borrowing rates from Asgard API with retries."""
+    attempts = 0
+    backoff = 1.2
+    while attempts < 10:
+        try:
+            response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=12)
+            response.raise_for_status()
+            response_data = response.json()
+            if response_data is not None and isinstance(response_data, dict):
+                return response_data.get("data", [])
+            return []
+        except (requests.exceptions.RequestException, ValueError) as e:
+            attempts += 1
+            if attempts >= 10:
+                st.warning(f"Asgard current rates request failed after retries: {str(e)}")
+                return []
+            time.sleep(backoff)
+            backoff *= 1.7
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
-    """
-    Fetch current staking rates from Asgard API.
-
-    Returns:
-        List of staking data or empty list if request failed
-    """
-    try:
-        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=5)
-        response.raise_for_status()
-        response_data = response.json()
-
-        if response_data is not None and isinstance(response_data, dict):
-            # Extract the 'data' field from the response
-            return response_data.get("data", [])
-        return []
-
-    except requests.exceptions.Timeout:
-        st.error("Asgard staking rates API request timed out after 5 seconds")
-        return []
-
-    except requests.exceptions.ConnectionError:
-        st.error("Failed to connect to Asgard staking rates API endpoint")
-        return []
-
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Asgard staking rates API HTTP error: {e.response.status_code}: {e.response.reason}")
-        return []
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Asgard staking rates API request failed: {str(e)}")
-        return []
-
-    except ValueError as e:
-        st.error(f"Invalid JSON response from Asgard staking rates API: {str(e)}")
-        return []
+    """Fetch current staking rates from Asgard API with retries."""
+    attempts = 0
+    backoff = 1.2
+    while attempts < 10:
+        try:
+            response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=12)
+            response.raise_for_status()
+            response_data = response.json()
+            if response_data is not None and isinstance(response_data, dict):
+                return response_data.get("data", [])
+            return []
+        except (requests.exceptions.RequestException, ValueError) as e:
+            attempts += 1
+            if attempts >= 10:
+                st.warning(f"Asgard staking rates request failed after retries: {str(e)}")
+                return []
+            time.sleep(backoff)
+            backoff *= 1.7
 
 
 @st.cache_data(ttl=300)
