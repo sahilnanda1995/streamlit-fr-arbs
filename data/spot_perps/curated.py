@@ -154,6 +154,9 @@ def find_best_config_by_historical_roe(
             )
 
             for leverage in [lev for lev in SPOT_LEVERAGE_LEVELS if lev <= max_leverage]:
+                # Enforce min 2.0x spot leverage for short direction
+                if dir_lower == "short" and float(leverage) < 2.0:
+                    continue
                 if float(leverage) > float(eff_max):
                     continue
 
@@ -179,7 +182,8 @@ def find_best_config_by_historical_roe(
                     profit_usd = float(df_calc["total_interest_usd"].sum())
                     roe_pct = (profit_usd / float(total_cap) * 100.0) if float(total_cap) > 0 else 0.0
 
-                    if roe_pct > best_roe_pct:
+                    # Only consider positive ROE
+                    if roe_pct > 0 and roe_pct > best_roe_pct:
                         best_roe_pct = roe_pct
                         best = {
                             "variant": variant,
@@ -233,6 +237,9 @@ def enumerate_configs_by_historical_roe(
             )
 
             for leverage in [lev for lev in SPOT_LEVERAGE_LEVELS if lev <= max_leverage]:
+                # Enforce min 2.0x spot leverage for short direction
+                if dir_lower == "short" and float(leverage) < 2.0:
+                    continue
                 if float(leverage) > float(eff_max):
                     continue
                 for perps_ex in candidates_perps:
@@ -263,18 +270,19 @@ def enumerate_configs_by_historical_roe(
                         f"{perps_dir} {asset_type} {perps_ex} at {perps_factor:.1f}x"
                     )
 
-                    results.append({
-                        "label": label,
-                        "asset_type": asset_type,
-                        "variant": variant,
-                        "protocol": protocol,
-                        "market": market,
-                        "direction": dir_lower,
-                        "leverage": float(leverage),
-                        "perps_exchange": perps_ex,
-                        "roe_pct": float(roe_pct),
-                        "profit_usd": float(profit_usd),
-                    })
+                    if roe_pct > 0:
+                        results.append({
+                            "label": label,
+                            "asset_type": asset_type,
+                            "variant": variant,
+                            "protocol": protocol,
+                            "market": market,
+                            "direction": dir_lower,
+                            "leverage": float(leverage),
+                            "perps_exchange": perps_ex,
+                            "roe_pct": float(roe_pct),
+                            "profit_usd": float(profit_usd),
+                        })
 
     # Sort by ROE descending
     results.sort(key=lambda x: x.get("roe_pct", 0.0), reverse=True)

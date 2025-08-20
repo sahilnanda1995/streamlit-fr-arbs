@@ -28,12 +28,9 @@ def compute_earnings_and_implied_apy(
     Compute per-bucket earnings and implied APY using the same semantics as backtesting.
     Returns (df_calc, spot_cap, perps_cap, implied_apy).
     """
-    # Match existing backtesting allocation, with perps notional adjusted for short direction
+    # Use allotted perps capital (not effective notional), since funding rate is already scaled
     spot_cap = total_cap / 2
-    if dir_lower == "short":
-        perps_cap = total_cap / 2 * max(0.0, float(leverage) - 1.0)
-    else:
-        perps_cap = total_cap / 2 * float(leverage)
+    perps_cap = total_cap / 2
 
     # 4h as fraction of a year
     bucket_factor = 4.0 / (365.0 * 24.0)
@@ -42,7 +39,7 @@ def compute_earnings_and_implied_apy(
     # Keep original values for all calculations; display-only columns are already present
     # Spot: negative rate => interest earned, positive => paid
     df_calc["spot_interest_usd"] = - spot_cap * (df_calc["spot_rate_pct"] / 100.0) * bucket_factor
-    # Perps funding: long +1, short -1
+    # Perps funding: funding_pct already effective (scaled by leverage factor); sign still depends on direction
     fund_sign = 1.0 if dir_lower == "long" else -1.0
     df_calc["funding_interest_usd"] = perps_cap * fund_sign * (df_calc["funding_pct"] / 100.0) * bucket_factor
     df_calc["total_interest_usd"] = df_calc["spot_interest_usd"] + df_calc["funding_interest_usd"]

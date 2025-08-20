@@ -161,6 +161,9 @@ def display_backtesting_section(
                 )
                 if not best:
                     continue
+                # Enforce min 2.0x spot leverage for short direction
+                if dir_lower == "short" and float(best.get("leverage", 0)) < 2.0:
+                    continue
                 label = f"{best['variant']}/USDC at {float(best['leverage']):.1f}x"
                 strategy_options.append({
                     "label": label,
@@ -178,6 +181,8 @@ def display_backtesting_section(
 
     with row_sel_1:
         if strategies_by_roe:
+            # Filter out negative ROE strategies before populating options
+            strategies_by_roe = [s for s in strategies_by_roe if float(s.get("roe_pct", 0.0)) > 0.0]
             labels = [s.get("label", "") for s in strategies_by_roe]
             selected_idx = st.selectbox(
                 "Strategy to backtest",

@@ -242,10 +242,18 @@ def build_arb_history_series(
     if spot_df.empty or perps_df.empty:
         return pd.DataFrame(columns=["time", "spot_rate_pct", "funding_pct", "net_arb_pct"])
     df = spot_df.merge(perps_df, on="time", how="inner")
-    if direction.lower() == "long":
+
+    # Apply effective funding factor to perps funding rate
+    dir_lower = direction.lower()
+    effective_factor = float(leverage) if dir_lower == "long" else max(float(leverage) - 1.0, 0.0)
+    df["funding_pct"] = df["funding_pct"] * effective_factor
+
+    # Net arbitrage uses effective funding rate
+    if dir_lower == "long":
         df["net_arb_pct"] = df["spot_rate_pct"] - df["funding_pct"]
     else:
         df["net_arb_pct"] = df["spot_rate_pct"] + df["funding_pct"]
+
     return df[["time", "spot_rate_pct", "funding_pct", "net_arb_pct"]].sort_values("time")
 
 
