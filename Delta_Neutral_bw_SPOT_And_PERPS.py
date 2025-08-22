@@ -30,7 +30,19 @@ def main():
     with st.spinner("Loading..."):
         rates_data = fetch_asgard_current_rates()
         staking_data = fetch_asgard_staking_rates()
-        hyperliquid_data = fetch_loris_funding_data()
+        # Loris consolidated funding data may fail; handle gracefully with retry button
+        try:
+            hyperliquid_data = fetch_loris_funding_data()
+        except Exception as e:
+            st.error(f"Failed to load consolidated funding data: {e}")
+            if st.button("Retry loading funding data"):
+                st.rerun()
+            return
+        if not hyperliquid_data or not isinstance(hyperliquid_data, dict):
+            st.warning("Funding data is currently unavailable.")
+            if st.button("Retry loading funding data"):
+                st.rerun()
+            return
         drift_data = fetch_drift_markets_24h()
 
     # === CURATED SPOT AND PERPS ARBITRAGE SECTION ===

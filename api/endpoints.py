@@ -247,30 +247,27 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
     Returns:
         Market data dictionary or empty dict if request failed
     """
-    try:
-        response = session.get(url=LORIS_FUNDING_API_URL, timeout=5)
-        response.raise_for_status()
-        return response.json()
-
-    except requests.exceptions.Timeout:
-        st.error("Loris API request timed out after 5 seconds")
-        return {}
-
-    except requests.exceptions.ConnectionError:
-        st.error("Failed to connect to Loris API endpoint")
-        return {}
-
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Loris API HTTP error: {e.response.status_code}: {e.response.reason}")
-        return {}
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Loris API request failed: {str(e)}")
-        return {}
-
-    except ValueError as e:
-        st.error(f"Invalid JSON response from Loris API: {str(e)}")
-        return {}
+    attempts = 0
+    backoff = 1.0
+    while attempts < 10:
+        try:
+            response = session.get(url=LORIS_FUNDING_API_URL, timeout=8)
+            response.raise_for_status()
+            data = response.json()
+            # Ensure dict structure to match processing expectations
+            if isinstance(data, dict):
+                return data
+            # If list or other, wrap minimally so downstream code won't crash
+            return {"funding_rates": {}, "exchanges": {"exchange_names": []}}
+        except (requests.exceptions.RequestException, ValueError) as e:
+            attempts += 1
+            if isinstance(e, requests.exceptions.Timeout):
+                st.warning("Loris API request timed out; retrying...")
+            if attempts >= 5:
+                st.error("Loris API request failed after retries")
+                return {}
+            time.sleep(backoff)
+            backoff *= 1.5
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes

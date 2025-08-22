@@ -105,11 +105,20 @@ def process_loris_raw_data(loris_response: Dict[str, Any]) -> List[List]:
     Returns a unified structure per token: [token, [[exchange_key, {"fundingRate": decimal}], ...]]
     where exchange_key is the internal key like "hyperliquid_1_perp".
     """
+    # Guard against non-dict responses
+    if not isinstance(loris_response, dict):
+        return []
+
     # Prepare containers
     token_to_exchanges: Dict[str, List[List]] = {}
 
-    exchanges = loris_response.get("exchanges", {}).get("exchange_names", [])
+    exchanges_container = loris_response.get("exchanges") or {}
+    if not isinstance(exchanges_container, dict):
+        exchanges_container = {}
+    exchanges = exchanges_container.get("exchange_names", [])
     funding_rates = loris_response.get("funding_rates", {})
+    if not isinstance(funding_rates, dict):
+        funding_rates = {}
 
     # Only consider allowed exchanges
     allowed_set = set(LORIS_ALLOWED_EXCHANGES)
