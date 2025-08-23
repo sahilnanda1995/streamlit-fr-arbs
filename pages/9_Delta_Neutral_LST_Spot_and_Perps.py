@@ -413,6 +413,12 @@ def main():
             df_apys_perps["staking_pct"].fillna(0.0) * wallet_ratio
             + df_apys_perps["funding_pct"].fillna(0.0) * short_exposure_ratio
         )
+        
+        display_net_apy_chart(
+            time_series=df_apys_perps["time"],
+            net_apy_series=df_apys_perps["net_apy_pct"],
+            title="Net APY over Time (LST+Perps)"
+        )
 
         # USD values and breakdown (hidden by default) for LST+Perps
         series_perps = _build_perps_breakdown(lst_price_df, lst_staking_df, funding_df, sol_price_df, float(total_capital), float(leverage))

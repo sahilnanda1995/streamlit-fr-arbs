@@ -156,8 +156,7 @@ def build_wallet_short_series(
         d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
         d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
         # 4H centered aggregation
-        d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h") + pd.Timedelta(hours=2)
-        return d.groupby("time_4h", as_index=False)[["staking_pct"]].mean().rename(columns={"time_4h": "time"})
+        return aggregate_to_4h_buckets(d, "time", ["staking_pct"])
 
     wallet_mint = (token_config.get(wallet_asset_symbol, {}) or {}).get("mint")
     short_mint = (token_config.get(short_asset_symbol, {}) or {}).get("mint")

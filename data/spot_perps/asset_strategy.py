@@ -6,6 +6,7 @@ import streamlit as st
 from .helpers import compute_effective_max_leverage, get_protocol_market_pairs, get_bank_record_by_address
 from .spot_history import build_spot_history_series
 from api.endpoints import fetch_hourly_rates, fetch_birdeye_history_price
+from utils.dataframe_utils import aggregate_to_4h_buckets
 
 
 def _find_pair_banks(
@@ -168,21 +169,9 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     df_usdc = _to_hourly_df(usdc_hist, "usdc")
     # Aggregate hourly APR% to 4H buckets (centered +2h)
     if not df_asset.empty:
-        df_asset = df_asset.copy()
-        df_asset["time_4h"] = df_asset["time"].dt.floor("4h")
-        df_asset = (
-            df_asset.groupby("time_4h", as_index=False)["asset_lend_apy"].mean()
-            .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
-            .drop(columns=["time_4h"])
-        )
+        df_asset = aggregate_to_4h_buckets(df_asset, "time", ["asset_lend_apy"])
     if not df_usdc.empty:
-        df_usdc = df_usdc.copy()
-        df_usdc["time_4h"] = df_usdc["time"].dt.floor("4h")
-        df_usdc = (
-            df_usdc.groupby("time_4h", as_index=False)["usdc_borrow_apy"].mean()
-            .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
-            .drop(columns=["time_4h"])
-        )
+        df_usdc = aggregate_to_4h_buckets(df_usdc, "time", ["usdc_borrow_apy"])
     earn_df = pd.merge(df_asset, df_usdc, on="time", how="inner")
     # Restrict to buckets where spot rates exist (align with spot series)
     try:

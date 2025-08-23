@@ -6,6 +6,7 @@ import streamlit as st
 
 from .helpers import compute_effective_max_leverage, get_protocol_market_pairs
 from api.endpoints import fetch_hourly_rates, fetch_birdeye_history_price
+from utils.dataframe_utils import aggregate_to_4h_buckets
 
 
 def _find_pair_banks_for_two_assets(
@@ -152,19 +153,9 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
 
     # Aggregate hourly APR% to 4H buckets (centered +2h)
     df_base = df_base.copy()
-    df_base["time_4h"] = df_base["time"].dt.floor("4h")
-    df_base = (
-        df_base.groupby("time_4h", as_index=False)["base_lend_apy"].mean()
-        .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
-        .drop(columns=["time_4h"])
-    )
+    df_base = aggregate_to_4h_buckets(df_base, "time", ["base_lend_apy"])
     df_quote = df_quote.copy()
-    df_quote["time_4h"] = df_quote["time"].dt.floor("4h")
-    df_quote = (
-        df_quote.groupby("time_4h", as_index=False)["quote_borrow_apy"].mean()
-        .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
-        .drop(columns=["time_4h"])
-    )
+    df_quote = aggregate_to_4h_buckets(df_quote, "time", ["quote_borrow_apy"])
 
     earn_df = pd.merge(df_base, df_quote, on="time", how="inner").sort_values("time").reset_index(drop=True)
     if earn_df.empty or base_usd <= 0:
