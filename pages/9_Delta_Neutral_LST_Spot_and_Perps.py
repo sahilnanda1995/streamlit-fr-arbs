@@ -22,6 +22,7 @@ from data.spot_perps.helpers import (
     compute_effective_max_leverage,
 )
 from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios
+from utils.delta_neutral_ui import display_delta_neutral_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
 st.set_page_config(page_title="Delta Neutral: LST + Spot and LST + Perps", layout="wide")
@@ -222,34 +223,29 @@ def main():
             total_pnl = (hodl_now - wallet_amount_usd) + (net_now - (float(base_usd_spot) - wallet_amount_usd))
             implied_apy_spot = compute_implied_apy(total_pnl, float(base_usd_spot), total_hours)
 
-            r1c1, r1c2 = st.columns([1, 3])
-            with r1c1:
-                st.metric("ROE", f"${total_pnl:,.2f}")
-            with r1c2:
-                st.metric("Total APY (implied)", f"{implied_apy_spot:.2f}%")
-            w1, w2 = st.columns([1, 3])
-            with w1:
-                st.metric(f"{wallet_asset} value in wallet (initial)", f"${wallet_amount_usd:,.0f}")
-            with w2:
-                st.metric(f"{wallet_asset} value in wallet (now)", f"${hodl_now:,.0f}")
-            s1, s2, s3, s4 = st.columns(4)
-            with s1:
-                st.metric(f"{short_asset} borrowed value in short (initial)", f"${_short_usd:,.0f}")
-            with s2:
-                st.metric(f"{short_asset} borrowed value in short (now)", f"${float(last_row.get('close_cost_usd', pd.Series([0.0])).iloc[0]) if not last_row.empty else 0.0:,.0f}")
-            with s3:
-                st.metric("Short position net value (initial)", f"${short_net_initial:,.0f}")
-            with s4:
-                st.metric("Short position net value (now)", f"${net_now:,.0f}")
+            display_delta_neutral_metrics(
+                total_pnl=total_pnl,
+                base_capital=float(base_usd_spot),
+                implied_apy=implied_apy_spot,
+                wallet_asset=wallet_asset,
+                wallet_amount_initial=wallet_amount_usd,
+                wallet_value_now=hodl_now,
+                short_asset=short_asset,
+                short_borrow_initial=_short_usd,
+                short_borrow_now=float(last_row.get('close_cost_usd', pd.Series([0.0])).iloc[0]) if not last_row.empty else 0.0,
+                short_net_initial=short_net_initial,
+                short_net_now=net_now,
+                show_delta=False
+            )
 
             # APY charts for LST+Spot
             if not apy_df_spot.empty:
-                st.subheader("Long and Short Side APYs (LST+Spot)")
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=apy_df_spot["time"], y=apy_df_spot["staking_pct"], name="Long Side APY (%)", mode="lines"))
-                fig.add_trace(go.Scatter(x=apy_df_spot["time"], y=-apy_df_spot["spot_rate_pct"], name="Short Side APY (%)", mode="lines"))
-                fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-                st.plotly_chart(fig, use_container_width=True)
+                display_apy_chart(
+                    time_series=apy_df_spot["time"],
+                    long_apy_series=apy_df_spot["staking_pct"],
+                    short_apy_series=apy_df_spot["spot_rate_pct"],
+                    title="Long and Short Side APYs (LST+Spot)"
+                )
 
                 # Net APY over Time (weighted)
                 try:
@@ -258,21 +254,23 @@ def main():
                 except Exception:
                     wallet_ratio_spot, short_ratio_spot = 0.0, 0.0
                 apy_df_spot["net_apy_pct"] = apy_df_spot["staking_pct"].fillna(0.0) * wallet_ratio_spot - apy_df_spot["spot_rate_pct"].fillna(0.0) * short_ratio_spot
-                st.subheader("Net APY over Time (LST+Spot)")
-                fig_net_spot = go.Figure()
-                fig_net_spot.add_trace(go.Scatter(x=apy_df_spot["time"], y=apy_df_spot["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
-                fig_net_spot.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-                st.plotly_chart(fig_net_spot, use_container_width=True)
+                
+                display_net_apy_chart(
+                    time_series=apy_df_spot["time"],
+                    net_apy_series=apy_df_spot["net_apy_pct"],
+                    title="Net APY over Time (LST+Spot)"
+                )
 
             # USD values and breakdown (hidden by default) for LST+Spot
-            show_usd_spot = st.checkbox("Show USD Values Over Time (LST+Spot)", value=False)
-            if show_usd_spot:
-                st.subheader("USD Values Over Time (LST+Spot)")
-                fig_vals = go.Figure()
-                fig_vals.add_trace(go.Scatter(x=series_spot["time"], y=series_spot["wallet_value_usd"], name=f"{wallet_asset} wallet (USD)", mode="lines"))
-                fig_vals.add_trace(go.Scatter(x=series_spot["time"], y=series_spot["net_value_usd"], name="Short net value (USD)", mode="lines"))
-                fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
-                st.plotly_chart(fig_vals, use_container_width=True)
+            display_usd_values_chart(
+                time_series=series_spot["time"],
+                wallet_usd_series=series_spot["wallet_value_usd"],
+                position_usd_series=series_spot["net_value_usd"],
+                wallet_label=f"{wallet_asset} wallet (USD)",
+                position_label="Short net value (USD)",
+                title="USD Values Over Time (LST+Spot)",
+                checkbox_label="Show USD Values Over Time (LST+Spot)"
+            )
 
             tbl_spot = series_spot[[
                 "time", "wallet_asset_price", "short_asset_price", "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
@@ -303,9 +301,7 @@ def main():
                 f"{wallet_asset} staking apy": 3,
                 f"{short_asset} staking apy": 3,
             })
-            show_tbl_spot = st.checkbox("Show breakdown table (LST+Spot)", value=False)
-            if show_tbl_spot:
-                st.dataframe(tbl_spot, use_container_width=True, hide_index=True)
+            display_breakdown_table(tbl_spot, "Show breakdown table (LST+Spot)")
 
     st.markdown("---")
 
@@ -398,11 +394,12 @@ def main():
         if df_apys.empty:
             st.info("Staking data not available for selected period.")
         else:
-            fig1 = go.Figure()
-            fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"Short Side APY (%)", mode="lines"))
-            fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["staking_pct"], name=f"Long Side APY (%)", mode="lines"))
-            fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-            st.plotly_chart(fig1, use_container_width=True)
+            display_apy_chart(
+                time_series=df_apys["time"],
+                long_apy_series=df_apys["staking_pct"],
+                short_apy_series=-df_apys["funding_pct"],  # Note: funding already includes sign
+                short_label="Short Side APY (%)"
+            )
 
         # Net APY for LST+Perps (weighted by initial capital and short notional exposure)
         L = max(float(leverage), 1.0)
@@ -419,15 +416,17 @@ def main():
 
         # USD values and breakdown (hidden by default) for LST+Perps
         series_perps = _build_perps_breakdown(lst_price_df, lst_staking_df, funding_df, sol_price_df, float(total_capital), float(leverage))
-        show_usd_perps = st.checkbox("Show USD Values Over Time (LST+Perps)", value=False)
-        if show_usd_perps and not series_perps.empty:
-            st.subheader("USD Values Over Time (LST+Perps)")
-            fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(x=series_perps["time"], y=series_perps["lst_token_amount_usd"], name="LST wallet (USD)", mode="lines"))
-            fig2.add_trace(go.Scatter(x=series_perps["time"], y=series_perps["perp_wallet_value"], name="Perp wallet (USD)", mode="lines"))
-            fig2.add_trace(go.Scatter(x=series_perps["time"], y=series_perps["net_value"], name="Portfolio total (USD)", mode="lines", line=dict(color="#16a34a")))
-            fig2.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
-            st.plotly_chart(fig2, use_container_width=True)
+        if not series_perps.empty:
+            display_usd_values_chart(
+                time_series=series_perps["time"],
+                wallet_usd_series=series_perps["lst_token_amount_usd"],
+                position_usd_series=series_perps["perp_wallet_value"],
+                wallet_label="LST wallet (USD)",
+                position_label="Perp wallet (USD)",
+                title="USD Values Over Time (LST+Perps)",
+                checkbox_label="Show USD Values Over Time (LST+Perps)",
+                additional_series={"Portfolio total (USD)": series_perps["net_value"]}
+            )
 
         if not series_perps.empty:
             tbl = series_perps.copy().rename(columns={
@@ -456,9 +455,8 @@ def main():
                 "Perp funding (cum, USD)": 2,
                 "Portfolio total (USD)": 2,
             })
-            show_tbl_perps = st.checkbox("Show breakdown table (LST+Perps)", value=False)
-            if show_tbl_perps:
-                st.dataframe(tbl[[
+            display_breakdown_table(
+                tbl[[
                     "time",
                     "LST price (USD)",
                     "LST wallet (USD)",
@@ -467,7 +465,9 @@ def main():
                     "Perp funding (4h, USD)",
                     "Perp funding (cum, USD)",
                     "Portfolio total (USD)",
-                ]], use_container_width=True, hide_index=True)
+                ]],
+                "Show breakdown table (LST+Perps)"
+            )
 
     st.markdown("---")
 

@@ -20,6 +20,7 @@ from data.spot_perps.spot_history import build_spot_history_series
 from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
 from data.money_markets_processing import get_staking_rate_by_mint
 from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios
+from utils.delta_neutral_ui import display_delta_neutral_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
 ## Removed legacy local builders in favor of shared implementations
@@ -156,35 +157,23 @@ def display_delta_neutral_lst_spot_page() -> None:
         wallet_pnl = wallet_value_now - wallet_amount_usd
         total_pnl = short_leg_pnl + wallet_pnl
 
-        st.markdown("**Metrics**")
         short_net_initial = float(initial_usdc_lent) - float(initial_short_borrow_usd)
         total_hours = float(len(plot_df) * 4.0)
         implied_apy = compute_implied_apy(total_pnl, base_f, total_hours)
 
-        # Row 1: ROE and APY
-        r1c1, r1c2 = st.columns([1, 3])
-        with r1c1:
-            st.metric("ROE", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
-        with r1c2:
-            st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
-
-        # Row 2: Wallet metrics
-        w1, w2 = st.columns([1, 3])
-        with w1:
-            st.metric(f"{wallet_asset} value in wallet (initial)", f"${wallet_amount_usd:,.0f}")
-        with w2:
-            st.metric(f"{wallet_asset} value in wallet (now)", f"${wallet_value_now:,.0f}")
-
-        # Row 3: Short position metrics
-        s1, s2, s3, s4 = st.columns(4)
-        with s1:
-            st.metric(f"{short_asset} borrowed value in short (initial)", f"${initial_short_borrow_usd:,.0f}")
-        with s2:
-            st.metric(f"{short_asset} borrowed value in short (now)", f"${close_cost_now:,.0f}")
-        with s3:
-            st.metric("Short position net value (initial)", f"${short_net_initial:,.0f}")
-        with s4:
-            st.metric("Short position net value (now)", f"${net_value_now:,.0f}")
+        display_delta_neutral_metrics(
+            total_pnl=total_pnl,
+            base_capital=base_f,
+            implied_apy=implied_apy,
+            wallet_asset=wallet_asset,
+            wallet_amount_initial=wallet_amount_usd,
+            wallet_value_now=wallet_value_now,
+            short_asset=short_asset,
+            short_borrow_initial=initial_short_borrow_usd,
+            short_borrow_now=close_cost_now,
+            short_net_initial=short_net_initial,
+            short_net_now=net_value_now
+        )
 
     # Spot vs Wallet Staking APY, plus Net APY over time
     with st.spinner("Loading APY series..."):
@@ -225,14 +214,12 @@ def display_delta_neutral_lst_spot_page() -> None:
             wal_stk.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
         )
         apy_df["staking_pct"] = apy_df["staking_pct"].fillna(0.0)
-        st.subheader("Long and Short Side APYs")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["staking_pct"], name="Long Side APY (%)", mode="lines"))
-        fig.add_trace(go.Scatter(x=apy_df["time"], y=-apy_df["spot_rate_pct"], name="Short Side APY (%)", mode="lines"))
-        fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        display_apy_chart(
+            time_series=apy_df["time"],
+            long_apy_series=apy_df["staking_pct"],
+            short_apy_series=apy_df["spot_rate_pct"]
+        )
 
-        st.subheader("Net APY over Time")
         # Weighted by initial capital allocation ratios
         try:
             wallet_ratio, short_ratio = compute_capital_allocation_ratios(
@@ -241,22 +228,20 @@ def display_delta_neutral_lst_spot_page() -> None:
         except Exception:
             wallet_ratio, short_ratio = 0.0, 0.0
         apy_df["net_apy_pct"] = apy_df["staking_pct"].fillna(0.0) * wallet_ratio - apy_df["spot_rate_pct"].fillna(0.0) * short_ratio
-        fig_net = go.Figure()
-        fig_net.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
-        fig_net.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig_net, use_container_width=True)
+        
+        display_net_apy_chart(
+            time_series=apy_df["time"],
+            net_apy_series=apy_df["net_apy_pct"]
+        )
 
     # USD values over time (hidden by default)
-    show_usd = st.checkbox("Show USD Values Over Time", value=False)
-    if show_usd:
-        st.subheader("USD Values Over Time")
-        fig_vals = go.Figure()
-        # Wallet asset value over time
-        fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["wallet_value_usd"], name=f"{wallet_asset} wallet (USD)", mode="lines"))
-        # Short position net value over time
-        fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Short net value (USD)", mode="lines"))
-        fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig_vals, use_container_width=True)
+    display_usd_values_chart(
+        time_series=plot_df["time"],
+        wallet_usd_series=plot_df["wallet_value_usd"],
+        position_usd_series=plot_df["net_value_usd"],
+        wallet_label=f"{wallet_asset} wallet (USD)",
+        position_label="Short net value (USD)"
+    )
 
     # Breakdown table
     tbl = plot_df[[
@@ -289,9 +274,7 @@ def display_delta_neutral_lst_spot_page() -> None:
         f"{short_asset} staking apy": 3,
     })
     # Breakdown table (hidden by default)
-    show_tbl = st.checkbox("Show breakdown table", value=False)
-    if show_tbl:
-        st.dataframe(tbl, use_container_width=True, hide_index=True)
+    display_breakdown_table(tbl)
 
 
 if __name__ == "__main__":
