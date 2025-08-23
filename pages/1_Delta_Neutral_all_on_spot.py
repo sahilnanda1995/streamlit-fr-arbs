@@ -164,16 +164,18 @@ def display_delta_neutral_spot_page() -> None:
         with s4:
             st.metric("Short position net value (now)", f"${net_value_now:,.0f}")
 
-    # USD values over time
-    st.subheader("USD Values Over Time")
-    fig_vals = go.Figure()
-    # Wallet asset value over time
-    wallet_series = plot_df.get("hodl_value_usd", plot_df.get("wallet_value_usd"))
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=wallet_series, name=f"{variant} wallet (USD)", mode="lines"))
-    # Short position net value over time
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Short net value (USD)", mode="lines"))
-    fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig_vals, use_container_width=True)
+    # USD values over time (hidden by default)
+    show_usd = st.checkbox("Show USD Values Over Time", value=False)
+    if show_usd:
+        st.subheader("USD Values Over Time")
+        fig_vals = go.Figure()
+        # Wallet asset value over time
+        wallet_series = plot_df.get("hodl_value_usd", plot_df.get("wallet_value_usd"))
+        fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=wallet_series, name=f"{variant} wallet (USD)", mode="lines"))
+        # Short position net value over time
+        fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Short net value (USD)", mode="lines"))
+        fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig_vals, use_container_width=True)
 
     # Spot vs Wallet Staking APY, plus Net APY over time
     with st.spinner("Loading APY series..."):
@@ -213,15 +215,21 @@ def display_delta_neutral_spot_page() -> None:
             wal_stk.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
         )
         apy_df["staking_pct"] = apy_df["staking_pct"].fillna(0.0)
-        st.subheader("Spot APY vs Wallet Staking APY")
+        st.subheader("Long and Short Side APYs")
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=apy_df["time"], y=-apy_df["spot_rate_pct"], name=f"{variant} spot APY (negated, %)", mode="lines"))
-        fig.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["staking_pct"], name=f"{variant} staking APY (%)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["staking_pct"], name="Long Side APY (%)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=-apy_df["spot_rate_pct"], name="Short Side APY (%)", mode="lines"))
         fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
 
         st.subheader("Net APY over Time")
-        apy_df["net_apy_pct"] = (apy_df["staking_pct"].fillna(0.0) - apy_df["spot_rate_pct"].fillna(0.0)) / 2.0
+        # Weighted by initial capital allocation ratios
+        try:
+            wallet_ratio = float(wallet_amount_usd) / float(base_usd) if float(base_usd) > 0 else 0.0
+            short_ratio = float(used_capital_usd) / float(base_usd) if float(base_usd) > 0 else 0.0
+        except Exception:
+            wallet_ratio, short_ratio = 0.0, 0.0
+        apy_df["net_apy_pct"] = apy_df["staking_pct"].fillna(0.0) * wallet_ratio - apy_df["spot_rate_pct"].fillna(0.0) * short_ratio
         fig_net = go.Figure()
         fig_net.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
         fig_net.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
@@ -272,7 +280,10 @@ def display_delta_neutral_spot_page() -> None:
         "spot position net value": 2,
         "wallet hodl net value": 2,
     })
-    st.dataframe(tbl, use_container_width=True, hide_index=True)
+    # Breakdown table (hidden by default)
+    show_tbl = st.checkbox("Show breakdown table", value=False)
+    if show_tbl:
+        st.dataframe(tbl, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
