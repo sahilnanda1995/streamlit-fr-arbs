@@ -108,12 +108,8 @@ def build_spot_history_series(
     df = df.merge(asset_stk_df, on="time", how="left").rename(columns={"avgApy": "asset_stk"})
     df = df.merge(usdc_stk_df, on="time", how="left").rename(columns={"avgApy": "usdc_stk"})
 
-    # If staking yield applies to either token, restrict to periods where that staking series is available
-    required_stk_cols = []
-    if asset_has_staking:
-        required_stk_cols.append("asset_stk")
-    if usdc_has_staking:
-        required_stk_cols.append("usdc_stk")
+    # If the asset has staking yield, restrict to periods where asset staking series is available
+    required_stk_cols = ["asset_stk"] if asset_has_staking else []
     if required_stk_cols:
         df = df.dropna(subset=required_stk_cols)
 
