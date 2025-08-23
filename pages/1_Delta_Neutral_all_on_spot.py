@@ -1,13 +1,10 @@
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict
 
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from api.endpoints import (
-    fetch_asgard_current_rates,
-    fetch_asgard_staking_rates,
-)
+# No direct API calls required on this page
 from config.constants import SPOT_PERPS_CONFIG
 from config import get_token_config
 from data.spot_perps.helpers import (
@@ -19,30 +16,10 @@ from data.spot_perps.spot_history import build_spot_history_series
 from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
 
 
-def _parse_protocol_market(proto_market: str) -> Tuple[str, str]:
-    if "(" in proto_market and ")" in proto_market:
-        proto = proto_market.split("(")[0]
-        market = proto_market.split("(")[1].split(")")[0]
-    else:
-        proto = proto_market
-        market = ""
-    return proto, market
+## Unused legacy helpers removed after refactor to shared builders
 
 
-def _find_pair_banks(token_config: dict, asset: str, protocol: str, market: str) -> Tuple[Optional[str], Optional[str]]:
-    # Retained for compatibility in case of future use; eligibility moved to shared module
-    asset_pairs = get_protocol_market_pairs(token_config, asset)
-    asset_bank = None
-    for p, m, bank in asset_pairs:
-        if p == protocol and (not market or m == market):
-            asset_bank = bank
-            break
-    usdc_bank = get_matching_usdc_bank(token_config, protocol, market)
-    return asset_bank, usdc_bank
-
-
-def _build_short_vs_hodl_series(*args: Any, **kwargs: Any) -> pd.DataFrame:  # deprecated, retained for backward compat
-    return pd.DataFrame()
+st.set_page_config(page_title="Delta Neutral: Spot-only", layout="wide")
 
 
 def display_delta_neutral_spot_page() -> None:
@@ -50,9 +27,7 @@ def display_delta_neutral_spot_page() -> None:
     st.caption("Compare spot short strategies against a simple HODL baseline. No perps or funding rates involved.")
 
     # Data
-    with st.spinner("Loading data..."):
-        rates_data = fetch_asgard_current_rates()
-        staking_data = fetch_asgard_staking_rates()
+    with st.spinner("Loading configuration..."):
         token_config = get_token_config()
 
     # Build eligible asset variants using shared helper
@@ -100,12 +75,19 @@ def display_delta_neutral_spot_page() -> None:
     eff_max = 1.0
     if sel_asset_bank and sel_usdc_bank:
         eff_max = compute_effective_max_leverage(token_config, sel_asset_bank, sel_usdc_bank, "short")
+    try:
+        eff_max_f = max(float(eff_max or 1.0), 1.0)
+    except Exception:
+        eff_max_f = 1.0
 
     with col4:
+        # Slider range based on effective max leverage for selected short asset
+        default_val = 2.0 if eff_max_f >= 2.0 else eff_max_f
         lev = st.slider(
-            "Leverage (short)", min_value=2.0, max_value=float(eff_max), value=min(2.0, float(eff_max)), step=0.5,
+            "Leverage (short)", min_value=1.0, max_value=float(eff_max_f), value=float(default_val), step=0.5,
             key="spot_only_leverage",
         )
+        st.caption(f"Max available short leverage: {eff_max_f:.2f}x")
 
     # Descriptive caption reflecting capital split and effective short exposure
     _lev_f = float(lev)

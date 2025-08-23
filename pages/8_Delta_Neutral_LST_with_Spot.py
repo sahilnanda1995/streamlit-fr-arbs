@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, List, Any
 
 import pandas as pd
 import streamlit as st
@@ -20,143 +20,13 @@ from data.spot_perps.spot_wallet_short import find_eligible_short_variants, buil
 from data.money_markets_processing import get_staking_rate_by_mint
 
 
-def _find_pair_banks(token_config: dict, asset: str, protocol: str, market: str) -> Tuple[Optional[str], Optional[str]]:
-    asset_pairs = get_protocol_market_pairs(token_config, asset)
-    asset_bank = None
-    for p, m, bank in asset_pairs:
-        if p == protocol and (not market or m == market):
-            asset_bank = bank
-            break
-    usdc_bank = get_matching_usdc_bank(token_config, protocol, market)
-    return asset_bank, usdc_bank
+## Removed legacy local builders in favor of shared implementations
 
 
-def _build_dual_short_vs_hodl_series(
-    token_config: dict,
-    wallet_asset_symbol: str,
-    short_asset_symbol: str,
-    protocol: str,
-    market: str,
-    leverage: float,
-    points_hours: int,
-    base_usd: float,
-) -> pd.DataFrame:
-    # Fetch hourly lending/borrowing for SHORT ASSET and USDC and aggregate to 4H (centered)
-    from utils.dataframe_utils import records_to_dataframe, aggregate_to_4h_buckets
-
-    short_asset_bank, usdc_bank = _find_pair_banks(token_config, short_asset_symbol, protocol, market)
-    if not short_asset_bank or not usdc_bank:
-        return pd.DataFrame(columns=[
-            "time", "wallet_asset_price", "short_asset_price",
-            "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
-            "net_value_usd", "wallet_value_usd",
-        ])
-
-    try:
-        short_hist = fetch_hourly_rates(short_asset_bank, protocol, int(points_hours)) or []
-        usdc_hist = fetch_hourly_rates(usdc_bank, protocol, int(points_hours)) or []
-    except Exception:
-        short_hist, usdc_hist = [], []
-
-    df_short = records_to_dataframe(short_hist, "time", ["asset_lend_apy", "asset_borrow_apy"])  # rates for short asset
-    df_usdc = records_to_dataframe(usdc_hist, "time", ["usdc_lend_apy", "usdc_borrow_apy"])  # rates for usdc
-
-    # Aggregate hourly to 4H centered buckets
-    df_short_4h = aggregate_to_4h_buckets(df_short, "time", ["asset_lend_apy", "asset_borrow_apy"]) if not df_short.empty else df_short
-    df_usdc_4h = aggregate_to_4h_buckets(df_usdc, "time", ["usdc_lend_apy", "usdc_borrow_apy"]) if not df_usdc.empty else df_usdc
-
-    earn = pd.merge(df_short_4h, df_usdc_4h, on="time", how="inner")
-    if earn.empty:
-        return pd.DataFrame(columns=[
-            "time", "wallet_asset_price", "short_asset_price",
-            "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
-            "net_value_usd", "wallet_value_usd",
-        ])
-
-    # Price series for wallet asset and short asset (4H)
-    wallet_mint = (token_config.get(wallet_asset_symbol, {}) or {}).get("mint")
-    short_mint = (token_config.get(short_asset_symbol, {}) or {}).get("mint")
-    start_ts = int(pd.to_datetime(earn["time"].min()).timestamp())
-    end_ts = int(pd.to_datetime(earn["time"].max()).timestamp())
-
-    try:
-        wallet_price_points = fetch_birdeye_history_price(wallet_mint, start_ts, end_ts, bucket="4H") if (wallet_mint and start_ts and end_ts) else []
-    except Exception:
-        wallet_price_points = []
-    try:
-        short_price_points = fetch_birdeye_history_price(short_mint, start_ts, end_ts, bucket="4H") if (short_mint and start_ts and end_ts) else []
-    except Exception:
-        short_price_points = []
-
-    wallet_price_df = pd.DataFrame(wallet_price_points)
-    short_price_df = pd.DataFrame(short_price_points)
-    if not wallet_price_df.empty:
-        wallet_price_df["time"] = pd.to_datetime(wallet_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-        wallet_price_df = wallet_price_df.sort_values("time")[ ["time", "price" ] ].rename(columns={"price": "wallet_asset_price"})
-    else:
-        wallet_price_df = pd.DataFrame(columns=["time", "wallet_asset_price"])
-    if not short_price_df.empty:
-        short_price_df["time"] = pd.to_datetime(short_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-        short_price_df = short_price_df.sort_values("time")[ ["time", "price" ] ].rename(columns={"price": "short_asset_price"})
-    else:
-        short_price_df = pd.DataFrame(columns=["time", "short_asset_price"])
-
-    # Merge prices into earn
-    earn = pd.merge_asof(earn.sort_values("time"), wallet_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
-    earn = pd.merge_asof(earn.sort_values("time"), short_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
-
-    earn = earn.dropna(subset=["wallet_asset_price", "short_asset_price"])  # require both prices
-    if earn.empty:
-        return pd.DataFrame(columns=[
-            "time", "wallet_asset_price", "short_asset_price",
-            "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
-            "net_value_usd", "wallet_value_usd",
-        ])
-
-    # Growth factors per 4h bucket (staking excluded; only borrow/lend APY)
-    bucket_factor_4h = 4.0 / (365.0 * 24.0)
-    earn = earn.sort_values("time").reset_index(drop=True)
-    earn["usdc_growth_factor"] = 1.0 + (earn["usdc_lend_apy"] / 100.0) * bucket_factor_4h
-    earn["asset_borrow_growth_factor"] = 1.0 + (earn["asset_borrow_apy"] / 100.0) * bucket_factor_4h
-    earn["usdc_growth_cum_shifted"] = earn["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
-    earn["asset_borrow_growth_cum_shifted"] = earn["asset_borrow_growth_factor"].cumprod().shift(1).fillna(1.0)
-
-    # Leverage split (same as Spot-only)
-    first_short_price = float(earn["short_asset_price"].iloc[0]) if not earn["short_asset_price"].dropna().empty else float("nan")
-    first_wallet_price = float(earn["wallet_asset_price"].iloc[0]) if not earn["wallet_asset_price"].dropna().empty else float("nan")
-    lev_f = float(leverage)
-    base_f = float(base_usd)
-    wallet_amount_usd = (max(lev_f - 1.0, 0.0) / lev_f) * base_f if lev_f > 0 else 0.0
-    used_capital_usd = base_f - wallet_amount_usd  # equals base / L
-    initial_usdc_lent = base_f  # equals L * used_capital
-    initial_short_borrow_usd = (max(lev_f - 1.0, 0.0) / lev_f) * base_f
-
-    initial_short_tokens_owed = (initial_short_borrow_usd / first_short_price) if (first_short_price and first_short_price > 0) else float("nan")
-    wallet_tokens = (float(wallet_amount_usd) / first_wallet_price) if (first_wallet_price and first_wallet_price > 0) else float("nan")
-
-    # Evolve through time
-    earn["usdc_principal_usd"] = float(initial_usdc_lent) * earn["usdc_growth_cum_shifted"]
-    earn["short_tokens_owed"] = float(initial_short_tokens_owed) * earn["asset_borrow_growth_cum_shifted"]
-    earn["close_cost_usd"] = earn["short_tokens_owed"] * earn["short_asset_price"]
-    earn["net_value_usd"] = earn["usdc_principal_usd"] - earn["close_cost_usd"]
-
-    # Wallet baseline
-    earn["wallet_value_usd"] = float(wallet_tokens) * earn["wallet_asset_price"]
-
-    return earn[[
-        "time",
-        "wallet_asset_price",
-        "short_asset_price",
-        "usdc_principal_usd",
-        "short_tokens_owed",
-        "close_cost_usd",
-        "net_value_usd",
-        "wallet_value_usd",
-    ]]
-
+st.set_page_config(page_title="Delta Neutral LST + Spot", layout="wide")
 
 def display_delta_neutral_lst_spot_page() -> None:
-    st.title("Delta Neutral LST with Spot (SOL)")
+    st.title("Delta Neutral LST with Spot")
     st.caption("Compare spot short strategies against a simple wallet LST baseline. SOL-only universe; staking excluded from accrual math.")
 
     # Data (current rates just for context; not used directly here)
@@ -230,11 +100,17 @@ def display_delta_neutral_lst_spot_page() -> None:
     eff_max = 1.0
     if sel_asset_bank and sel_usdc_bank:
         eff_max = compute_effective_max_leverage(token_config, sel_asset_bank, sel_usdc_bank, "short")
+    try:
+        eff_max_f = max(float(eff_max or 1.0), 1.0)
+    except Exception:
+        eff_max_f = 1.0
 
+    default_val = 2.0 if eff_max_f >= 2.0 else eff_max_f
     lev = st.slider(
-        "Leverage (short)", min_value=2.0, max_value=float(eff_max), value=min(2.0, float(eff_max)), step=0.5,
+        "Leverage (short)", min_value=1.0, max_value=float(eff_max_f), value=float(default_val), step=0.5,
         key="lst_spot_leverage",
     )
+    st.caption(f"Max available short leverage: {eff_max_f:.2f}x")
 
     # Descriptive caption reflecting capital split and effective short exposure
     _lev_f = float(lev)
@@ -335,8 +211,8 @@ def display_delta_neutral_lst_spot_page() -> None:
         "time", "wallet_asset_price", "short_asset_price", "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
         "net_value_usd", "wallet_value_usd",
     ]].rename(columns={
-        "wallet_asset_price": f"{wallet_asset} price",
-        "short_asset_price": f"{short_asset} price",
+        "wallet_asset_price": f"{wallet_asset} price (wallet)",
+        "short_asset_price": f"{short_asset} price (short)",
         "usdc_principal_usd": "usdc lent",
         "short_tokens_owed": f"{short_asset} borrowed",
         "close_cost_usd": f"{short_asset} borrowed in usd",
@@ -344,8 +220,8 @@ def display_delta_neutral_lst_spot_page() -> None:
         "wallet_value_usd": "wallet hodl net value",
     })
     tbl = tbl.round({
-        f"{wallet_asset} price": 6,
-        f"{short_asset} price": 6,
+        f"{wallet_asset} price (wallet)": 6,
+        f"{short_asset} price (short)": 6,
         "usdc lent": 2,
         f"{short_asset} borrowed": 6,
         f"{short_asset} borrowed in usd": 2,

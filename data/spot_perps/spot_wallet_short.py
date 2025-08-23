@@ -140,6 +140,16 @@ def build_wallet_short_series(
             "net_value_usd", "wallet_value_usd",
         ])
 
+    # Allocation split
+    wallet_amount_usd, used_capital_usd, short_borrow_usd = compute_allocation_split(base_usd, leverage)
+
+    # Enforce lookback window BEFORE growth so compounding starts at selected period start
+    try:
+        cutoff_time = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(hours=int(points_hours))
+        earn = earn[earn["time"] >= cutoff_time]
+    except Exception:
+        pass
+
     # Growth factors per 4h bucket (staking excluded; only borrow/lend APY)
     bucket_factor_4h = 4.0 / (365.0 * 24.0)
     earn = earn.sort_values("time").reset_index(drop=True)
@@ -147,9 +157,6 @@ def build_wallet_short_series(
     earn["asset_borrow_growth_factor"] = 1.0 + (earn["asset_borrow_apy"] / 100.0) * bucket_factor_4h
     earn["usdc_growth_cum_shifted"] = earn["usdc_growth_factor"].cumprod().shift(1).fillna(1.0)
     earn["asset_borrow_growth_cum_shifted"] = earn["asset_borrow_growth_factor"].cumprod().shift(1).fillna(1.0)
-
-    # Allocation split
-    wallet_amount_usd, used_capital_usd, short_borrow_usd = compute_allocation_split(base_usd, leverage)
 
     first_short_price = float(earn["short_asset_price"].iloc[0]) if not earn["short_asset_price"].dropna().empty else float("nan")
     first_wallet_price = float(earn["wallet_asset_price"].iloc[0]) if not earn["wallet_asset_price"].dropna().empty else float("nan")
@@ -168,6 +175,8 @@ def build_wallet_short_series(
     out = earn.copy()
     out["usdc_lend_apy"] = pd.to_numeric(out.get("usdc_lend_apy", 0), errors="coerce")
     out["asset_borrow_apy"] = pd.to_numeric(out.get("asset_borrow_apy", 0), errors="coerce")
+
+    # Lookback already enforced pre-growth
 
     return out[[
         "time",

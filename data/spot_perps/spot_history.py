@@ -138,6 +138,12 @@ def build_spot_history_series(
 
     df = df[["time", "spot_rate_pct"]].sort_values("time")
     df = _resample_to_4h_center(df, ["spot_rate_pct"])  # 4H centered buckets
+    # Enforce lookback window explicitly by time (post-resample)
+    try:
+        cutoff_time = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(hours=int(limit))
+        df = df[df["time"] >= cutoff_time]
+    except Exception:
+        pass
     _SPOT_SERIES_CACHE[cache_key] = df
     return df
 
