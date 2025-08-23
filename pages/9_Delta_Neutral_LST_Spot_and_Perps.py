@@ -21,7 +21,7 @@ from data.spot_perps.helpers import (
     get_matching_usdc_bank,
     compute_effective_max_leverage,
 )
-from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios
+from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios, fetch_and_process_staking_series
 from utils.delta_neutral_ui import display_delta_neutral_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
@@ -186,22 +186,10 @@ def main():
             # APY series for chart and net APY
             with st.spinner("Loading APY series (LST+Spot)..."):
                 spot_rates = build_spot_history_series(token_config, short_asset, proto, market, "short", float(lev_spot), int(lookback_hours))
-                wal_info = (token_config.get(wallet_asset) or {})
-                wal_mint = wal_info.get("mint")
-                wal_has_stk = bool(wal_info.get("hasStakingYield"))
-                if wal_mint and wal_has_stk:
-                    try:
-                        stk_raw = fetch_hourly_staking(wal_mint, int(lookback_hours)) or []
-                    except Exception:
-                        stk_raw = []
-                else:
-                    stk_raw = []
-                if stk_raw:
-                    d = pd.DataFrame(stk_raw)
-                    d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-                    d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-                    wal_stk = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
-                else:
+                # Wallet staking series using shared helper
+                wal_stk = fetch_and_process_staking_series(token_config, wallet_asset, lookback_hours)
+                # Fallback if no staking data available
+                if wal_stk.empty:
                     wal_stk = spot_rates[["time"]].copy() if not spot_rates.empty else pd.DataFrame(columns=["time"])
                     wal_stk["staking_pct"] = 0.0
                 # Align
@@ -338,19 +326,8 @@ def main():
             else:
                 lst_price_df = pd.DataFrame(columns=["time", "price"])
                 
-            # LST staking using existing utilities
-            if lst_mint and info.get("hasStakingYield"):
-                staking_raw = fetch_hourly_staking(lst_mint, int(lookback_hours)) or []
-                if staking_raw:
-                    d = pd.DataFrame(staking_raw)
-                    d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-                    d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-                    # 4H centered aggregation
-                    lst_staking_df = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
-                else:
-                    lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
-            else:
-                lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
+            # LST staking series using shared helper
+            lst_staking_df = fetch_and_process_staking_series(token_config, lst_symbol, lookback_hours)
                 
             # SOL price using existing API
             sol_mint = (token_config.get("SOL", {}) or {}).get("mint")

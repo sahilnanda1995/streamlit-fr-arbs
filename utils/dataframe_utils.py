@@ -246,3 +246,46 @@ def compute_capital_allocation_ratios(
     short_ratio = used_capital / base_capital
     
     return wallet_ratio, short_ratio
+
+
+def fetch_and_process_staking_series(
+    token_config: dict,
+    asset_symbol: str, 
+    lookback_hours: int
+) -> pd.DataFrame:
+    """
+    Fetch and process historical staking data for an asset into 4H-aggregated series.
+    
+    Args:
+        token_config: Token configuration dictionary
+        asset_symbol: Asset symbol (e.g., "jito SOL")
+        lookback_hours: Number of hours to look back
+        
+    Returns:
+        DataFrame with columns ["time", "staking_pct"] in 4H buckets
+    """
+    # Get asset info from token config
+    asset_info = token_config.get(asset_symbol, {}) or {}
+    mint = asset_info.get("mint")
+    has_staking = bool(asset_info.get("hasStakingYield", False))
+    
+    # Return empty DataFrame if no staking or no mint
+    if not mint or not has_staking:
+        return pd.DataFrame(columns=["time", "staking_pct"])
+    
+    try:
+        records = fetch_hourly_staking(mint, int(lookback_hours)) or []
+    except Exception:
+        records = []
+    
+    if not records:
+        return pd.DataFrame(columns=["time", "staking_pct"])
+    
+    # Convert to DataFrame and process
+    d = pd.DataFrame(records)
+    # hourBucket iso → naive datetime
+    d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+    d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+    
+    # 4H centered aggregation using existing utility
+    return aggregate_to_4h_buckets(d, "time", ["staking_pct"])

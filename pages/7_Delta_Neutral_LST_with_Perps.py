@@ -25,7 +25,7 @@ from api.endpoints import (
     fetch_hourly_staking,
     fetch_drift_funding_history,
 )
-from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy
+from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, fetch_and_process_staking_series
 from utils.delta_neutral_ui import display_perps_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
@@ -214,19 +214,8 @@ def main():
             else:
                 lst_price_df = pd.DataFrame(columns=["time", "price"])
                 
-            # LST staking using existing utilities
-            if lst_mint and info.get("hasStakingYield"):
-                staking_raw = fetch_hourly_staking(lst_mint, int(lookback_hours)) or []
-                if staking_raw:
-                    d = pd.DataFrame(staking_raw)
-                    d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-                    d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-                    # 4H centered aggregation
-                    lst_staking_df = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
-                else:
-                    lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
-            else:
-                lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
+            # LST staking series using shared helper
+            lst_staking_df = fetch_and_process_staking_series(token_config, lst_symbol, lookback_hours)
                 
             # SOL price using existing API
             sol_mint = (token_config.get("SOL", {}) or {}).get("mint")

@@ -19,7 +19,7 @@ from data.spot_perps.helpers import (
 from data.spot_perps.spot_history import build_spot_history_series
 from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
 from data.money_markets_processing import get_staking_rate_by_mint
-from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios
+from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios, fetch_and_process_staking_series
 from utils.delta_neutral_ui import display_delta_neutral_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
@@ -178,25 +178,8 @@ def display_delta_neutral_lst_spot_page() -> None:
     # Spot vs Wallet Staking APY, plus Net APY over time
     with st.spinner("Loading APY series..."):
         spot_rates = build_spot_history_series(token_config, short_asset, proto, market, "short", float(lev), int(limit_hours))
-        # Wallet staking series (4H centered)
-        wal_info = (token_config.get(wallet_asset) or {})
-        wal_mint = wal_info.get("mint")
-        wal_has_stk = bool(wal_info.get("hasStakingYield"))
-        if wal_mint and wal_has_stk:
-            try:
-                stk_raw = fetch_hourly_staking(wal_mint, int(limit_hours)) or []
-            except Exception:
-                stk_raw = []
-        else:
-            stk_raw = []
-        if stk_raw:
-            d = pd.DataFrame(stk_raw)
-            d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-            d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-            # 4H centered aggregation
-            wal_stk = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
-        else:
-            wal_stk = pd.DataFrame(columns=["time", "staking_pct"])
+        # Wallet staking series using shared helper
+        wal_stk = fetch_and_process_staking_series(token_config, wallet_asset, limit_hours)
         # Coerce dtypes and align when missing (e.g., SOL wallet -> zeros)
         if not spot_rates.empty:
             spot_rates = spot_rates.sort_values("time").copy()
