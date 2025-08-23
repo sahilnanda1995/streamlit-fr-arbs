@@ -289,3 +289,26 @@ def fetch_and_process_staking_series(
     
     # 4H centered aggregation using existing utility
     return aggregate_to_4h_buckets(d, "time", ["staking_pct"])
+
+
+def compute_weighted_net_apy(
+    long_apy_series: pd.Series,
+    short_apy_series: pd.Series,
+    long_weight: float,
+    short_weight: float
+) -> pd.Series:
+    """
+    Compute weighted net APY from long and short APY series.
+    
+    Args:
+        long_apy_series: Long position APY series (e.g., staking APY)
+        short_apy_series: Short position APY series (e.g., spot rate or funding)
+        long_weight: Weight for long position (typically wallet ratio)
+        short_weight: Weight for short position (typically short ratio or notional ratio)
+        
+    Returns:
+        Net APY series: long_apy * long_weight - short_apy * short_weight
+    """
+    long_filled = long_apy_series.fillna(0.0)
+    short_filled = short_apy_series.fillna(0.0)
+    return long_filled * float(long_weight) - short_filled * float(short_weight)

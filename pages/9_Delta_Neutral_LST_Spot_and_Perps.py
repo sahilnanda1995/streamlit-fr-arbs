@@ -1,36 +1,53 @@
-from typing import Dict, Any, List, Tuple
+"""
+Streamlit page for Delta Neutral: LST + margin short and LST + perp short comparison
+Clean flow: Section 1 calculations → Section 2 calculations → Summary using stored values
+"""
 
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
+from typing import Dict, Any, List, Optional, Tuple
 
 from config import get_token_config
-from config.constants import ASSET_VARIANTS
+from config.constants import DRIFT_MARKET_INDEX, ASSET_VARIANTS, SPOT_PERPS_CONFIG
 from api.endpoints import (
     fetch_birdeye_history_price,
     fetch_hourly_staking,
-)
-from data.spot_perps.spot_history import build_perps_history_series, build_spot_history_series
-from data.spot_perps.spot_wallet_short import (
-    find_eligible_short_variants,
-    build_wallet_short_series,
-    compute_allocation_split,
+    fetch_drift_funding_history,
+    fetch_asgard_staking_rates,
 )
 from data.spot_perps.helpers import (
     get_protocol_market_pairs,
     get_matching_usdc_bank,
     compute_effective_max_leverage,
 )
-from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios, fetch_and_process_staking_series
-from utils.delta_neutral_ui import display_delta_neutral_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
+from data.spot_perps.spot_history import build_spot_history_series, build_perps_history_series
+from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
+from data.money_markets_processing import get_staking_rate_by_mint
+from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios, fetch_and_process_staking_series, compute_weighted_net_apy
+from utils.delta_neutral_ui import display_delta_neutral_metrics, display_perps_metrics, display_apy_chart, display_net_apy_chart, display_usd_values_chart, display_breakdown_table
 
 
-st.set_page_config(page_title="Delta Neutral: LST + Spot and LST + Perps", layout="wide")
+st.set_page_config(page_title="Delta Neutral: LST + margin short and LST + perp short", layout="wide")
 
 
+def _load_lst_options(token_config: Dict[str, Any]) -> List[str]:
+    """Load LST options - same logic as page 7"""
+    sol_variants = ASSET_VARIANTS.get("SOL", [])
+    options: List[str] = []
+    for t in sol_variants:
+        info = (token_config.get(t) or {})
+        if info.get("mint"):
+            options.append(t)
+    return options or sol_variants
 
 
-def _build_perps_breakdown(
+def _fetch_funding_series(perps_exchange: str, lookback_hours: int) -> pd.DataFrame:
+    """Fetch funding series - same as page 7"""
+    return build_perps_history_series(perps_exchange.strip(), "SOL", int(lookback_hours))
+
+
+def _build_breakdown(
     price_df: pd.DataFrame,
     staking_df: pd.DataFrame,
     funding_df: pd.DataFrame,
@@ -38,6 +55,7 @@ def _build_perps_breakdown(
     total_capital_usd: float,
     leverage: float,
 ) -> pd.DataFrame:
+    """Build perps breakdown - same as page 7"""
     L = max(float(leverage), 1.0)
     wallet_usd = float(total_capital_usd) * L / (L + 1.0)
     perps_capital_initial = float(total_capital_usd) - wallet_usd
@@ -51,10 +69,20 @@ def _build_perps_breakdown(
             "perp_apy", "perp_interest", "net_value",
         ])
 
-    merged = pd.merge_asof(base.sort_values("time"), staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
-    merged = pd.merge_asof(merged.sort_values("time"), funding_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
-    merged = pd.merge_asof(merged.sort_values("time"), sol_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
+    merged = pd.merge_asof(
+        base.sort_values("time"),
+        staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+    )
+    merged = pd.merge_asof(
+        merged.sort_values("time"),
+        funding_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+    )
+    merged = pd.merge_asof(
+        merged.sort_values("time"),
+        sol_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+    )
     merged = merged.dropna(subset=["price"])  # require LST price
+
     if merged.empty:
         return pd.DataFrame(columns=[
             "time", "lst_token_amount", "lst_token_price", "lst_token_amount_usd",
@@ -62,9 +90,7 @@ def _build_perps_breakdown(
             "perp_apy", "perp_interest", "net_value",
         ])
 
-    first_price = float(pd.to_numeric(merged["price"], errors="coerce").dropna().iloc[0])
-    lst_tokens = (wallet_usd / first_price) if first_price > 0 else 0.0
-
+    # Ensure SOL price exists before using it for initial size
     merged = merged.dropna(subset=["sol_price"])  # require SOL price
     if merged.empty:
         return pd.DataFrame(columns=[
@@ -72,440 +98,476 @@ def _build_perps_breakdown(
             "perp_position_value", "sol_price", "perp_sol_amount", "perp_sol_amount_usd",
             "perp_apy", "perp_interest", "net_value",
         ])
-    first_sol_price = float(pd.to_numeric(merged["sol_price"], errors="coerce").dropna().iloc[0]) if "sol_price" in merged.columns else float("nan")
-    sol_size = (float(perp_short_notional_usd) / first_sol_price) if (first_sol_price and first_sol_price > 0) else 0.0
 
-    out = merged.copy()
-    out = out.rename(columns={"price": "lst_token_price"})
-    out["lst_token_amount"] = float(lst_tokens)
-    out["lst_token_amount_usd"] = out["lst_token_amount"] * out["lst_token_price"]
-    out["perp_sol_amount"] = float(sol_size)
-    out["perp_sol_amount_usd"] = out["perp_sol_amount"] * pd.to_numeric(out.get("sol_price", 0), errors="coerce").fillna(0.0)
+    # Initial tokens and sizes from first available prices
+    first_price = float(pd.to_numeric(merged["price"], errors="coerce").dropna().iloc[0])
+    lst_tokens_initial = (wallet_usd / first_price) if first_price > 0 else 0.0
+    merged["lst_token_amount"] = float(lst_tokens_initial)
+    merged["lst_token_price"] = merged["price"]
+    merged["lst_token_amount_usd"] = merged["lst_token_amount"] * merged["lst_token_price"]
+
+    first_sol_price = float(pd.to_numeric(merged["sol_price"], errors="coerce").dropna().iloc[0])
+    perp_sol_initial = (perp_short_notional_usd / first_sol_price) if first_sol_price > 0 else 0.0
+    merged["perp_sol_amount"] = float(perp_sol_initial)
+    merged["perp_sol_amount_usd"] = merged["perp_sol_amount"] * pd.to_numeric(merged["sol_price"], errors="coerce").fillna(0.0)
+
+    # Funding APY and 4h bucket interest on notional
+    merged["perp_apy"] = pd.to_numeric(merged.get("funding_pct", 0), errors="coerce").fillna(0.0)
     bucket_factor = 4.0 / (365.0 * 24.0)
-    out["perp_apy"] = pd.to_numeric(out.get("funding_pct", 0), errors="coerce").fillna(0.0)
-    out["perp_interest"] = float(perp_short_notional_usd) * (out["perp_apy"] / 100.0) * bucket_factor
-    out["perp_usd_accumulated"] = out["perp_interest"].cumsum()
-    out["perp_pnl_price"] = float(sol_size) * (float(first_sol_price) - pd.to_numeric(out.get("sol_price", 0), errors="coerce").fillna(0.0))
-    out["perp_position_value"] = float(perps_capital_initial) + out["perp_pnl_price"]
-    out["perp_wallet_value"] = out["perp_position_value"] + out["perp_usd_accumulated"]
-    out["net_value"] = out["lst_token_amount_usd"] + out["perp_position_value"] + out["perp_usd_accumulated"]
+    merged["perp_interest"] = float(perp_short_notional_usd) * (merged["perp_apy"] / 100.0) * bucket_factor
+    merged["perp_usd_accumulated"] = merged["perp_interest"].cumsum()
 
-    cols = [
-        "time",
-        "lst_token_amount",
-        "lst_token_price",
-        "lst_token_amount_usd",
-        "wallet_initial_usd",
-        "perp_capital_initial_usd",
-        "perp_short_notional_usd",
-        "perp_position_value",
-        "perp_wallet_value",
-        "sol_price",
-        "perp_sol_amount",
-        "perp_sol_amount_usd",
-        "perp_apy",
-        "perp_interest",
-        "perp_usd_accumulated",
-        "net_value",
-    ]
-    out["wallet_initial_usd"] = float(wallet_usd)
-    out["perp_capital_initial_usd"] = float(perps_capital_initial)
-    out["perp_short_notional_usd"] = float(perp_short_notional_usd)
-    out = out[cols].copy()
-    return out
+    # Price PnL for short leg and position/wallet values
+    merged["perp_pnl_price"] = float(perp_sol_initial) * (float(first_sol_price) - pd.to_numeric(merged["sol_price"], errors="coerce").fillna(0.0))
+    merged["perp_position_value"] = float(perps_capital_initial) + merged["perp_pnl_price"]
+    merged["perp_wallet_value"] = merged["perp_position_value"] + merged["perp_usd_accumulated"]
+
+    # Net portfolio value includes funding accumulation
+    merged["net_value"] = merged["lst_token_amount_usd"] + merged["perp_wallet_value"]
+
+    return merged[[
+        "time", "lst_token_amount", "lst_token_price", "lst_token_amount_usd",
+        "perp_position_value", "perp_wallet_value", "sol_price", "perp_sol_amount", "perp_sol_amount_usd",
+        "perp_apy", "perp_interest", "perp_usd_accumulated", "net_value",
+    ]].sort_values("time")
 
 
 def main():
-    st.title("Delta Neutral: LST + Spot and LST + Perps")
+    st.title("Delta Neutral: LST + margin short and LST + perp short")
 
+    # Shared configuration
     token_config = get_token_config()
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        lookback_choice = st.selectbox(
+            "Time period", ["3 months", "2 months", "1 month", "2 weeks", "1 week"],
+            index=1, key="combined_lookback"
+        )
+    with col2:
+        total_capital = st.number_input(
+            "Total capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0,
+            key="combined_total_capital"
+        )
 
-    # Global controls
-    col_a, col_b = st.columns([1, 1])
-    with col_a:
-        lookback_choice = st.selectbox("Time Period", ["1 week", "2 weeks", "1 month", "2 months", "3 months"], index=2)
-        lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720, "2 months": 1440, "3 months": 2160}
-        lookback_hours = int(lookback_map.get(lookback_choice, 720))
-    with col_b:
-        total_capital = st.number_input("Total Capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0)
+    lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720, "2 months": 1440, "3 months": 2160}
+    lookback_hours = lookback_map.get(lookback_choice, 720)
 
-    st.markdown("---")
+    # Storage variables for calculated values
+    spot_total_pnl = 0.0
+    spot_implied_apy = 0.0
+    spot_base_capital = float(total_capital)
+    spot_net_apy_series = pd.DataFrame()
 
-    # Section 1: LST + Spot
-    st.subheader("Delta Neutral LST with Spot")
-    # Eligible short variants (SOL only)
-    eligible_short_variants = find_eligible_short_variants(token_config, ASSET_VARIANTS.get("SOL", []))
+    perps_total_pnl = 0.0
+    perps_implied_apy = 0.0
+    perps_base_capital = float(total_capital)
+    perps_net_apy_series = pd.DataFrame()
+
+    # === SECTION 1: LST + margin short (page 8 logic) ===
+    st.subheader("Delta Neutral: LST + margin short")
+
+    # Same controls as page 8
+    eligible_short_variants = find_eligible_short_variants(token_config, SPOT_PERPS_CONFIG["SOL_ASSETS"])
+
     if not eligible_short_variants:
         st.info("No SOL variants have at least 2x short leverage available.")
     else:
-        # Wallet options (prefer LSTs) and include SOL
         wallet_options: List[str] = []
-        for t in ASSET_VARIANTS.get("SOL", []):
+        for t in SPOT_PERPS_CONFIG["SOL_ASSETS"]:
             info = (token_config.get(t) or {})
             if info.get("hasStakingYield", False) and info.get("mint"):
                 wallet_options.append(t)
-        if "SOL" in ASSET_VARIANTS.get("SOL", []) and "SOL" not in wallet_options:
+        if "SOL" in SPOT_PERPS_CONFIG["SOL_ASSETS"] and "SOL" not in wallet_options:
             wallet_options.append("SOL")
         if not wallet_options:
-            wallet_options = list(ASSET_VARIANTS.get("SOL", []))
+            wallet_options = list(SPOT_PERPS_CONFIG["SOL_ASSETS"])
 
         col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            wallet_asset = st.selectbox("Wallet asset", wallet_options, index=0)
-        with col2:
-            short_asset = st.selectbox("Short asset", sorted(list(eligible_short_variants.keys())), index=0)
-        with col3:
-            base_usd_spot = total_capital
 
-        # Leverage bounds for short asset
+        def _format_wallet_option(sym: str) -> str:
+            if sym == "SOL":
+                return "SOL"
+            info = (token_config.get(sym) or {})
+            if info.get("hasStakingYield") and info.get("mint"):
+                try:
+                    staking_data = fetch_asgard_staking_rates() or {}
+                    apy_dec = get_staking_rate_by_mint(staking_data, info.get("mint")) or 0.0
+                    apy_pct = float(apy_dec) * 100.0
+                    return f"{sym}({apy_pct:.2f}%)"
+                except Exception:
+                    return sym
+            return sym
+
+        with col1:
+            wallet_asset = st.selectbox(
+                "Wallet asset", options=wallet_options, index=0,
+                key="combined_spot_wallet_asset", format_func=_format_wallet_option
+            )
+        with col2:
+            short_asset_names = sorted(list(eligible_short_variants.keys()))
+            short_asset = st.selectbox(
+                "Short asset", options=short_asset_names, index=0,
+                key="combined_spot_short_asset"
+            )
+        with col3:
+            lev_spot = st.slider("Leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5, key="combined_spot_lev")
+
         proto = eligible_short_variants[short_asset]["protocol"]
         market = eligible_short_variants[short_asset]["market"]
-        asset_pairs = get_protocol_market_pairs(token_config, short_asset)
-        sel_asset_bank, sel_usdc_bank = None, None
-        for p, m, bank in asset_pairs:
-            if p == proto and (not market or m == market):
-                sel_asset_bank = bank
-                break
-        sel_usdc_bank = get_matching_usdc_bank(token_config, proto, market)
-        eff_max = 1.0
-        if sel_asset_bank and sel_usdc_bank:
-            eff_max = compute_effective_max_leverage(token_config, sel_asset_bank, sel_usdc_bank, "short")
-        try:
-            eff_max_f = max(float(eff_max or 1.0), 1.0)
-        except Exception:
-            eff_max_f = 1.0
-        lev_spot = st.slider("Leverage (short)", min_value=1.0, max_value=float(eff_max_f), value=float(2.0 if eff_max_f >= 2.0 else eff_max_f), step=0.5, key="combined_spot_lev")
-        st.caption(f"Max available short leverage: {eff_max_f:.2f}x")
 
-        # Build series and metrics
-        with st.spinner("Building LST+Spot series..."):
-            series_spot = build_wallet_short_series(token_config, wallet_asset, short_asset, proto, market, float(lev_spot), int(lookback_hours), float(base_usd_spot))
-        if series_spot.empty:
-            st.info("No historical data available for LST + Spot selection.")
-        else:
-            # APY series for chart and net APY
-            with st.spinner("Loading APY series (LST+Spot)..."):
-                spot_rates = build_spot_history_series(token_config, short_asset, proto, market, "short", float(lev_spot), int(lookback_hours))
-                # Wallet staking series using shared helper
-                wal_stk = fetch_and_process_staking_series(token_config, wallet_asset, lookback_hours)
-                # Fallback if no staking data available
-                if wal_stk.empty:
-                    wal_stk = spot_rates[["time"]].copy() if not spot_rates.empty else pd.DataFrame(columns=["time"])
-                    wal_stk["staking_pct"] = 0.0
-                # Align
-                if not spot_rates.empty:
-                    spot_rates = spot_rates.sort_values("time").copy()
-                    spot_rates["time"] = pd.to_datetime(spot_rates["time"], errors="coerce")
-                wal_stk = wal_stk.sort_values("time").copy()
-                wal_stk["time"] = pd.to_datetime(wal_stk["time"], errors="coerce")
-                apy_df_spot = pd.merge_asof(spot_rates, wal_stk, on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
-                apy_df_spot["staking_pct"] = apy_df_spot["staking_pct"].fillna(0.0)
-
-            # Metrics rows (reuse layout from dedicated page)
-            last_row = series_spot.dropna(subset=["usdc_principal_usd", "close_cost_usd", "net_value_usd"]).tail(1)
-            wallet_amount_usd, used_capital_usd, _short_usd = compute_allocation_split(float(base_usd_spot), float(lev_spot))
-            hodl_now = float(last_row.get("wallet_value_usd", pd.Series([0.0])).iloc[0]) if not last_row.empty else 0.0
-            net_now = float(last_row.get("net_value_usd", pd.Series([0.0])).iloc[0]) if not last_row.empty else 0.0
-            short_net_initial = float(base_usd_spot) - float(_short_usd)
-            total_hours = float(len(series_spot) * 4.0)
-            total_pnl = (hodl_now - wallet_amount_usd) + (net_now - (float(base_usd_spot) - wallet_amount_usd))
-            implied_apy_spot = compute_implied_apy(total_pnl, float(base_usd_spot), total_hours)
-
-            display_delta_neutral_metrics(
-                total_pnl=total_pnl,
-                base_capital=float(base_usd_spot),
-                implied_apy=implied_apy_spot,
-                wallet_asset=wallet_asset,
-                wallet_amount_initial=wallet_amount_usd,
-                wallet_value_now=hodl_now,
-                short_asset=short_asset,
-                short_borrow_initial=_short_usd,
-                short_borrow_now=float(last_row.get('close_cost_usd', pd.Series([0.0])).iloc[0]) if not last_row.empty else 0.0,
-                short_net_initial=short_net_initial,
-                short_net_now=net_now,
-                show_delta=False
+        # Build and calculate everything for spot section
+        with st.spinner("Building LST + margin short series..."):
+            spot_series = build_wallet_short_series(
+                token_config, wallet_asset, short_asset, proto, market,
+                float(lev_spot), int(lookback_hours), float(total_capital)
             )
 
-            # APY charts for LST+Spot
-            if not apy_df_spot.empty:
-                display_apy_chart(
-                    time_series=apy_df_spot["time"],
-                    long_apy_series=apy_df_spot["staking_pct"],
-                    short_apy_series=apy_df_spot["spot_rate_pct"],
-                    title="Long and Short Side APYs (LST+Spot)"
+        if not spot_series.empty:
+            # Calculate all metrics (page 8 logic)
+            plot_df = spot_series.copy()
+            last_row = plot_df.dropna(subset=["wallet_asset_price", "short_asset_price", "usdc_principal_usd", "short_tokens_owed", "close_cost_usd", "net_value_usd", "wallet_value_usd"]).tail(1)
+
+            if not last_row.empty:
+                lev_f = float(lev_spot)
+                base_f = float(total_capital)
+                wallet_amount_usd, used_capital_usd, initial_short_borrow_usd = compute_allocation_split(base_f, lev_f)
+
+                wallet_value_now = float(last_row["wallet_value_usd"].iloc[0])
+                net_value_now = float(last_row["net_value_usd"].iloc[0])
+                short_leg_pnl = net_value_now - used_capital_usd
+                wallet_pnl = wallet_value_now - wallet_amount_usd
+
+                # Store calculated values
+                spot_total_pnl = short_leg_pnl + wallet_pnl
+                spot_base_capital = base_f
+                total_hours = float(len(plot_df) * 4.0)
+                spot_implied_apy = compute_implied_apy(spot_total_pnl, base_f, total_hours)
+
+                # Display metrics
+                display_delta_neutral_metrics(
+                    total_pnl=spot_total_pnl,
+                    base_capital=base_f,
+                    implied_apy=spot_implied_apy,
+                    wallet_asset=wallet_asset,
+                    wallet_amount_initial=wallet_amount_usd,
+                    wallet_value_now=wallet_value_now,
+                    short_asset=short_asset,
+                    short_borrow_initial=initial_short_borrow_usd,
+                    short_borrow_now=float(last_row["close_cost_usd"].iloc[0]),
+                    short_net_initial=float(total_capital) - float(initial_short_borrow_usd),
+                    short_net_now=net_value_now - wallet_value_now
                 )
 
-                # Net APY over Time (weighted)
-                try:
-                    wallet_ratio_spot = float(wallet_amount_usd) / float(base_usd_spot) if float(base_usd_spot) > 0 else 0.0
-                    short_ratio_spot = float(used_capital_usd) / float(base_usd_spot) if float(base_usd_spot) > 0 else 0.0
-                except Exception:
-                    wallet_ratio_spot, short_ratio_spot = 0.0, 0.0
-                apy_df_spot["net_apy_pct"] = apy_df_spot["staking_pct"].fillna(0.0) * wallet_ratio_spot - apy_df_spot["spot_rate_pct"].fillna(0.0) * short_ratio_spot
-                
-                display_net_apy_chart(
-                    time_series=apy_df_spot["time"],
-                    net_apy_series=apy_df_spot["net_apy_pct"],
-                    title="Net APY over Time (LST+Spot)"
-                )
+            # Calculate and store net APY series
+            staking_series = fetch_and_process_staking_series(token_config, wallet_asset, lookback_hours)
+            spot_history_series = build_spot_history_series(
+                token_config, short_asset, proto, market, "long", float(lev_spot), lookback_hours
+            )
 
-            # USD values and breakdown (hidden by default) for LST+Spot
+            if not staking_series.empty and not spot_history_series.empty:
+                apy_df_spot = pd.merge_asof(
+                    staking_series.sort_values("time"),
+                    spot_history_series.sort_values("time"),
+                    on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+                ).dropna(subset=["staking_pct", "spot_rate_pct"])
+
+                if not apy_df_spot.empty:
+                    display_apy_chart(
+                        time_series=apy_df_spot["time"],
+                        long_apy_series=apy_df_spot["staking_pct"],
+                        short_apy_series=apy_df_spot["spot_rate_pct"],
+                        title="Long and Short Side APYs (LST + margin short)"
+                    )
+
+                    wallet_ratio_spot, short_ratio_spot = compute_capital_allocation_ratios(
+                        wallet_amount_usd, used_capital_usd, float(total_capital)
+                    )
+                    apy_df_spot["net_apy_pct"] = compute_weighted_net_apy(
+                        apy_df_spot["staking_pct"], apy_df_spot["spot_rate_pct"], wallet_ratio_spot, short_ratio_spot
+                    )
+
+                    # Store net APY series
+                    spot_net_apy_series = apy_df_spot[["time", "net_apy_pct"]].copy()
+
+                    display_net_apy_chart(
+                        time_series=apy_df_spot["time"],
+                        net_apy_series=apy_df_spot["net_apy_pct"],
+                        title="Net APY over Time (LST + margin short)"
+                    )
+
+            # USD values and breakdown
             display_usd_values_chart(
-                time_series=series_spot["time"],
-                wallet_usd_series=series_spot["wallet_value_usd"],
-                position_usd_series=series_spot["net_value_usd"],
+                time_series=plot_df["time"],
+                wallet_usd_series=plot_df["wallet_value_usd"],
+                position_usd_series=plot_df["net_value_usd"],
                 wallet_label=f"{wallet_asset} wallet (USD)",
-                position_label="Short net value (USD)",
-                title="USD Values Over Time (LST+Spot)",
-                checkbox_label="Show USD Values Over Time (LST+Spot)"
+                position_label="Short net value (USD)"
             )
 
-            tbl_spot = series_spot[[
-                "time", "wallet_asset_price", "short_asset_price", "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
-                "net_value_usd", "wallet_value_usd", "usdc_lend_apy", "asset_borrow_apy", "wallet_stk_pct", "borrow_stk_pct",
-            ]].rename(columns={
-                "wallet_asset_price": f"{wallet_asset} price (wallet)",
-                "short_asset_price": f"{short_asset} price (short)",
+            tbl_cols = ["time", "usdc_principal_usd", "close_cost_usd", "usdc_lend_apy", "asset_borrow_apy", "wallet_stk_pct", "borrow_stk_pct", "net_value_usd"]
+            if "wallet_asset_price" in plot_df.columns:
+                tbl_cols.insert(1, "wallet_asset_price")
+            if "short_tokens_owed" in plot_df.columns:
+                tbl_cols.insert(3, "short_tokens_owed")
+            if "wallet_value_usd" in plot_df.columns:
+                tbl_cols.append("wallet_value_usd")
+
+            tbl = plot_df[tbl_cols].rename(columns={
+                "wallet_asset_price": f"{wallet_asset} price",
                 "usdc_principal_usd": "usdc lent",
                 "short_tokens_owed": f"{short_asset} borrowed",
                 "close_cost_usd": f"{short_asset} borrowed in usd",
                 "net_value_usd": "spot position net value",
-                "wallet_value_usd": "wallet hodl net value",
-                "usdc_lend_apy": "usdc lend apy",
-                "asset_borrow_apy": f"{short_asset} borrow apy",
-                "wallet_stk_pct": f"{wallet_asset} staking apy",
-                "borrow_stk_pct": f"{short_asset} staking apy",
+                "wallet_value_usd": f"{wallet_asset} wallet value",
             })
-            tbl_spot = tbl_spot.round({
-                f"{wallet_asset} price (wallet)": 6,
-                f"{short_asset} price (short)": 6,
-                "usdc lent": 2,
-                f"{short_asset} borrowed": 6,
-                f"{short_asset} borrowed in usd": 2,
-                "spot position net value": 2,
-                "wallet hodl net value": 2,
-                "usdc lend apy": 3,
-                f"{short_asset} borrow apy": 3,
-                f"{wallet_asset} staking apy": 3,
-                f"{short_asset} staking apy": 3,
-            })
-            display_breakdown_table(tbl_spot, "Show breakdown table (LST+Spot)")
+            display_breakdown_table(tbl, "Show breakdown table (LST + margin short)")
 
-    st.markdown("---")
+    st.divider()
 
-    # Section 2: LST + Perps
-    st.subheader("Delta Neutral with LST and Perps")
-    lst_options = [t for t in ASSET_VARIANTS.get("SOL", []) if (token_config.get(t) or {}).get("mint")]
-    colp1, colp2, colp3 = st.columns([1, 1, 1])
-    with colp1:
-        lst_symbol = st.selectbox("LST Token", lst_options, index=0)
-    with colp2:
-        perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0)
-    with colp3:
-        leverage = st.slider("Perps leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5, key="combined_perps_lev")
+    # === SECTION 2: LST + perp short (page 7 logic) ===
+    st.subheader("Delta Neutral: LST + perp short")
+    st.caption("Capital split and short notional are driven by selected perps leverage. LST yield accrues via price; funding on perps applies to short notional.")
 
-    with st.spinner("Loading LST + Perps series..."):
-        try:
-            # Get time range
-            end_ts = pd.Timestamp.utcnow()
-            start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
-            start = int(start_ts.timestamp())
-            end = int(end_ts.timestamp())
-            
-            # LST price using existing API
-            info = token_config.get(lst_symbol, {}) or {}
-            lst_mint = info.get("mint")
-            if lst_mint:
-                price_points = fetch_birdeye_history_price(lst_mint, start, end, bucket="4H") or []
-                lst_price_df = pd.DataFrame(price_points)
-                if not lst_price_df.empty:
-                    lst_price_df["time"] = pd.to_datetime(lst_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-                    lst_price_df = lst_price_df.sort_values("time")[["time", "price"]]
+    lst_options = _load_lst_options(token_config)
+    if not lst_options:
+        st.info("No LST tokens available in configuration.")
+    else:
+        colp1, colp2, colp3 = st.columns([1, 1, 1])
+        with colp1:
+            lst_symbol = st.selectbox("LST Token", lst_options, index=0)
+        with colp2:
+            perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0)
+        with colp3:
+            leverage_perp = st.slider("Perps leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5, key="combined_perps_lev")
+
+        # Build and calculate everything for perps section (page 7 logic)
+        with st.spinner("Loading LST + perp short series..."):
+            try:
+                end_ts = pd.Timestamp.utcnow()
+                start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
+                start = int(start_ts.timestamp())
+                end = int(end_ts.timestamp())
+
+                info = token_config.get(lst_symbol, {}) or {}
+                lst_mint = info.get("mint")
+                if lst_mint:
+                    price_points = fetch_birdeye_history_price(lst_mint, start, end, bucket="4H") or []
+                    lst_price_df = pd.DataFrame(price_points)
+                    if not lst_price_df.empty:
+                        lst_price_df["time"] = pd.to_datetime(lst_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
+                        lst_price_df = lst_price_df.sort_values("time")[["time", "price"]]
+                    else:
+                        lst_price_df = pd.DataFrame(columns=["time", "price"])
                 else:
                     lst_price_df = pd.DataFrame(columns=["time", "price"])
-            else:
-                lst_price_df = pd.DataFrame(columns=["time", "price"])
-                
-            # LST staking series using shared helper
-            lst_staking_df = fetch_and_process_staking_series(token_config, lst_symbol, lookback_hours)
-                
-            # SOL price using existing API
-            sol_mint = (token_config.get("SOL", {}) or {}).get("mint")
-            if sol_mint:
-                sol_points = fetch_birdeye_history_price(sol_mint, start, end, bucket="4H") or []
-                sol_price_df = pd.DataFrame(sol_points)
-                if not sol_price_df.empty:
-                    sol_price_df["time"] = pd.to_datetime(sol_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-                    sol_price_df = sol_price_df.sort_values("time")[["time", "price"]].rename(columns={"price": "sol_price"})
+
+                lst_staking_df = fetch_and_process_staking_series(token_config, lst_symbol, lookback_hours)
+
+                sol_mint = (token_config.get("SOL", {}) or {}).get("mint")
+                if sol_mint:
+                    sol_points = fetch_birdeye_history_price(sol_mint, start, end, bucket="4H") or []
+                    sol_price_df = pd.DataFrame(sol_points)
+                    if not sol_price_df.empty:
+                        sol_price_df["time"] = pd.to_datetime(sol_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
+                        sol_price_df = sol_price_df.sort_values("time")[["time", "price"]].rename(columns={"price": "sol_price"})
+                    else:
+                        sol_price_df = pd.DataFrame(columns=["time", "sol_price"])
                 else:
                     sol_price_df = pd.DataFrame(columns=["time", "sol_price"])
-            else:
-                sol_price_df = pd.DataFrame(columns=["time", "sol_price"])
-                
-            # Funding series using existing builder
-            funding_df = build_perps_history_series(perps_exchange, "SOL", lookback_hours)
-            
-        except Exception as e:
-            st.error(f"Failed to load historical series: {e}")
-            return
-    # If SOL is selected as LST, force staking to zero over funding timeline
-    try:
-        if lst_symbol == "SOL" and not funding_df.empty:
-            lst_staking_df = funding_df[["time"]].copy()
-            lst_staking_df["staking_pct"] = 0.0
-    except Exception:
-        pass
-    if lst_price_df.empty or funding_df.empty or sol_price_df.empty:
-        st.warning("Required data is currently unavailable for LST + Perps.")
-    else:
-        # Build APY chart (ensure time dtype alignment)
-        funding_df = funding_df.sort_values("time").copy()
-        funding_df["time"] = pd.to_datetime(funding_df["time"], errors="coerce")
-        lst_staking_df = lst_staking_df.sort_values("time").copy()
-        lst_staking_df["time"] = pd.to_datetime(lst_staking_df["time"], errors="coerce")
-        df_apys = pd.merge_asof(
-            funding_df,
-            lst_staking_df, on="time", direction="nearest", tolerance=pd.Timedelta("3h")
-        )
-        df_apys = df_apys.dropna(subset=["funding_pct", "staking_pct"])  # require both present
-        if df_apys.empty:
-            st.info("Staking data not available for selected period.")
+
+                funding_df = _fetch_funding_series(perps_exchange, lookback_hours)
+
+            except Exception as e:
+                st.error(f"Failed to load historical series: {e}")
+                funding_df = pd.DataFrame()
+                lst_price_df = pd.DataFrame()
+                sol_price_df = pd.DataFrame()
+                lst_staking_df = pd.DataFrame()
+
+        # SOL staking override
+        try:
+            if lst_symbol == "SOL" and not funding_df.empty:
+                lst_staking_df = funding_df[["time"]].copy()
+                lst_staking_df["staking_pct"] = 0.0
+        except Exception:
+            pass
+
+        if lst_price_df.empty or funding_df.empty or sol_price_df.empty:
+            st.warning("Required data is currently unavailable for LST + perp short.")
         else:
-            display_apy_chart(
-                time_series=df_apys["time"],
-                long_apy_series=df_apys["staking_pct"],
-                short_apy_series=-df_apys["funding_pct"],  # Note: funding already includes sign
-                short_label="Short Side APY (%)"
+            # Calculate all perps metrics (page 7 logic)
+            perps_series = _build_breakdown(
+                lst_price_df, lst_staking_df, funding_df, sol_price_df,
+                total_capital, leverage_perp
             )
 
-        # Net APY for LST+Perps (weighted by initial capital and short notional exposure)
-        L = max(float(leverage), 1.0)
-        wallet_usd = float(total_capital) * L / (L + 1.0)
-        perps_capital_initial = float(total_capital) - wallet_usd
-        perp_short_notional_usd = perps_capital_initial * L
-        wallet_ratio = wallet_usd / float(total_capital) if float(total_capital) > 0 else 0.0
-        short_exposure_ratio = perp_short_notional_usd / float(total_capital) if float(total_capital) > 0 else 0.0
-        df_apys_perps = df_apys.copy()
-        df_apys_perps["net_apy_pct"] = (
-            df_apys_perps["staking_pct"].fillna(0.0) * wallet_ratio
-            + df_apys_perps["funding_pct"].fillna(0.0) * short_exposure_ratio
-        )
-        
-        display_net_apy_chart(
-            time_series=df_apys_perps["time"],
-            net_apy_series=df_apys_perps["net_apy_pct"],
-            title="Net APY over Time (LST+Perps)"
-        )
+            if not perps_series.empty:
+                first_row = perps_series.head(1)
+                last_row = perps_series.tail(1)
+                lst_usd_start = float(first_row["lst_token_amount_usd"].iloc[0]) if not first_row.empty else 0.0
+                lst_usd_now = float(last_row["lst_token_amount_usd"].iloc[0]) if not last_row.empty else 0.0
+                perp_pos_start = float(first_row["perp_position_value"].iloc[0]) if not first_row.empty else (float(total_capital) / 2.0)
+                perp_pos_now = float(last_row["perp_position_value"].iloc[0]) if not last_row.empty else perp_pos_start
+                perp_sol_usd_start = float(first_row["perp_sol_amount_usd"].iloc[0]) if not first_row.empty else (float(total_capital) / 2.0)
 
-        # USD values and breakdown (hidden by default) for LST+Perps
-        series_perps = _build_perps_breakdown(lst_price_df, lst_staking_df, funding_df, sol_price_df, float(total_capital), float(leverage))
-        if not series_perps.empty:
-            display_usd_values_chart(
-                time_series=series_perps["time"],
-                wallet_usd_series=series_perps["lst_token_amount_usd"],
-                position_usd_series=series_perps["perp_wallet_value"],
-                wallet_label="LST wallet (USD)",
-                position_label="Perp wallet (USD)",
-                title="USD Values Over Time (LST+Perps)",
-                checkbox_label="Show USD Values Over Time (LST+Perps)",
-                additional_series={"Portfolio total (USD)": series_perps["net_value"]}
+                net_now = float(last_row["net_value"].iloc[0]) if not last_row.empty else float(total_capital)
+
+                # Store calculated values
+                perps_total_pnl = net_now - float(total_capital)
+                perps_base_capital = float(total_capital)
+                total_hours = max(len(perps_series), 0) * 4.0
+                perps_implied_apy = compute_implied_apy(perps_total_pnl, float(total_capital), total_hours)
+
+                # Display metrics
+                display_perps_metrics(
+                    profit_usd=perps_total_pnl,
+                    total_capital=float(total_capital),
+                    implied_apy=perps_implied_apy,
+                    lst_symbol=lst_symbol,
+                    lst_usd_start=lst_usd_start,
+                    lst_usd_now=lst_usd_now,
+                    perp_notional_start=perp_sol_usd_start,
+                    perp_position_start=perp_pos_start,
+                    perp_position_now=perp_pos_now
+                )
+
+            # Calculate and store net APY series
+            funding_df = funding_df.sort_values("time").copy()
+            funding_df["time"] = pd.to_datetime(funding_df["time"], errors="coerce")
+            lst_staking_df = lst_staking_df.sort_values("time").copy()
+            lst_staking_df["time"] = pd.to_datetime(lst_staking_df["time"], errors="coerce")
+            df_apys = pd.merge_asof(
+                funding_df,
+                lst_staking_df, on="time", direction="nearest", tolerance=pd.Timedelta("3h")
             )
+            df_apys = df_apys.dropna(subset=["funding_pct", "staking_pct"])
 
-        if not series_perps.empty:
-            tbl = series_perps.copy().rename(columns={
-                "lst_token_amount": "LST tokens",
-                "lst_token_price": "LST price (USD)",
-                "lst_token_amount_usd": "LST wallet (USD)",
-                "wallet_initial_usd": "Wallet initial (USD)",
-                "perp_capital_initial_usd": "Perp capital initial (USD)",
-                "perp_short_notional_usd": "Perp notional (start, USD)",
-                "perp_position_value": "Perp position (MTM, USD)",
-                "perp_wallet_value": "Perp wallet (USD)",
-                "sol_price": "SOL price (USD)",
-                "perp_sol_amount": "Perp size (SOL)",
-                "perp_sol_amount_usd": "Perp notional (current, USD)",
-                "perp_apy": "Perp funding APY (%)",
-                "perp_interest": "Perp funding (4h, USD)",
-                "perp_usd_accumulated": "Perp funding (cum, USD)",
-                "net_value": "Portfolio total (USD)",
-            })
-            tbl = tbl.round({
-                "LST price (USD)": 6,
-                "LST wallet (USD)": 2,
-                "Perp wallet (USD)": 2,
-                "SOL price (USD)": 6,
-                "Perp funding (4h, USD)": 2,
-                "Perp funding (cum, USD)": 2,
-                "Portfolio total (USD)": 2,
-            })
-            display_breakdown_table(
-                tbl[[
-                    "time",
-                    "LST price (USD)",
-                    "LST wallet (USD)",
-                    "Perp wallet (USD)",
-                    "SOL price (USD)",
-                    "Perp funding (4h, USD)",
-                    "Perp funding (cum, USD)",
-                    "Portfolio total (USD)",
-                ]],
-                "Show breakdown table (LST+Perps)"
-            )
+            if not df_apys.empty:
+                display_apy_chart(
+                    time_series=df_apys["time"],
+                    long_apy_series=df_apys["staking_pct"],
+                    short_apy_series=df_apys["funding_pct"],
+                    short_label="Short Side APY (%)"
+                )
 
-    st.markdown("---")
+                L = max(float(leverage_perp), 1.0)
+                wallet_usd = float(total_capital) * L / (L + 1.0)
+                perps_capital_initial = float(total_capital) - wallet_usd
+                perp_short_notional_usd = perps_capital_initial * L
+                wallet_ratio = wallet_usd / float(total_capital) if float(total_capital) > 0 else 0.0
+                short_exposure_ratio = perp_short_notional_usd / float(total_capital) if float(total_capital) > 0 else 0.0
 
-    # Bottom chart: Net APY from both sections
-    st.subheader("Net APY Comparison (LST+Spot vs LST+Perps)")
-    # Build LST+Spot net APY (weighted by initial capital allocation ratios)
-    net_spot = pd.DataFrame(columns=["time", "net_apy_pct"])
-    try:
-        if not apy_df_spot.empty:
-            wallet_amount, used_capital, _ = compute_allocation_split(float(base_usd_spot), float(lev_spot))
-            wallet_ratio_spot, short_ratio_spot = compute_capital_allocation_ratios(
-                wallet_amount, used_capital, float(base_usd_spot)
-            )
-            net_spot = apy_df_spot[["time"]].copy()
-            net_spot["net_apy_pct"] = apy_df_spot["staking_pct"].fillna(0.0) * wallet_ratio_spot - apy_df_spot["spot_rate_pct"].fillna(0.0) * short_ratio_spot
-    except Exception:
-        pass
+                df_apys_perps = df_apys.copy()
+                df_apys_perps["net_apy_pct"] = (
+                    df_apys_perps["staking_pct"].fillna(0.0) * wallet_ratio
+                    + df_apys_perps["funding_pct"].fillna(0.0) * short_exposure_ratio
+                )
 
-    net_perps = pd.DataFrame(columns=["time", "net_apy_pct"])
-    try:
-        if not df_apys_perps.empty:
-            net_perps = df_apys_perps[["time", "net_apy_pct"]].copy()
-    except Exception:
-        pass
+                # Store net APY series
+                perps_net_apy_series = df_apys_perps[["time", "net_apy_pct"]].copy()
 
-    if net_spot.empty and net_perps.empty:
-        st.info("Net APY series are not available with the current selections.")
-    else:
+                display_net_apy_chart(
+                    time_series=df_apys_perps["time"],
+                    net_apy_series=df_apys_perps["net_apy_pct"],
+                    title="Net APY over Time (LST + perp short)"
+                )
+
+            # USD values and breakdown
+            if not perps_series.empty:
+                display_usd_values_chart(
+                    time_series=perps_series["time"],
+                    wallet_usd_series=perps_series["lst_token_amount_usd"],
+                    position_usd_series=perps_series["perp_wallet_value"],
+                    title="USD Values Over Time (LST + perp short)",
+                    checkbox_label="Show USD Values Over Time (LST + perp short)",
+                    wallet_label=f"{lst_symbol} wallet (USD)",
+                    position_label="Perp wallet (USD)",
+                    additional_series={"Portfolio total (USD)": perps_series["net_value"]}
+                )
+
+                tbl_perps = perps_series[[
+                    "time", "lst_token_amount", "lst_token_price", "lst_token_amount_usd",
+                    "perp_position_value", "sol_price", "perp_sol_amount", "perp_sol_amount_usd",
+                    "perp_apy", "perp_interest", "net_value"
+                ]].rename(columns={
+                    "lst_token_amount": f"{lst_symbol} tokens",
+                    "lst_token_price": f"{lst_symbol} price",
+                    "lst_token_amount_usd": f"{lst_symbol} value (USD)",
+                    "perp_position_value": "Perp position value",
+                    "perp_sol_amount": "SOL perp amount",
+                    "perp_sol_amount_usd": "SOL perp value (USD)",
+                    "perp_apy": "Funding APY (%)",
+                    "perp_interest": "Funding interest (USD)",
+                    "net_value": "Net position value"
+                })
+                display_breakdown_table(tbl_perps, "Show breakdown table (LST + perp short)")
+
+    st.divider()
+
+    # === SUMMARY SECTION (using only stored values) ===
+    st.subheader("Net APY Comparison (LST + margin short vs LST + perp short)")
+
+    # Use only stored values - no recalculation
+    if not spot_net_apy_series.empty and not perps_net_apy_series.empty:
         fig_cmp = go.Figure()
-        if not net_spot.empty:
-            fig_cmp.add_trace(go.Scatter(x=net_spot["time"], y=net_spot["net_apy_pct"], name="LST+Spot Net APY (%)", mode="lines"))
-        if not net_perps.empty:
-            fig_cmp.add_trace(go.Scatter(x=net_perps["time"], y=net_perps["net_apy_pct"], name="LST+Perps Net APY (%)", mode="lines"))
+        fig_cmp.add_trace(go.Scatter(x=spot_net_apy_series["time"], y=spot_net_apy_series["net_apy_pct"], name="LST + margin short Net APY (%)", mode="lines"))
+        fig_cmp.add_trace(go.Scatter(x=perps_net_apy_series["time"], y=perps_net_apy_series["net_apy_pct"], name="LST + perp short Net APY (%)", mode="lines"))
         fig_cmp.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig_cmp, use_container_width=True)
 
-        # Std deviation summary at bottom
+        # Summary metrics using only stored values
+        st.subheader("Strategy Comparison Summary")
+
+        # LST + margin short row
+        st.markdown("**LST + margin short**")
         try:
-            std_spot = float(net_spot["net_apy_pct"].std(skipna=True)) if not net_spot.empty else None
+            mean_apy_spot = float(spot_net_apy_series["net_apy_pct"].mean(skipna=True))
+            std_spot = float(spot_net_apy_series["net_apy_pct"].std(skipna=True))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                roe_delta_spot = f"{(spot_total_pnl/spot_base_capital*100.0):+.2f}%" if spot_base_capital > 0 else None
+                st.metric("ROE", f"${spot_total_pnl:,.2f}", delta=roe_delta_spot)
+            with col2:
+                st.metric("Total APY (implied)", f"{spot_implied_apy:.2f}%")
+
+            st.write(f"**Std Deviation of Delta neutral LST + margin short:** {std_spot:.2f}%")
         except Exception:
-            std_spot = None
+            st.info("Metrics unavailable")
+
+        st.divider()
+
+        # LST + perp short row
+        st.markdown("**LST + perp short**")
         try:
-            std_perps = float(net_perps["net_apy_pct"].std(skipna=True)) if not net_perps.empty else None
+            mean_apy_perps = float(perps_net_apy_series["net_apy_pct"].mean(skipna=True))
+            std_perps = float(perps_net_apy_series["net_apy_pct"].std(skipna=True))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                roe_delta_perps = f"{(perps_total_pnl/perps_base_capital*100.0):+.2f}%" if perps_base_capital > 0 else None
+                st.metric("ROE", f"${perps_total_pnl:,.2f}", delta=roe_delta_perps)
+            with col2:
+                st.metric("Total APY (implied)", f"{perps_implied_apy:.2f}%")
+
+            st.write(f"**Std Deviation of Delta neutral LST + perp short:** {std_perps:.2f}%")
         except Exception:
-            std_perps = None
-        parts = []
-        if std_spot is not None:
-            parts.append(f"LST+Spot: {std_spot:.2f}%")
-        if std_perps is not None:
-            parts.append(f"LST+Perps: {std_perps:.2f}%")
-        if parts:
-            st.caption("Std deviation — " + " | ".join(parts))
+            st.info("Metrics unavailable")
+
+        st.divider()
+
+        # Volatility comparison using stored values
+        try:
+            std_spot_calc = float(spot_net_apy_series["net_apy_pct"].std(skipna=True))
+            std_perps_calc = float(perps_net_apy_series["net_apy_pct"].std(skipna=True))
+            if std_spot_calc > 0:
+                volatility_ratio = std_perps_calc / std_spot_calc
+                st.info(f"Strategy with perp short is {volatility_ratio:.0f}x more volatile than with margin short")
+        except Exception:
+            pass
+    else:
+        st.info("Net APY series are not available with the current selections.")
 
 
 if __name__ == "__main__":
     main()
-
-

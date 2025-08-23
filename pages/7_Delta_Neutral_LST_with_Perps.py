@@ -30,12 +30,12 @@ from utils.delta_neutral_ui import display_perps_metrics, display_apy_chart, dis
 
 
 def _load_lst_options(token_config: Dict[str, Any]) -> List[str]:
-    # SOL variants that have staking yield flag in token_config
+    # Use same logic as page 9: all SOL variants that have mint addresses (including SOL itself)
     sol_variants = ASSET_VARIANTS.get("SOL", [])
     options: List[str] = []
     for t in sol_variants:
         info = (token_config.get(t) or {})
-        if info.get("hasStakingYield", False) and info.get("mint"):
+        if info.get("mint"):  # Remove hasStakingYield requirement to include SOL
             options.append(t)
     return options or sol_variants
 
@@ -238,6 +238,14 @@ def main():
             if st.button("Retry loading data"):
                 st.rerun()
             return
+
+    # If SOL is selected as LST, override staking to zero over funding timeline (SOL has no staking yield)
+    try:
+        if lst_symbol == "SOL" and not funding_df.empty:
+            lst_staking_df = funding_df[["time"]].copy()
+            lst_staking_df["staking_pct"] = 0.0
+    except Exception:
+        pass
 
     if lst_price_df.empty or funding_df.empty or sol_price_df.empty:
         st.warning("Required data is currently unavailable.")
