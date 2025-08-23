@@ -34,8 +34,6 @@ ASGARD_HISTORICAL_STAKING_RATES_URL = st.secrets["api"]["ASGARD_HISTORICAL_STAKI
 
 # Birdeye price API
 BIRDEYE_HISTORY_URL = "https://public-api.birdeye.so/defi/history_price"
-# NOTE: Provided by user for this project scope
-BIRDEYE_API_KEY = "4260d80716404833a7e798ec2cc16593"
 
 # HTTP Headers for Hyperliquid API
 HYPERLIQUID_HEADERS = {
@@ -92,7 +90,7 @@ PAGE_TITLE = "Delta Neutral Strategies"
 
 # Asset variants (single source)
 ASSET_VARIANTS = {
-    "SOL": ["SOL", "JITOSOL", "JUPSOL", "INF"],
+    "SOL": ["SOL", "JUPSOL", "INF","JITOSOL"],
     "BTC": ["CBBTC", "WBTC", "XBTC"],
 }
 

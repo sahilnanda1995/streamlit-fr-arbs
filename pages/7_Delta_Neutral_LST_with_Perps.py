@@ -53,32 +53,9 @@ def _load_lst_options(token_config: Dict[str, Any]) -> List[str]:
 
 
 def _fetch_funding_series(perps_exchange: str, lookback_hours: int) -> pd.DataFrame:
-    # Build funding history for SOL as APY (%) time series
-    perps_exchange = perps_exchange.strip()
-    if perps_exchange == "Hyperliquid":
-        # Use helper that paginates up to ~1 month; then restrict to lookback
-        from data.spot_perps.backtesting import _fetch_last_month_with_gap_check
-        entries = _fetch_last_month_with_gap_check("SOL")
-        df = _to_dataframe(entries, rate_key="fundingRate")  # APY % over 1y
-        if df.empty:
-            return df
-        cutoff = pd.Timestamp.utcnow() - pd.Timedelta(hours=int(lookback_hours))
-        df = df[df["time"] >= cutoff.tz_localize(None)]
-        return _agg_4h(df, ["fundingRate"]).rename(columns={"fundingRate": "funding_pct"})
-    else:
-        # Drift
-        start_sec, end_sec = _get_last_month_window_seconds()
-        # Trim to requested lookback
-        end_ts = pd.Timestamp.utcnow()
-        start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
-        start_f = max(start_sec, round(start_ts.timestamp(), 3))
-        end_f = min(end_sec, round(end_ts.timestamp(), 3))
-        idx = DRIFT_MARKET_INDEX.get("SOL", 0)
-        entries = fetch_drift_funding_history(idx, start_f, end_f)
-        df = _to_dataframe(entries, rate_key="fundingRate")  # APY %
-        if df.empty:
-            return df
-        return _agg_4h(df, ["fundingRate"]).rename(columns={"fundingRate": "funding_pct"})
+    # Reuse shared builder that honors arbitrary lookbacks (4H-centered APY % series)
+    from data.spot_perps.spot_history import build_perps_history_series
+    return build_perps_history_series(perps_exchange.strip(), "SOL", int(lookback_hours))
 
 
 def _fetch_lst_price_and_staking(token_config: Dict[str, Any], lst_symbol: str, lookback_hours: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -278,9 +255,9 @@ def main():
     with col_b:
         perps_exchange = st.selectbox("Perps Exchange", ["Hyperliquid", "Drift"], index=0)
     with col_c:
-        lookback_choice = st.selectbox("Time Period", ["1 week", "2 weeks", "1 month"], index=2)
-        lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720}
-        lookback_hours = int(lookback_map.get(lookback_choice, 720))
+        lookback_choice = st.selectbox("Time Period", ["1 week", "2 weeks", "1 month", "2 months", "3 months"], index=4)
+        lookback_map = {"1 week": 168, "2 weeks": 336, "1 month": 720, "2 months": 1440, "3 months": 2160}
+        lookback_hours = int(lookback_map.get(lookback_choice, 2160))
     with col_d:
         total_capital = st.number_input("Total Capital (USD)", min_value=0.0, value=1000.0, step=100.0)
     leverage = st.slider("Perps leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
@@ -314,13 +291,17 @@ def main():
     df_apys = pd.merge_asof(
         funding_df.sort_values("time"),
         lst_staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
-    ).dropna(subset=["funding_pct"])  # staking may be NaN
-    fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"{perps_exchange} Funding %", mode="lines"))
-    if "staking_pct" in df_apys.columns:
+    )
+    # Only keep periods where staking data is available
+    df_apys = df_apys.dropna(subset=["funding_pct", "staking_pct"])  # require both present
+    if df_apys.empty:
+        st.info("Staking data is not available for the selected period.")
+    else:
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"{perps_exchange} Funding %", mode="lines"))
         fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["staking_pct"], name=f"{lst_symbol} Staking %", mode="lines"))
-    fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig1, use_container_width=True)
+        fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig1, use_container_width=True)
 
     st.subheader("USD Values Over Time")
     fig2 = go.Figure()
