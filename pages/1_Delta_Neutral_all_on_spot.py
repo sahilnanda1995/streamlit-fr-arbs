@@ -78,10 +78,10 @@ def display_delta_neutral_spot_page() -> None:
             key="spot_only_asset",
         )
     with col2:
-        lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720)]
+        lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720), ("2 months", 1440), ("3 months", 2160)]
         lookback_labels = [label for label, _ in lookback_options]
-        selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="spot_only_lookback")
-        limit_hours = dict(lookback_options).get(selected_lookback, 720)
+        selected_lookback = st.selectbox("Time Period", lookback_labels, index=3, key="spot_only_lookback")
+        limit_hours = dict(lookback_options).get(selected_lookback, 1440)
     with col3:
         base_usd = st.number_input("Capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="spot_only_base")
 
