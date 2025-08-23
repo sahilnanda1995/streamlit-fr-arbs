@@ -37,7 +37,7 @@ def make_request_with_retry(
     """Make HTTP request with retry logic and exponential backoff."""
     attempts = 0
     backoff = initial_backoff
-    
+
     while attempts < max_attempts:
         try:
             return request_func()
@@ -50,7 +50,7 @@ def make_request_with_retry(
                 return fallback_value
             time.sleep(backoff)
             backoff *= backoff_multiplier
-    
+
     return fallback_value
 
 
@@ -76,7 +76,7 @@ def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> Li
         if isinstance(records, list):
             return records
         return []
-    
+
     try:
         return _make_request()
     except Exception as e:
@@ -87,7 +87,7 @@ def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> Li
 def fetch_hourly_staking(mint_address: str, limit: int = 720) -> List[Dict[str, Any]]:
     def _make_request():
         url = f"https://historical-apy.asgard.finance/staking/hourly-data/{mint_address}"
-        response = session.get(url, params={"limit": limit}, timeout=10)
+        response = session.get(url, params={"limit": limit}, timeout=30)
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, dict):
@@ -96,7 +96,7 @@ def fetch_hourly_staking(mint_address: str, limit: int = 720) -> List[Dict[str, 
         if isinstance(records, list):
             return records
         return []
-    
+
     try:
         return _make_request()
     except Exception as e:
@@ -138,14 +138,14 @@ def fetch_hyperliquid_funding_history(coin: str = "BTC", start_time_ms: int = 0)
             url=HYPERLIQUID_CORE_API_URL,
             headers={"Content-Type": "application/json"},
             json=payload,
-            timeout=8,
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
         if isinstance(data, list):
             return data
         return []
-    
+
     try:
         return _make_request()
     except Exception as e:
@@ -177,7 +177,7 @@ def fetch_drift_funding_history(market_index: int, start_ts: float, end_ts: floa
             'from': f"{start_ts:.3f}",
             'to': f"{end_ts:.3f}"
         }
-        response = session.get(DRIFT_FUNDING_HISTORY_URL, headers=headers, params=params, timeout=10)
+        response = session.get(DRIFT_FUNDING_HISTORY_URL, headers=headers, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, dict) or data.get('status') != 'ok':
@@ -229,11 +229,11 @@ def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
             url=HYPERLIQUID_API_URL,
             headers=HYPERLIQUID_HEADERS,
             json=HYPERLIQUID_REQUEST_BODY,
-            timeout=5
+            timeout=30
         )
         response.raise_for_status()
         return response.json()
-    
+
     try:
         return _make_request()
     except Exception as e:
@@ -249,10 +249,10 @@ def fetch_drift_markets_24h() -> Dict[str, Any]:
         Market data dictionary or empty dict if request failed
     """
     def _make_request():
-        response = session.get(url=DRIFT_API_URL, timeout=5)
+        response = session.get(url=DRIFT_API_URL, timeout=30)
         response.raise_for_status()
         return response.json()
-    
+
     try:
         return _make_request()
     except Exception as e:
@@ -268,7 +268,7 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
         Market data dictionary or empty dict if request failed
     """
     def _make_request():
-        response = session.get(url=LORIS_FUNDING_API_URL, timeout=8)
+        response = session.get(url=LORIS_FUNDING_API_URL, timeout=30)
         response.raise_for_status()
         data = response.json()
         # Ensure dict structure to match processing expectations
@@ -276,7 +276,7 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
             return data
         # If list or other, wrap minimally so downstream code won't crash
         return {"funding_rates": {}, "exchanges": {"exchange_names": []}}
-    
+
     return make_request_with_retry(_make_request, "Loris API", {})
 
 
@@ -284,13 +284,13 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
 def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
     """Fetch current lending and borrowing rates from Asgard API with retries."""
     def _make_request():
-        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=12)
+        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=30)
         response.raise_for_status()
         response_data = response.json()
         if response_data is not None and isinstance(response_data, dict):
             return response_data.get("data", [])
         return []
-    
+
     return make_request_with_retry(_make_request, "Asgard current rates", [], backoff_multiplier=1.7)
 
 
@@ -298,13 +298,13 @@ def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
 def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
     """Fetch current staking rates from Asgard API with retries."""
     def _make_request():
-        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=12)
+        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=30)
         response.raise_for_status()
         response_data = response.json()
         if response_data is not None and isinstance(response_data, dict):
             return response_data.get("data", [])
         return []
-    
+
     return make_request_with_retry(_make_request, "Asgard staking rates", [], backoff_multiplier=1.7)
 
 
@@ -340,7 +340,7 @@ def fetch_birdeye_history_price(
         elapsed = now - _BIRDEYE_LAST_CALL_TS
         if elapsed < 1.05:
             time.sleep(1.05 - elapsed)
-        resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=12)
+        resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=30)
         _BIRDEYE_LAST_CALL_TS = time.time()
         if resp.status_code == 429:
             raise requests.exceptions.RequestException("Rate limited")
@@ -358,6 +358,6 @@ def fetch_birdeye_history_price(
                 continue
             points.append({"t": t, "price": p})
         return points
-    
+
     return make_request_with_retry(_make_request_with_rate_limit, "Birdeye price", [], backoff_multiplier=1.7)
 

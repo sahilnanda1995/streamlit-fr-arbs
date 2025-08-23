@@ -17,6 +17,7 @@ from data.spot_perps.helpers import (
 )
 from data.spot_perps.spot_history import build_spot_history_series
 from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
+from data.money_markets_processing import get_staking_rate_by_mint
 
 
 def _find_pair_banks(token_config: dict, asset: str, protocol: str, market: str) -> Tuple[Optional[str], Optional[str]]:
@@ -161,7 +162,7 @@ def display_delta_neutral_lst_spot_page() -> None:
     # Data (current rates just for context; not used directly here)
     with st.spinner("Loading data..."):
         _ = fetch_asgard_current_rates()
-        _ = fetch_asgard_staking_rates()
+        staking_data = fetch_asgard_staking_rates()
         token_config = get_token_config()
 
     # Build eligible short variants (SOL universe only) that have at least 2x short leverage
@@ -185,9 +186,22 @@ def display_delta_neutral_lst_spot_page() -> None:
 
     # Controls
     col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+    def _format_wallet_option(sym: str) -> str:
+        if sym == "SOL":
+            return "SOL"
+        info = (token_config.get(sym) or {})
+        if info.get("hasStakingYield") and info.get("mint"):
+            apy_dec = get_staking_rate_by_mint(staking_data, info.get("mint")) or 0.0
+            try:
+                apy_pct = float(apy_dec) * 100.0
+            except Exception:
+                apy_pct = 0.0
+            return f"{sym}({apy_pct:.2f}%)"
+        return sym
+
     with col1:
         wallet_asset = st.selectbox(
-            "Wallet asset", options=wallet_options, index=0, key="lst_spot_wallet_asset",
+            "Wallet asset", options=wallet_options, index=0, key="lst_spot_wallet_asset", format_func=_format_wallet_option,
         )
     with col2:
         short_asset_names = sorted(list(eligible_short_variants.keys()))
