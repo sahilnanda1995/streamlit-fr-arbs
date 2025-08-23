@@ -32,8 +32,7 @@ ASGARD_STAKING_RATES_URL = st.secrets["api"]["ASGARD_STAKING_RATES_URL"]
 ASGARD_HISTORICAL_RATES_URL = st.secrets["api"]["ASGARD_HISTORICAL_RATES_URL"]
 ASGARD_HISTORICAL_STAKING_RATES_URL = st.secrets["api"]["ASGARD_HISTORICAL_STAKING_RATES_URL"]
 
-# Birdeye price API
-BIRDEYE_HISTORY_URL = "https://public-api.birdeye.so/defi/history_price"
+# Birdeye price API (configured via secrets)
 
 # HTTP Headers for Hyperliquid API
 HYPERLIQUID_HEADERS = {
