@@ -32,20 +32,11 @@ def main():
     st.write("Compare perpetual funding rates across exchanges with flexible time intervals.")
 
     # === DATA FETCHING ===
-    with st.spinner("Loading funding rates data..."):
-        try:
-            hyperliquid_data = fetch_loris_funding_data()
-        except Exception as e:
-            st.error(f"Failed to load consolidated funding data: {e}")
-            if st.button("Retry loading funding data"):
-                st.rerun()
-            return
-        if not hyperliquid_data or not isinstance(hyperliquid_data, dict):
-            st.warning("Funding data is currently unavailable.")
-            if st.button("Retry loading funding data"):
-                st.rerun()
-            return
-        drift_data = fetch_drift_markets_24h()
+    from utils.funding_data_utils import display_funding_data_loading_section, handle_funding_data_error
+    
+    hyperliquid_data, drift_data = display_funding_data_loading_section()
+    if hyperliquid_data is None or drift_data is None:
+        return
 
     # === PERPS DATA MERGING ===
     merged_perps_data = merge_funding_rate_data(hyperliquid_data, drift_data)
@@ -59,18 +50,14 @@ def main():
 
     # Use the pre-merged perps data
     if not merged_perps_data:
-        st.error("Failed to load funding data from APIs. Please try again later.")
-        st.stop()
+        handle_funding_data_error()
     formatted_data = process_raw_data_for_display(merged_perps_data, target_hours)
     df = create_styled_dataframe(formatted_data)
     st.subheader(f"Funding Rates (%), scaled to {selected_interval}")
     styled_df = format_dataframe_for_display(df)
     st.dataframe(styled_df)
-    with st.expander("🔍 Show raw API response"):
-        st.write("**Hyperliquid Data:**")
-        st.json(hyperliquid_data)
-        st.write("**Drift Data:**")
-        st.json(drift_data)
+    from utils.funding_data_utils import display_funding_data_debug_section
+    display_funding_data_debug_section(hyperliquid_data, drift_data)
 
     st.divider()
     st.subheader("📈 Historical Funding (1M)")

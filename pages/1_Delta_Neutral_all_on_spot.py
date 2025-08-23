@@ -65,17 +65,10 @@ def _build_short_vs_hodl_series(
     except Exception:
         asset_hist, usdc_hist = [], []
 
-    def _to_df(records: List[Dict[str, Any]], lend_key: str, borrow_key: str) -> pd.DataFrame:
-        if not records:
-            return pd.DataFrame(columns=["time", lend_key, borrow_key])
-        d = pd.DataFrame(records)
-        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-        d[lend_key] = pd.to_numeric(d.get("avgLendingRate", 0), errors="coerce")
-        d[borrow_key] = pd.to_numeric(d.get("avgBorrowingRate", 0), errors="coerce")
-        return d[["time", lend_key, borrow_key]].sort_values("time")
-
-    df_asset = _to_df(asset_hist, "asset_lend_apy", "asset_borrow_apy")
-    df_usdc = _to_df(usdc_hist, "usdc_lend_apy", "usdc_borrow_apy")
+    from utils.dataframe_utils import records_to_dataframe
+    
+    df_asset = records_to_dataframe(asset_hist, "time", ["asset_lend_apy", "asset_borrow_apy"])
+    df_usdc = records_to_dataframe(usdc_hist, "time", ["usdc_lend_apy", "usdc_borrow_apy"])
 
     # Staking yields (hourly) and convert to percentage APY
     asset_mint = (token_config.get(asset_symbol, {}) or {}).get("mint")
@@ -94,32 +87,21 @@ def _build_short_vs_hodl_series(
     def _stk_to_df(records: List[Dict[str, Any]], col: str) -> pd.DataFrame:
         if not records:
             return pd.DataFrame(columns=["time", col])
-        d = pd.DataFrame(records)
-        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-        # avgApy is decimal (e.g., 0.05 for 5%), convert to %
-        d[col] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-        return d[["time", col]].sort_values("time")
+        df = records_to_dataframe(records, "time", ["staking_apy"])
+        # Convert decimal to percentage and rename column
+        df[col] = df["staking_apy"] * 100.0
+        return df[["time", col]]
 
     df_asset_stk = _stk_to_df(asset_stk, "asset_stk_pct")
     df_usdc_stk = _stk_to_df(usdc_stk, "usdc_stk_pct")
 
     # Aggregate hourly to 4H centered buckets
-    def _agg_4h(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-        if df.empty:
-            return df
-        d = df.copy()
-        d["time_4h"] = d["time"].dt.floor("4h")
-        d = (
-            d.groupby("time_4h", as_index=False)[cols].mean()
-            .assign(time=lambda x: pd.to_datetime(x["time_4h"]) + pd.Timedelta(hours=2))
-            .drop(columns=["time_4h"])
-        )
-        return d
+    from utils.dataframe_utils import aggregate_to_4h_buckets
 
-    df_asset_4h = _agg_4h(df_asset, ["asset_lend_apy", "asset_borrow_apy"]) if not df_asset.empty else df_asset
-    df_usdc_4h = _agg_4h(df_usdc, ["usdc_lend_apy", "usdc_borrow_apy"]) if not df_usdc.empty else df_usdc
-    df_asset_stk_4h = _agg_4h(df_asset_stk, ["asset_stk_pct"]) if not df_asset_stk.empty else df_asset_stk
-    df_usdc_stk_4h = _agg_4h(df_usdc_stk, ["usdc_stk_pct"]) if not df_usdc_stk.empty else df_usdc_stk
+    df_asset_4h = aggregate_to_4h_buckets(df_asset, "time", ["asset_lend_apy", "asset_borrow_apy"]) if not df_asset.empty else df_asset
+    df_usdc_4h = aggregate_to_4h_buckets(df_usdc, "time", ["usdc_lend_apy", "usdc_borrow_apy"]) if not df_usdc.empty else df_usdc
+    df_asset_stk_4h = aggregate_to_4h_buckets(df_asset_stk, "time", ["asset_stk_pct"]) if not df_asset_stk.empty else df_asset_stk
+    df_usdc_stk_4h = aggregate_to_4h_buckets(df_usdc_stk, "time", ["usdc_stk_pct"]) if not df_usdc_stk.empty else df_usdc_stk
 
     earn = pd.merge(df_asset_4h, df_usdc_4h, on="time", how="inner")
     # Merge staking percentages

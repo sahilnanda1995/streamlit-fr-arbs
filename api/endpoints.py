@@ -1,15 +1,71 @@
 import requests
 import time
 import streamlit as st
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Callable
+from contextlib import contextmanager
 
 # Create a persistent session for connection reuse
 session = requests.Session()
 _BIRDEYE_LAST_CALL_TS: float = 0.0  # simple 1 rps throttle
 
+
+def handle_api_error(error: Exception, api_name: str, fallback_value: Any) -> Any:
+    """Common error handler for API requests."""
+    if isinstance(error, requests.exceptions.Timeout):
+        st.error(f"{api_name} request timed out")
+    elif isinstance(error, requests.exceptions.ConnectionError):
+        st.error(f"Failed to connect to {api_name}")
+    elif isinstance(error, requests.exceptions.HTTPError):
+        st.error(f"{api_name} HTTP error: {error.response.status_code}: {error.response.reason}")
+    elif isinstance(error, requests.exceptions.RequestException):
+        st.error(f"{api_name} request failed: {str(error)}")
+    elif isinstance(error, ValueError):
+        st.error(f"Error parsing {api_name} response")
+    else:
+        st.error(f"Error with {api_name}: {str(error)}")
+    return fallback_value
+
+
+def make_request_with_retry(
+    request_func: Callable,
+    api_name: str,
+    fallback_value: Any,
+    max_attempts: int = 10,
+    initial_backoff: float = 1.2,
+    backoff_multiplier: float = 1.5
+) -> Any:
+    """Make HTTP request with retry logic and exponential backoff."""
+    attempts = 0
+    backoff = initial_backoff
+    
+    while attempts < max_attempts:
+        try:
+            return request_func()
+        except (requests.exceptions.RequestException, ValueError) as e:
+            attempts += 1
+            if isinstance(e, requests.exceptions.Timeout):
+                st.warning(f"{api_name} request timed out; retrying...")
+            if attempts >= max_attempts:
+                st.error(f"{api_name} request failed after retries")
+                return fallback_value
+            time.sleep(backoff)
+            backoff *= backoff_multiplier
+    
+    return fallback_value
+
+
+@contextmanager
+def session_manager():
+    """Context manager for session cleanup."""
+    try:
+        yield session
+    finally:
+        # Session cleanup happens automatically on app shutdown
+        pass
+
 @st.cache_data(ttl=300)
 def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> List[Dict[str, Any]]:
-    try:
+    def _make_request():
         url = f"https://historical-apy.asgard.finance/rates/hourly-data/{bank_address}/{protocol.lower()}"
         response = session.get(url, params={"limit": limit}, timeout=10)
         response.raise_for_status()
@@ -20,17 +76,16 @@ def fetch_hourly_rates(bank_address: str, protocol: str, limit: int = 720) -> Li
         if isinstance(records, list):
             return records
         return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching hourly rates: {str(e)}")
-        return []
-    except ValueError:
-        st.error("Error parsing hourly rates response")
-        return []
+    
+    try:
+        return _make_request()
+    except Exception as e:
+        return handle_api_error(e, "Hourly rates", [])
 
 
 @st.cache_data(ttl=300)
 def fetch_hourly_staking(mint_address: str, limit: int = 720) -> List[Dict[str, Any]]:
-    try:
+    def _make_request():
         url = f"https://historical-apy.asgard.finance/staking/hourly-data/{mint_address}"
         response = session.get(url, params={"limit": limit}, timeout=10)
         response.raise_for_status()
@@ -41,12 +96,11 @@ def fetch_hourly_staking(mint_address: str, limit: int = 720) -> List[Dict[str, 
         if isinstance(records, list):
             return records
         return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching hourly staking: {str(e)}")
-        return []
-    except ValueError:
-        st.error("Error parsing hourly staking response")
-        return []
+    
+    try:
+        return _make_request()
+    except Exception as e:
+        return handle_api_error(e, "Hourly staking", [])
 """
 Functional API endpoints for fetching data from external services.
 """
@@ -76,7 +130,7 @@ def fetch_hyperliquid_funding_history(coin: str = "BTC", start_time_ms: int = 0)
     Returns:
         List of dicts with keys: coin, fundingRate, premium, time
     """
-    try:
+    def _make_request():
         payload = {"type": "fundingHistory", "coin": coin}
         if start_time_ms > 0:
             payload["startTime"] = start_time_ms
@@ -91,15 +145,11 @@ def fetch_hyperliquid_funding_history(coin: str = "BTC", start_time_ms: int = 0)
         if isinstance(data, list):
             return data
         return []
-    except requests.exceptions.Timeout:
-        st.error("Hyperliquid funding history request timed out")
-        return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Hyperliquid funding history request failed: {str(e)}")
-        return []
-    except ValueError:
-        st.error("Invalid JSON from Hyperliquid funding history API")
-        return []
+    
+    try:
+        return _make_request()
+    except Exception as e:
+        return handle_api_error(e, "Hyperliquid funding history", [])
 
 
 @st.cache_data(ttl=300)
@@ -174,7 +224,7 @@ def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
     Returns:
         List of funding data or empty list if request failed
     """
-    try:
+    def _make_request():
         response = session.post(
             url=HYPERLIQUID_API_URL,
             headers=HYPERLIQUID_HEADERS,
@@ -183,26 +233,11 @@ def fetch_hyperliquid_funding_data() -> List[Dict[str, Any]]:
         )
         response.raise_for_status()
         return response.json()
-
-    except requests.exceptions.Timeout:
-        st.error("Hyperliquid API request timed out after 5 seconds")
-        return []
-
-    except requests.exceptions.ConnectionError:
-        st.error("Failed to connect to Hyperliquid API endpoint")
-        return []
-
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Hyperliquid API HTTP error: {e.response.status_code}: {e.response.reason}")
-        return []
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Hyperliquid API request failed: {str(e)}")
-        return []
-
-    except ValueError as e:
-        st.error(f"Invalid JSON response from Hyperliquid API: {str(e)}")
-        return []
+    
+    try:
+        return _make_request()
+    except Exception as e:
+        return handle_api_error(e, "Hyperliquid API", [])
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -213,30 +248,15 @@ def fetch_drift_markets_24h() -> Dict[str, Any]:
     Returns:
         Market data dictionary or empty dict if request failed
     """
-    try:
+    def _make_request():
         response = session.get(url=DRIFT_API_URL, timeout=5)
         response.raise_for_status()
         return response.json()
-
-    except requests.exceptions.Timeout:
-        st.error("Drift API request timed out after 5 seconds")
-        return {}
-
-    except requests.exceptions.ConnectionError:
-        st.error("Failed to connect to Drift API endpoint")
-        return {}
-
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Drift API HTTP error: {e.response.status_code}: {e.response.reason}")
-        return {}
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Drift API request failed: {str(e)}")
-        return {}
-
-    except ValueError as e:
-        st.error(f"Invalid JSON response from Drift API: {str(e)}")
-        return {}
+    
+    try:
+        return _make_request()
+    except Exception as e:
+        return handle_api_error(e, "Drift API", {})
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -247,71 +267,45 @@ def fetch_loris_funding_data() -> Dict[str, Any]:
     Returns:
         Market data dictionary or empty dict if request failed
     """
-    attempts = 0
-    backoff = 1.0
-    while attempts < 10:
-        try:
-            response = session.get(url=LORIS_FUNDING_API_URL, timeout=8)
-            response.raise_for_status()
-            data = response.json()
-            # Ensure dict structure to match processing expectations
-            if isinstance(data, dict):
-                return data
-            # If list or other, wrap minimally so downstream code won't crash
-            return {"funding_rates": {}, "exchanges": {"exchange_names": []}}
-        except (requests.exceptions.RequestException, ValueError) as e:
-            attempts += 1
-            if isinstance(e, requests.exceptions.Timeout):
-                st.warning("Loris API request timed out; retrying...")
-            if attempts >= 5:
-                st.error("Loris API request failed after retries")
-                return {}
-            time.sleep(backoff)
-            backoff *= 1.5
+    def _make_request():
+        response = session.get(url=LORIS_FUNDING_API_URL, timeout=8)
+        response.raise_for_status()
+        data = response.json()
+        # Ensure dict structure to match processing expectations
+        if isinstance(data, dict):
+            return data
+        # If list or other, wrap minimally so downstream code won't crash
+        return {"funding_rates": {}, "exchanges": {"exchange_names": []}}
+    
+    return make_request_with_retry(_make_request, "Loris API", {})
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_asgard_current_rates() -> List[Dict[str, Any]]:
     """Fetch current lending and borrowing rates from Asgard API with retries."""
-    attempts = 0
-    backoff = 1.2
-    while attempts < 10:
-        try:
-            response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=12)
-            response.raise_for_status()
-            response_data = response.json()
-            if response_data is not None and isinstance(response_data, dict):
-                return response_data.get("data", [])
-            return []
-        except (requests.exceptions.RequestException, ValueError) as e:
-            attempts += 1
-            if attempts >= 10:
-                st.warning(f"Asgard current rates request failed after retries: {str(e)}")
-                return []
-            time.sleep(backoff)
-            backoff *= 1.7
+    def _make_request():
+        response = session.get(url=ASGARD_CURRENT_RATES_URL, timeout=12)
+        response.raise_for_status()
+        response_data = response.json()
+        if response_data is not None and isinstance(response_data, dict):
+            return response_data.get("data", [])
+        return []
+    
+    return make_request_with_retry(_make_request, "Asgard current rates", [], backoff_multiplier=1.7)
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_asgard_staking_rates() -> List[Dict[str, Any]]:
     """Fetch current staking rates from Asgard API with retries."""
-    attempts = 0
-    backoff = 1.2
-    while attempts < 10:
-        try:
-            response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=12)
-            response.raise_for_status()
-            response_data = response.json()
-            if response_data is not None and isinstance(response_data, dict):
-                return response_data.get("data", [])
-            return []
-        except (requests.exceptions.RequestException, ValueError) as e:
-            attempts += 1
-            if attempts >= 10:
-                st.warning(f"Asgard staking rates request failed after retries: {str(e)}")
-                return []
-            time.sleep(backoff)
-            backoff *= 1.7
+    def _make_request():
+        response = session.get(url=ASGARD_STAKING_RATES_URL, timeout=12)
+        response.raise_for_status()
+        response_data = response.json()
+        if response_data is not None and isinstance(response_data, dict):
+            return response_data.get("data", [])
+        return []
+    
+    return make_request_with_retry(_make_request, "Asgard staking rates", [], backoff_multiplier=1.7)
 
 
 @st.cache_data(ttl=300)
@@ -326,7 +320,7 @@ def fetch_birdeye_history_price(
 
     Returns list of points with at least {t: seconds, price: float} when available.
     """
-    try:
+    def _make_request_with_rate_limit():
         headers = {
             "X-API-KEY": BIRDEYE_API_KEY,
             "accept": "application/json",
@@ -340,53 +334,30 @@ def fetch_birdeye_history_price(
             "time_to": time_to,
             "ui_amount_mode": "raw",
         }
-        # Simple retry with exponential backoff to handle 429s
-        attempts = 0
-        backoff = 1.2
-        # Max 10 attempts
-        while attempts < 10:
+        # Enforce 1 rps pacing across the app
+        global _BIRDEYE_LAST_CALL_TS
+        now = time.time()
+        elapsed = now - _BIRDEYE_LAST_CALL_TS
+        if elapsed < 1.05:
+            time.sleep(1.05 - elapsed)
+        resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=12)
+        _BIRDEYE_LAST_CALL_TS = time.time()
+        if resp.status_code == 429:
+            raise requests.exceptions.RequestException("Rate limited")
+        resp.raise_for_status()
+        data = resp.json()
+        items = (((data or {}).get("data") or {}).get("items") or [])
+        points: List[Dict[str, Any]] = []
+        for it in items:
+            t_raw = it.get("unixTime")
+            v_raw = it.get("value")
             try:
-                # Enforce 1 rps pacing across the app
-                global _BIRDEYE_LAST_CALL_TS
-                now = time.time()
-                elapsed = now - _BIRDEYE_LAST_CALL_TS
-                if elapsed < 1.05:
-                    time.sleep(1.05 - elapsed)
-                resp = session.get(BIRDEYE_HISTORY_URL, headers=headers, params=params, timeout=12)
-                _BIRDEYE_LAST_CALL_TS = time.time()
-                if resp.status_code == 429:
-                    attempts += 1
-                    if attempts >= 10:
-                        resp.raise_for_status()
-                    time.sleep(backoff)
-                    backoff *= 1.7
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-                items = (((data or {}).get("data") or {}).get("items") or [])
-                points: List[Dict[str, Any]] = []
-                for it in items:
-                    t_raw = it.get("unixTime")
-                    v_raw = it.get("value")
-                    try:
-                        t = int(t_raw)
-                        p = float(v_raw)
-                    except (TypeError, ValueError):
-                        continue
-                    points.append({"t": t, "price": p})
-                return points
-            except requests.exceptions.RequestException as re:
-                attempts += 1
-                if attempts >= 10:
-                    raise re
-                time.sleep(backoff)
-                backoff *= 1.7
-        # Fallthrough if loop exits without return
-        return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Birdeye price request failed: {str(e)}")
-        return []
-    except ValueError:
-        st.error("Error parsing Birdeye price response")
-        return []
+                t = int(t_raw)
+                p = float(v_raw)
+            except (TypeError, ValueError):
+                continue
+            points.append({"t": t, "price": p})
+        return points
+    
+    return make_request_with_retry(_make_request_with_rate_limit, "Birdeye price", [], backoff_multiplier=1.7)
 

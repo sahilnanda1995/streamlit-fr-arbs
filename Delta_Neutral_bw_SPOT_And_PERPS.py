@@ -27,23 +27,16 @@ def main():
     st.title(APP_TITLE)
 
     # === DATA FETCHING AT THE TOP ===
+    from utils.funding_data_utils import display_funding_data_loading_section
+    
     with st.spinner("Loading..."):
         rates_data = fetch_asgard_current_rates()
         staking_data = fetch_asgard_staking_rates()
-        # Loris consolidated funding data may fail; handle gracefully with retry button
-        try:
-            hyperliquid_data = fetch_loris_funding_data()
-        except Exception as e:
-            st.error(f"Failed to load consolidated funding data: {e}")
-            if st.button("Retry loading funding data"):
-                st.rerun()
+        
+        # Fetch funding data with unified error handling
+        hyperliquid_data, drift_data = display_funding_data_loading_section()
+        if hyperliquid_data is None or drift_data is None:
             return
-        if not hyperliquid_data or not isinstance(hyperliquid_data, dict):
-            st.warning("Funding data is currently unavailable.")
-            if st.button("Retry loading funding data"):
-                st.rerun()
-            return
-        drift_data = fetch_drift_markets_24h()
 
     # === CURATED SPOT AND PERPS ARBITRAGE SECTION ===
     # Load token config
