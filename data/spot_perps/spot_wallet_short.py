@@ -5,6 +5,7 @@ import pandas as pd
 from api.endpoints import (
     fetch_hourly_rates,
     fetch_birdeye_history_price,
+    fetch_hourly_staking,
 )
 from data.spot_perps.helpers import (
     get_protocol_market_pairs,
@@ -140,6 +141,44 @@ def build_wallet_short_series(
             "net_value_usd", "wallet_value_usd",
         ])
 
+    # Staking APY series (percentage) for wallet and short assets
+    def _staking_series(mint: Optional[str]) -> pd.DataFrame:
+        if not mint:
+            return pd.DataFrame(columns=["time", "staking_pct"])
+        try:
+            records = fetch_hourly_staking(mint, int(points_hours)) or []
+        except Exception:
+            records = []
+        if not records:
+            return pd.DataFrame(columns=["time", "staking_pct"])
+        d = pd.DataFrame(records)
+        # hourBucket iso → naive datetime
+        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+        d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+        # 4H centered aggregation
+        d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h") + pd.Timedelta(hours=2)
+        return d.groupby("time_4h", as_index=False)[["staking_pct"]].mean().rename(columns={"time_4h": "time"})
+
+    wallet_mint = (token_config.get(wallet_asset_symbol, {}) or {}).get("mint")
+    short_mint = (token_config.get(short_asset_symbol, {}) or {}).get("mint")
+    wallet_has_stk = bool((token_config.get(wallet_asset_symbol, {}) or {}).get("hasStakingYield", False))
+    short_has_stk = bool((token_config.get(short_asset_symbol, {}) or {}).get("hasStakingYield", False))
+    wal_stk_df = _staking_series(wallet_mint) if wallet_has_stk else pd.DataFrame(columns=["time", "staking_pct"])
+    short_stk_df = _staking_series(short_mint) if short_has_stk else pd.DataFrame(columns=["time", "staking_pct"])
+    # Merge staking into earn (nearest within tolerance)
+    if not wal_stk_df.empty:
+        earn = pd.merge_asof(earn.sort_values("time"), wal_stk_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
+        earn = earn.rename(columns={"staking_pct": "wallet_stk_pct"})
+    else:
+        earn["wallet_stk_pct"] = 0.0
+    if not short_stk_df.empty:
+        earn = pd.merge_asof(earn.sort_values("time"), short_stk_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
+        # If wallet staking already added, this merge will add another 'staking_pct' column; rename after
+        if "staking_pct" in earn.columns:
+            earn = earn.rename(columns={"staking_pct": "borrow_stk_pct"})
+    else:
+        earn["borrow_stk_pct"] = 0.0
+
     # Allocation split
     wallet_amount_usd, used_capital_usd, short_borrow_usd = compute_allocation_split(base_usd, leverage)
 
@@ -175,6 +214,8 @@ def build_wallet_short_series(
     out = earn.copy()
     out["usdc_lend_apy"] = pd.to_numeric(out.get("usdc_lend_apy", 0), errors="coerce")
     out["asset_borrow_apy"] = pd.to_numeric(out.get("asset_borrow_apy", 0), errors="coerce")
+    out["wallet_stk_pct"] = pd.to_numeric(out.get("wallet_stk_pct", 0), errors="coerce").fillna(0.0)
+    out["borrow_stk_pct"] = pd.to_numeric(out.get("borrow_stk_pct", 0), errors="coerce").fillna(0.0)
 
     # Lookback already enforced pre-growth
 
@@ -189,6 +230,8 @@ def build_wallet_short_series(
         "wallet_value_usd",
         "usdc_lend_apy",
         "asset_borrow_apy",
+        "wallet_stk_pct",
+        "borrow_stk_pct",
     ]]
 
 

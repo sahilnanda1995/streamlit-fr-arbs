@@ -1,10 +1,10 @@
-from typing import Dict
+from typing import Dict, Any
 
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-# No direct API calls required on this page
+from api.endpoints import fetch_hourly_staking
 from config.constants import SPOT_PERPS_CONFIG
 from config import get_token_config
 from data.spot_perps.helpers import (
@@ -55,8 +55,8 @@ def display_delta_neutral_spot_page() -> None:
     with col2:
         lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720), ("2 months", 1440), ("3 months", 2160)]
         lookback_labels = [label for label, _ in lookback_options]
-        selected_lookback = st.selectbox("Time Period", lookback_labels, index=3, key="spot_only_lookback")
-        limit_hours = dict(lookback_options).get(selected_lookback, 1440)
+        selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="spot_only_lookback")
+        limit_hours = dict(lookback_options).get(selected_lookback, 720)
     with col3:
         base_usd = st.number_input("Capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="spot_only_base")
 
@@ -170,28 +170,66 @@ def display_delta_neutral_spot_page() -> None:
     # Wallet asset value over time
     wallet_series = plot_df.get("hodl_value_usd", plot_df.get("wallet_value_usd"))
     fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=wallet_series, name=f"{variant} wallet (USD)", mode="lines"))
-    # Borrowed asset value (USD close cost)
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["close_cost_usd"], name=f"{variant} borrowed (USD)", mode="lines"))
     # Short position net value over time
     fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Short net value (USD)", mode="lines"))
-    # User total net value = wallet + short net
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=(wallet_series + plot_df["net_value_usd"]), name="Portfolio total (USD)", mode="lines", line=dict(color="#16a34a")))
     fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
     st.plotly_chart(fig_vals, use_container_width=True)
 
-    # Spot rate APY over time (includes staking yield only for this chart)
-    with st.spinner("Loading spot rates..."):
+    # Spot vs Wallet Staking APY, plus Net APY over time
+    with st.spinner("Loading APY series..."):
         spot_rates = build_spot_history_series(token_config, variant, proto, market, "short", float(lev), int(limit_hours))
+        # Wallet staking series (4H centered); wallet asset == variant
+        wal_info = (token_config.get(variant) or {})
+        wal_mint = wal_info.get("mint")
+        wal_has_stk = bool(wal_info.get("hasStakingYield"))
+        if wal_mint and wal_has_stk:
+            try:
+                stk_raw = fetch_hourly_staking(wal_mint, int(limit_hours)) or []
+            except Exception:
+                stk_raw = []
+        else:
+            stk_raw = []
+        if stk_raw:
+            d = pd.DataFrame(stk_raw)
+            d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+            d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+            d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h") + pd.Timedelta(hours=2)
+            wal_stk = d.groupby("time_4h", as_index=False)[["staking_pct"]].mean().rename(columns={"time_4h": "time"})
+        else:
+            wal_stk = pd.DataFrame(columns=["time", "staking_pct"])
+        # Coerce and align
+        if not spot_rates.empty:
+            spot_rates = spot_rates.sort_values("time").copy()
+            spot_rates["time"] = pd.to_datetime(spot_rates["time"], errors="coerce")
+        if wal_stk.empty:
+            wal_stk = spot_rates[["time"]].copy()
+            wal_stk["staking_pct"] = 0.0
+        else:
+            wal_stk = wal_stk.sort_values("time").copy()
+            wal_stk["time"] = pd.to_datetime(wal_stk["time"], errors="coerce")
     if not spot_rates.empty:
-        st.subheader("Spot Rate APY over Time")
+        apy_df = pd.merge_asof(
+            spot_rates.sort_values("time"),
+            wal_stk.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+        )
+        apy_df["staking_pct"] = apy_df["staking_pct"].fillna(0.0)
+        st.subheader("Spot APY vs Wallet Staking APY")
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=spot_rates["time"], y=-spot_rates["spot_rate_pct"], name="Spot APY (negated, %)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=-apy_df["spot_rate_pct"], name=f"{variant} spot APY (negated, %)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["staking_pct"], name=f"{variant} staking APY (%)", mode="lines"))
         fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
 
+        st.subheader("Net APY over Time")
+        apy_df["net_apy_pct"] = (apy_df["staking_pct"].fillna(0.0) - apy_df["spot_rate_pct"].fillna(0.0)) / 2.0
+        fig_net = go.Figure()
+        fig_net.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
+        fig_net.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig_net, use_container_width=True)
+
     # Table with exact columns requested
     # Build table with flexible column names post-refactor
-    tbl_cols = ["time", "usdc_principal_usd", "close_cost_usd", "usdc_lend_apy", "asset_borrow_apy", "net_value_usd"]
+    tbl_cols = ["time", "usdc_principal_usd", "close_cost_usd", "usdc_lend_apy", "asset_borrow_apy", "wallet_stk_pct", "borrow_stk_pct", "net_value_usd"]
     # Include price and tokens if available
     if "asset_price" in plot_df.columns:
         tbl_cols.insert(1, "asset_price")
@@ -216,6 +254,8 @@ def display_delta_neutral_spot_page() -> None:
         "close_cost_usd": f"{variant} borrowed in usd",
         "usdc_lend_apy": "usdc lent apy",
         "asset_borrow_apy": f"{variant} borrow apy",
+        "wallet_stk_pct": f"{variant} wallet staking apy",
+        "borrow_stk_pct": f"{variant} borrow staking apy",
         "net_value_usd": "spot position net value",
         "hodl_value_usd": "wallet hodl net value",
         "wallet_value_usd": "wallet hodl net value",
@@ -227,6 +267,8 @@ def display_delta_neutral_spot_page() -> None:
         f"{variant} borrowed in usd": 2,
         "usdc lent apy": 3,
         f"{variant} borrow apy": 3,
+        f"{variant} wallet staking apy": 3,
+        f"{variant} borrow staking apy": 3,
         "spot position net value": 2,
         "wallet hodl net value": 2,
     })

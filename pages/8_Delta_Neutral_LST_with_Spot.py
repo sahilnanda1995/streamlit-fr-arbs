@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from api.endpoints import (
     fetch_asgard_current_rates,
     fetch_asgard_staking_rates,
+    fetch_hourly_staking,
 )
 from config.constants import SPOT_PERPS_CONFIG
 from config import get_token_config
@@ -81,8 +82,8 @@ def display_delta_neutral_lst_spot_page() -> None:
     with col3:
         lookback_options = [("1 week", 168), ("2 weeks", 336), ("1 month", 720), ("2 months", 1440), ("3 months", 2160)]
         lookback_labels = [label for label, _ in lookback_options]
-        selected_lookback = st.selectbox("Time Period", lookback_labels, index=3, key="lst_spot_lookback")
-        limit_hours = dict(lookback_options).get(selected_lookback, 1440)
+        selected_lookback = st.selectbox("Time Period", lookback_labels, index=2, key="lst_spot_lookback")
+        limit_hours = dict(lookback_options).get(selected_lookback, 720)
     with col4:
         base_usd = st.number_input("Capital (USD)", min_value=0.0, value=100_000.0, step=1_000.0, key="lst_spot_base")
 
@@ -184,34 +185,74 @@ def display_delta_neutral_lst_spot_page() -> None:
         with s4:
             st.metric("Short position net value (now)", f"${net_value_now:,.0f}")
 
-    # Spot rate APY over time for the SHORT asset (negated), calculations unaffected
-    with st.spinner("Loading spot rates..."):
+    # Spot vs Wallet Staking APY, plus Net APY over time
+    with st.spinner("Loading APY series..."):
         spot_rates = build_spot_history_series(token_config, short_asset, proto, market, "short", float(lev), int(limit_hours))
+        # Wallet staking series (4H centered)
+        wal_info = (token_config.get(wallet_asset) or {})
+        wal_mint = wal_info.get("mint")
+        wal_has_stk = bool(wal_info.get("hasStakingYield"))
+        if wal_mint and wal_has_stk:
+            try:
+                stk_raw = fetch_hourly_staking(wal_mint, int(limit_hours)) or []
+            except Exception:
+                stk_raw = []
+        else:
+            stk_raw = []
+        if stk_raw:
+            d = pd.DataFrame(stk_raw)
+            d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+            d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+            # 4H centered aggregation
+            d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h") + pd.Timedelta(hours=2)
+            wal_stk = d.groupby("time_4h", as_index=False)[["staking_pct"]].mean().rename(columns={"time_4h": "time"})
+        else:
+            wal_stk = pd.DataFrame(columns=["time", "staking_pct"])
+        # Coerce dtypes and align when missing (e.g., SOL wallet -> zeros)
+        if not spot_rates.empty:
+            spot_rates = spot_rates.sort_values("time").copy()
+            spot_rates["time"] = pd.to_datetime(spot_rates["time"], errors="coerce")
+        if wal_stk.empty:
+            wal_stk = spot_rates[["time"]].copy()
+            wal_stk["staking_pct"] = 0.0
+        else:
+            wal_stk = wal_stk.sort_values("time").copy()
+            wal_stk["time"] = pd.to_datetime(wal_stk["time"], errors="coerce")
     if not spot_rates.empty:
-        st.subheader("Spot Rate APY over Time (Short asset)")
+        # Merge series on nearest 4h bucket
+        apy_df = pd.merge_asof(
+            spot_rates.sort_values("time"),
+            wal_stk.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+        )
+        apy_df["staking_pct"] = apy_df["staking_pct"].fillna(0.0)
+        st.subheader("Spot APY vs Wallet Staking APY")
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=spot_rates["time"], y=-spot_rates["spot_rate_pct"], name=f"{short_asset} Spot APY (negated, %)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=-apy_df["spot_rate_pct"], name=f"{short_asset} spot APY (negated, %)", mode="lines"))
+        fig.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["staking_pct"], name=f"{wallet_asset} staking APY (%)", mode="lines"))
         fig.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("Net APY over Time")
+        apy_df["net_apy_pct"] = (apy_df["staking_pct"].fillna(0.0) - apy_df["spot_rate_pct"].fillna(0.0)) / 2.0
+        fig_net = go.Figure()
+        fig_net.add_trace(go.Scatter(x=apy_df["time"], y=apy_df["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
+        fig_net.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig_net, use_container_width=True)
 
     # USD values over time
     st.subheader("USD Values Over Time")
     fig_vals = go.Figure()
     # Wallet asset value over time
     fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["wallet_value_usd"], name=f"{wallet_asset} wallet (USD)", mode="lines"))
-    # Borrowed asset value (USD close cost)
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["close_cost_usd"], name=f"{short_asset} borrowed (USD)", mode="lines"))
     # Short position net value over time
     fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=plot_df["net_value_usd"], name="Short net value (USD)", mode="lines"))
-    # User total net value = wallet + short net
-    fig_vals.add_trace(go.Scatter(x=plot_df["time"], y=(plot_df["wallet_value_usd"] + plot_df["net_value_usd"]), name="Portfolio total (USD)", mode="lines", line=dict(color="#16a34a")))
     fig_vals.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
     st.plotly_chart(fig_vals, use_container_width=True)
 
     # Breakdown table
     tbl = plot_df[[
         "time", "wallet_asset_price", "short_asset_price", "usdc_principal_usd", "short_tokens_owed", "close_cost_usd",
-        "net_value_usd", "wallet_value_usd",
+        "net_value_usd", "wallet_value_usd", "usdc_lend_apy", "asset_borrow_apy", "wallet_stk_pct", "borrow_stk_pct",
     ]].rename(columns={
         "wallet_asset_price": f"{wallet_asset} price (wallet)",
         "short_asset_price": f"{short_asset} price (short)",
@@ -220,6 +261,10 @@ def display_delta_neutral_lst_spot_page() -> None:
         "close_cost_usd": f"{short_asset} borrowed in usd",
         "net_value_usd": "spot position net value",
         "wallet_value_usd": "wallet hodl net value",
+        "usdc_lend_apy": "usdc lend apy",
+        "asset_borrow_apy": f"{short_asset} borrow apy",
+        "wallet_stk_pct": f"{wallet_asset} staking apy",
+        "borrow_stk_pct": f"{short_asset} staking apy",
     })
     tbl = tbl.round({
         f"{wallet_asset} price (wallet)": 6,
@@ -229,6 +274,10 @@ def display_delta_neutral_lst_spot_page() -> None:
         f"{short_asset} borrowed in usd": 2,
         "spot position net value": 2,
         "wallet hodl net value": 2,
+        "usdc lend apy": 3,
+        f"{short_asset} borrow apy": 3,
+        f"{wallet_asset} staking apy": 3,
+        f"{short_asset} staking apy": 3,
     })
     st.dataframe(tbl, use_container_width=True, hide_index=True)
 
