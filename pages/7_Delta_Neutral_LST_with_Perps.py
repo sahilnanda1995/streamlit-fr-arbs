@@ -286,35 +286,7 @@ def main():
         st.info("No aligned data available for the selected options.")
         return
 
-    # Charts
-    st.subheader("Funding vs Staking APY")
-    df_apys = pd.merge_asof(
-        funding_df.sort_values("time"),
-        lst_staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
-    )
-    # Only keep periods where staking data is available
-    df_apys = df_apys.dropna(subset=["funding_pct", "staking_pct"])  # require both present
-    if df_apys.empty:
-        st.info("Staking data is not available for the selected period.")
-    else:
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"{perps_exchange} Funding %", mode="lines"))
-        fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["staking_pct"], name=f"{lst_symbol} Staking %", mode="lines"))
-        fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig1, use_container_width=True)
-
-    st.subheader("USD Values Over Time")
-    fig2 = go.Figure()
-    # Wallet USD value (LST leg)
-    fig2.add_trace(go.Scatter(x=series["time"], y=series["lst_token_amount_usd"], name="LST wallet (USD)", mode="lines"))
-    # Perp wallet USD (perp position + funding accumulation)
-    fig2.add_trace(go.Scatter(x=series["time"], y=series["perp_wallet_value"], name="Perp wallet (USD)", mode="lines"))
-    # Net USD value
-    fig2.add_trace(go.Scatter(x=series["time"], y=series["net_value"], name="Portfolio total (USD)", mode="lines", line=dict(color="#16a34a")))
-    fig2.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig2, use_container_width=True)
-
-    # Metrics
+    # Metrics (moved above charts)
     first_row = series.head(1)
     last_row = series.tail(1)
     lst_usd_start = float(first_row["lst_token_amount_usd"].iloc[0]) if not first_row.empty else 0.0
@@ -346,6 +318,57 @@ def main():
     with d3:
         st.metric("Perp position MTM now (USD)", f"${perp_pos_now:,.2f}")
 
+    # Charts
+    st.subheader("Long and Short Side APYs")
+    df_apys = pd.merge_asof(
+        funding_df.sort_values("time"),
+        lst_staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
+    )
+    # Only keep periods where staking data is available
+    df_apys = df_apys.dropna(subset=["funding_pct", "staking_pct"])  # require both present
+    if df_apys.empty:
+        st.info("Staking data is not available for the selected period.")
+    else:
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"Short Side APY (%)", mode="lines"))
+        fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["staking_pct"], name=f"Long Side APY (%)", mode="lines"))
+        fig1.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig1, use_container_width=True)
+
+        # Net APY over time (weighted by initial capital allocation ratios)
+        L = max(float(leverage), 1.0)
+        wallet_usd = float(total_capital) * L / (L + 1.0)
+        perp_capital_initial = float(total_capital) - wallet_usd
+        perp_short_notional_usd = perp_capital_initial * L
+        wallet_ratio = wallet_usd / float(total_capital) if float(total_capital) > 0 else 0.0
+        short_exposure_ratio = perp_short_notional_usd / float(total_capital) if float(total_capital) > 0 else 0.0
+
+        st.subheader("Net APY over Time")
+        df_apys["net_apy_pct"] = (
+            df_apys["staking_pct"].fillna(0.0) * wallet_ratio
+            + df_apys["funding_pct"].fillna(0.0) * short_exposure_ratio
+        )
+        fig_net = go.Figure()
+        fig_net.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["net_apy_pct"], name="Net APY (%)", mode="lines", line=dict(color="#16a34a")))
+        fig_net.update_layout(height=300, hovermode="x unified", yaxis_title="APY (%)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig_net, use_container_width=True)
+
+    # USD Values Over Time (hidden by default)
+    show_usd = st.checkbox("Show USD Values Over Time", value=False)
+    if show_usd:
+        st.subheader("USD Values Over Time")
+        fig2 = go.Figure()
+        # Wallet USD value (LST leg)
+        fig2.add_trace(go.Scatter(x=series["time"], y=series["lst_token_amount_usd"], name="LST wallet (USD)", mode="lines"))
+        # Perp wallet USD (perp position + funding accumulation)
+        fig2.add_trace(go.Scatter(x=series["time"], y=series["perp_wallet_value"], name="Perp wallet (USD)", mode="lines"))
+        # Net USD value
+        fig2.add_trace(go.Scatter(x=series["time"], y=series["net_value"], name="Portfolio total (USD)", mode="lines", line=dict(color="#16a34a")))
+        fig2.update_layout(height=320, hovermode="x unified", yaxis_title="USD ($)", margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # Metrics moved above
+
     # Breakdown table
     st.subheader("Breakdown")
     tbl = series.copy()
@@ -376,7 +399,7 @@ def main():
         "Perp funding (cum, USD)": 2,
         "Portfolio total (USD)": 2,
     })
-    show_tbl = st.checkbox("Show breakdown table", value=True)
+    show_tbl = st.checkbox("Show breakdown table", value=False)
     if show_tbl:
         st.dataframe(
             tbl[[
