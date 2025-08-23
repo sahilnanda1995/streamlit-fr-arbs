@@ -259,9 +259,9 @@ def build_arb_history_series(
 
     # Net arbitrage uses effective funding rate
     if dir_lower == "long":
-        df["net_arb_pct"] = df["spot_rate_pct"] - df["funding_pct"]
+        df["net_arb_pct"] = (df["spot_rate_pct"] - df["funding_pct"]) / 2
     else:
-        df["net_arb_pct"] = df["spot_rate_pct"] + df["funding_pct"]
+        df["net_arb_pct"] = (df["spot_rate_pct"] + df["funding_pct"]) / 2
 
     # Only consider buckets where spot rate is available
     df = df.dropna(subset=["spot_rate_pct"])  # ensures ROE, charts, and tables use valid spot buckets only
