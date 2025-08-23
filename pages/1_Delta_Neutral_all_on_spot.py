@@ -108,7 +108,7 @@ def _build_short_vs_hodl_series(
         if df.empty:
             return df
         d = df.copy()
-        d["time_4h"] = d["time"].dt.floor("4H")
+        d["time_4h"] = d["time"].dt.floor("4h")
         d = (
             d.groupby("time_4h", as_index=False)[cols].mean()
             .assign(time=lambda x: pd.to_datetime(x["time_4h"]) + pd.Timedelta(hours=2))
@@ -124,11 +124,11 @@ def _build_short_vs_hodl_series(
     earn = pd.merge(df_asset_4h, df_usdc_4h, on="time", how="inner")
     # Merge staking percentages
     if not df_asset_stk_4h.empty:
-        earn = pd.merge_asof(earn.sort_values("time"), df_asset_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+        earn = pd.merge_asof(earn.sort_values("time"), df_asset_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
     else:
         earn["asset_stk_pct"] = 0.0
     if not df_usdc_stk_4h.empty:
-        earn = pd.merge_asof(earn.sort_values("time"), df_usdc_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+        earn = pd.merge_asof(earn.sort_values("time"), df_usdc_stk_4h.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
     else:
         earn["usdc_stk_pct"] = 0.0
     if earn.empty:
@@ -150,7 +150,7 @@ def _build_short_vs_hodl_series(
     if not price_df.empty:
         price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
         price_df = price_df.sort_values("time")[ ["time", "price" ] ].rename(columns={"price": "asset_price"})
-        earn = pd.merge_asof(earn.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+        earn = pd.merge_asof(earn.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
     else:
         earn["asset_price"] = float("nan")
 

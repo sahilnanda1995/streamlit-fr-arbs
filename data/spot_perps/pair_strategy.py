@@ -152,14 +152,14 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
 
     # Aggregate hourly APR% to 4H buckets (centered +2h)
     df_base = df_base.copy()
-    df_base["time_4h"] = df_base["time"].dt.floor("4H")
+    df_base["time_4h"] = df_base["time"].dt.floor("4h")
     df_base = (
         df_base.groupby("time_4h", as_index=False)["base_lend_apy"].mean()
         .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
         .drop(columns=["time_4h"])
     )
     df_quote = df_quote.copy()
-    df_quote["time_4h"] = df_quote["time"].dt.floor("4H")
+    df_quote["time_4h"] = df_quote["time"].dt.floor("4h")
     df_quote = (
         df_quote.groupby("time_4h", as_index=False)["quote_borrow_apy"].mean()
         .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
@@ -202,14 +202,14 @@ def display_pair_strategy_section(token_config: dict, base_symbol: str, quote_sy
     if not base_price_df.empty:
         base_price_df["time"] = pd.to_datetime(base_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
         base_price_df = base_price_df.sort_values("time")[ ["time", "price"] ].rename(columns={"price": "base_price"})
-        earn_df = pd.merge_asof(earn_df.sort_values("time"), base_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+        earn_df = pd.merge_asof(earn_df.sort_values("time"), base_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
     else:
         earn_df["base_price"] = float("nan")
 
     if not quote_price_df.empty:
         quote_price_df["time"] = pd.to_datetime(quote_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
         quote_price_df = quote_price_df.sort_values("time")[ ["time", "price"] ].rename(columns={"price": "quote_price"})
-        earn_df = pd.merge_asof(earn_df.sort_values("time"), quote_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H"))
+        earn_df = pd.merge_asof(earn_df.sort_values("time"), quote_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h"))
     else:
         earn_df["quote_price"] = float("nan")
 

@@ -32,7 +32,7 @@ def _agg_4h(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     if df.empty:
         return df
     d = df.copy()
-    d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4H")
+    d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h")
     d = (
         d.groupby("time_4h", as_index=False)[cols].mean()
         .assign(time=lambda x: pd.to_datetime(x["time_4h"]) + pd.Timedelta(hours=2))
@@ -169,15 +169,15 @@ def _build_breakdown(
     # Merge nearest within tolerance
     merged = pd.merge_asof(
         base.sort_values("time"),
-        staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+        staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
     )
     merged = pd.merge_asof(
         merged.sort_values("time"),
-        funding_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+        funding_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
     )
     merged = pd.merge_asof(
         merged.sort_values("time"),
-        sol_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+        sol_price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
     )
 
     merged = merged.dropna(subset=["price"])  # require LST price
@@ -313,7 +313,7 @@ def main():
     st.subheader("Funding vs Staking APY")
     df_apys = pd.merge_asof(
         funding_df.sort_values("time"),
-        lst_staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+        lst_staking_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
     ).dropna(subset=["funding_pct"])  # staking may be NaN
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=df_apys["time"], y=df_apys["funding_pct"], name=f"{perps_exchange} Funding %", mode="lines"))

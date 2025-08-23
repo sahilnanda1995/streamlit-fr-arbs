@@ -169,7 +169,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
     # Aggregate hourly APR% to 4H buckets (centered +2h)
     if not df_asset.empty:
         df_asset = df_asset.copy()
-        df_asset["time_4h"] = df_asset["time"].dt.floor("4H")
+        df_asset["time_4h"] = df_asset["time"].dt.floor("4h")
         df_asset = (
             df_asset.groupby("time_4h", as_index=False)["asset_lend_apy"].mean()
             .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
@@ -177,7 +177,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         )
     if not df_usdc.empty:
         df_usdc = df_usdc.copy()
-        df_usdc["time_4h"] = df_usdc["time"].dt.floor("4H")
+        df_usdc["time_4h"] = df_usdc["time"].dt.floor("4h")
         df_usdc = (
             df_usdc.groupby("time_4h", as_index=False)["usdc_borrow_apy"].mean()
             .assign(time=lambda d: pd.to_datetime(d["time_4h"]) + pd.Timedelta(hours=2))
@@ -216,7 +216,7 @@ def display_asset_strategy_section(token_config: dict, asset_symbol: str) -> Non
         price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
         price_df = price_df.sort_values("time")[ ["time", "price"] ].rename(columns={"price": "asset_price"})
         earn_df = pd.merge_asof(
-            earn_df.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3H")
+            earn_df.sort_values("time"), price_df.sort_values("time"), on="time", direction="nearest", tolerance=pd.Timedelta("3h")
         )
     else:
         earn_df["asset_price"] = float("nan")

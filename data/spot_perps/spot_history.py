@@ -52,7 +52,7 @@ def _resample_to_4h_center(df: pd.DataFrame, value_cols: List[str]) -> pd.DataFr
     work = df.copy()
     work = work.set_index("time")
     # 4-hour buckets aligned to midnight; centralize by adding +2h
-    agg = work[value_cols].resample("4H").mean()
+    agg = work[value_cols].resample("4h").mean()
     agg.index = agg.index + Timedelta(hours=2)
     agg = agg.reset_index().rename(columns={"index": "time"})
     return agg
@@ -112,14 +112,14 @@ def build_spot_history_series(
     if direction.lower() == "long":
         lend_pct = df["asset_lend"]
         borrow_pct = df["usdc_borrow"]
-        lend_stk_pct = df["asset_stk"].fillna(0.0)
-        borrow_stk_pct = df["usdc_stk"].fillna(0.0)
+        lend_stk_pct = df["asset_stk"].infer_objects(copy=False).fillna(0.0)
+        borrow_stk_pct = df["usdc_stk"].infer_objects(copy=False).fillna(0.0)
         eff_max = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "long")
     else:
         lend_pct = df["usdc_lend"]
         borrow_pct = df["asset_borrow"]
-        lend_stk_pct = df["usdc_stk"].fillna(0.0)
-        borrow_stk_pct = df["asset_stk"].fillna(0.0)
+        lend_stk_pct = df["usdc_stk"].infer_objects(copy=False).fillna(0.0)
+        borrow_stk_pct = df["asset_stk"].infer_objects(copy=False).fillna(0.0)
         eff_max = compute_effective_max_leverage(token_config, asset_bank, usdc_bank, "short")
 
     # Compute fee_rate% per row
