@@ -55,7 +55,7 @@ def display_delta_neutral_lst_spot_page() -> None:
         wallet_options = list(SPOT_PERPS_CONFIG["SOL_ASSETS"])  # fallback
 
     # Controls
-    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
     def _format_wallet_option(sym: str) -> str:
         if sym == "SOL":
             return "SOL"
@@ -110,7 +110,6 @@ def display_delta_neutral_lst_spot_page() -> None:
         "Leverage (short)", min_value=1.0, max_value=float(eff_max_f), value=float(default_val), step=0.5,
         key="lst_spot_leverage",
     )
-    st.caption(f"Max available short leverage: {eff_max_f:.2f}x")
 
     # Descriptive caption reflecting capital split and effective short exposure
     _lev_f = float(lev)
@@ -119,7 +118,7 @@ def display_delta_neutral_lst_spot_page() -> None:
     _used_cap = _base_f - _wallet_amt
     _perps_eff = max(_lev_f - 1.0, 0.0)
     st.markdown(
-        f"<p style='font-size:0.9rem; margin-top:-4px; color: #666;'>"
+        f"<p style='font-size:0.9rem; margin-top:-4px; color: gray;'>"
         f"Dividing ${_base_f:,.0f}: ${_wallet_amt:,.0f} to wallet {wallet_asset} and ${_used_cap:,.0f} to short {short_asset} with {_perps_eff:.0f}x exposure to create a delta neutral position"
         f"</p>",
         unsafe_allow_html=True,
@@ -160,26 +159,29 @@ def display_delta_neutral_lst_spot_page() -> None:
         total_hours = float(len(plot_df) * 4.0)
         implied_apy = ((total_pnl / base_f) / (total_hours / (365.0 * 24.0)) * 100.0) if (base_f > 0 and total_hours > 0) else 0.0
 
-        # Row 1
-        r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+        # Row 1: ROE and APY
+        r1c1, r1c2 = st.columns([1, 3])
         with r1c1:
             st.metric("ROE", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
         with r1c2:
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
-        with r1c3:
+
+        # Row 2: Wallet metrics
+        w1, w2 = st.columns([1, 3])
+        with w1:
             st.metric(f"{wallet_asset} value in wallet (initial)", f"${wallet_amount_usd:,.0f}")
-        with r1c4:
+        with w2:
             st.metric(f"{wallet_asset} value in wallet (now)", f"${wallet_value_now:,.0f}")
 
-        # Row 2
-        r2c1, r2c2, r2c3, r2c4 = st.columns(4)
-        with r2c1:
+        # Row 3: Short position metrics
+        s1, s2, s3, s4 = st.columns(4)
+        with s1:
             st.metric(f"{short_asset} borrowed value in short (initial)", f"${initial_short_borrow_usd:,.0f}")
-        with r2c2:
+        with s2:
             st.metric(f"{short_asset} borrowed value in short (now)", f"${close_cost_now:,.0f}")
-        with r2c3:
+        with s3:
             st.metric("Short position net value (initial)", f"${short_net_initial:,.0f}")
-        with r2c4:
+        with s4:
             st.metric("Short position net value (now)", f"${net_value_now:,.0f}")
 
     # Spot rate APY over time for the SHORT asset (negated), calculations unaffected

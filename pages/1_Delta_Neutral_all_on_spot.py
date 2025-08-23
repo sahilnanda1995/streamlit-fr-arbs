@@ -139,26 +139,29 @@ def display_delta_neutral_spot_page() -> None:
         total_hours = float(len(plot_df) * 4.0)
         implied_apy = ((total_pnl / base_f) / (total_hours / (365.0 * 24.0)) * 100.0) if (base_f > 0 and total_hours > 0) else 0.0
 
-        # Row 1
-        r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+        # Row 1: ROE and APY
+        r1c1, r1c2 = st.columns([1, 3])
         with r1c1:
             st.metric("ROE", f"${total_pnl:,.2f}", delta=f"{(total_pnl/base_f*100.0):+.2f}%" if base_f > 0 else None)
         with r1c2:
             st.metric("Total APY (implied)", f"{implied_apy:.2f}%")
-        with r1c3:
+
+        # Row 2: Wallet metrics
+        w1, w2 = st.columns([1, 3])
+        with w1:
             st.metric(f"{variant} value in wallet (initial)", f"${wallet_amount_usd:,.0f}")
-        with r1c4:
+        with w2:
             st.metric(f"{variant} value in wallet (now)", f"${hodl_value_now:,.0f}")
 
-        # Row 2
-        r2c1, r2c2, r2c3, r2c4 = st.columns(4)
-        with r2c1:
+        # Row 3: Short position metrics
+        s1, s2, s3, s4 = st.columns(4)
+        with s1:
             st.metric(f"{variant} borrowed value in short (initial)", f"${initial_asset_borrow_usd:,.0f}")
-        with r2c2:
+        with s2:
             st.metric(f"{variant} borrowed value in short (now)", f"${close_cost_now:,.0f}")
-        with r2c3:
+        with s3:
             st.metric("Short position net value (initial)", f"${short_net_initial:,.0f}")
-        with r2c4:
+        with s4:
             st.metric("Short position net value (now)", f"${net_value_now:,.0f}")
 
     # USD values over time
