@@ -199,3 +199,50 @@ def apply_growth_factors(
             df_copy[cum_growth_col] = df_copy[growth_col].cumprod().shift(1).fillna(1.0)
     
     return df_copy
+
+
+def compute_implied_apy(
+    total_pnl: float, 
+    base_capital: float, 
+    total_hours: float
+) -> float:
+    """
+    Compute implied APY from total PnL and time period.
+    
+    Args:
+        total_pnl: Total profit/loss in USD
+        base_capital: Initial capital in USD
+        total_hours: Time period in hours
+        
+    Returns:
+        Implied APY as percentage
+    """
+    if base_capital <= 0 or total_hours <= 0:
+        return 0.0
+    
+    return (total_pnl / base_capital) / (total_hours / (365.0 * 24.0)) * 100.0
+
+
+def compute_capital_allocation_ratios(
+    wallet_amount: float,
+    used_capital: float, 
+    base_capital: float
+) -> tuple[float, float]:
+    """
+    Compute wallet and short ratios for APY weighting.
+    
+    Args:
+        wallet_amount: Amount allocated to wallet position
+        used_capital: Amount used for short position
+        base_capital: Total capital
+        
+    Returns:
+        Tuple of (wallet_ratio, short_ratio)
+    """
+    if base_capital <= 0:
+        return 0.0, 0.0
+        
+    wallet_ratio = wallet_amount / base_capital
+    short_ratio = used_capital / base_capital
+    
+    return wallet_ratio, short_ratio

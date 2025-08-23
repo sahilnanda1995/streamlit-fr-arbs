@@ -25,20 +25,7 @@ from api.endpoints import (
     fetch_hourly_staking,
     fetch_drift_funding_history,
 )
-from data.spot_perps.backtesting import _to_dataframe, _get_last_month_window_seconds
-
-
-def _agg_4h(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-    if df.empty:
-        return df
-    d = df.copy()
-    d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h")
-    d = (
-        d.groupby("time_4h", as_index=False)[cols].mean()
-        .assign(time=lambda x: pd.to_datetime(x["time_4h"]) + pd.Timedelta(hours=2))
-        .drop(columns=["time_4h"])
-    )
-    return d
+from utils.dataframe_utils import aggregate_to_4h_buckets
 
 
 def _load_lst_options(token_config: Dict[str, Any]) -> List[str]:
@@ -56,65 +43,6 @@ def _fetch_funding_series(perps_exchange: str, lookback_hours: int) -> pd.DataFr
     # Reuse shared builder that honors arbitrary lookbacks (4H-centered APY % series)
     from data.spot_perps.spot_history import build_perps_history_series
     return build_perps_history_series(perps_exchange.strip(), "SOL", int(lookback_hours))
-
-
-def _fetch_lst_price_and_staking(token_config: Dict[str, Any], lst_symbol: str, lookback_hours: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    info = token_config.get(lst_symbol, {}) or {}
-    lst_mint = info.get("mint")
-    if not lst_mint:
-        return pd.DataFrame(columns=["time", "price"]), pd.DataFrame(columns=["time", "staking_pct"])
-
-    end_ts = pd.Timestamp.utcnow()
-    start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
-    start = int(start_ts.timestamp())
-    end = int(end_ts.timestamp())
-
-    # Price series from Birdeye (4H)
-    try:
-        price_points = fetch_birdeye_history_price(lst_mint, start, end, bucket="4H") or []
-    except Exception:
-        price_points = []
-    price_df = pd.DataFrame(price_points)
-    if not price_df.empty:
-        price_df["time"] = pd.to_datetime(price_df["t"], unit="s", utc=True).dt.tz_convert(None)
-        price_df = price_df.sort_values("time")[ ["time", "price" ] ]
-    else:
-        price_df = pd.DataFrame(columns=["time", "price"])
-
-    # Staking APY hourly, convert to % and aggregate to 4H
-    try:
-        staking_raw = fetch_hourly_staking(info.get("mint"), int(lookback_hours)) if info.get("hasStakingYield") else []
-    except Exception:
-        staking_raw = []
-    if staking_raw:
-        d = pd.DataFrame(staking_raw)
-        d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
-        d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
-        staking_df = _agg_4h(d[["time", "staking_pct"]], ["staking_pct"])
-    else:
-        staking_df = pd.DataFrame(columns=["time", "staking_pct"])
-
-    return price_df, staking_df
-
-
-def _fetch_sol_price(token_config: Dict[str, Any], lookback_hours: int) -> pd.DataFrame:
-    sol_mint = (token_config.get("SOL", {}) or {}).get("mint")
-    if not sol_mint:
-        return pd.DataFrame(columns=["time", "sol_price"])
-    end_ts = pd.Timestamp.utcnow()
-    start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
-    start = int(start_ts.timestamp())
-    end = int(end_ts.timestamp())
-    try:
-        points = fetch_birdeye_history_price(sol_mint, start, end, bucket="4H") or []
-    except Exception:
-        points = []
-    df = pd.DataFrame(points)
-    if df.empty:
-        return pd.DataFrame(columns=["time", "sol_price"])
-    df["time"] = pd.to_datetime(df["t"], unit="s", utc=True).dt.tz_convert(None)
-    df = df.sort_values("time")[ ["time", "price" ] ].rename(columns={"price": "sol_price"})
-    return df
 
 
 def _build_breakdown(
@@ -262,12 +190,59 @@ def main():
         total_capital = st.number_input("Total Capital (USD)", min_value=0.0, value=1000.0, step=100.0)
     leverage = st.slider("Perps leverage", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
 
-    # Data
+    # Data - using existing utilities
     with st.spinner("Loading series..."):
         try:
-            lst_price_df, lst_staking_df = _fetch_lst_price_and_staking(token_config, lst_symbol, lookback_hours)
+            # Get time range
+            end_ts = pd.Timestamp.utcnow()
+            start_ts = end_ts - pd.Timedelta(hours=int(lookback_hours))
+            start = int(start_ts.timestamp())
+            end = int(end_ts.timestamp())
+            
+            # LST price using existing API
+            info = token_config.get(lst_symbol, {}) or {}
+            lst_mint = info.get("mint")
+            if lst_mint:
+                price_points = fetch_birdeye_history_price(lst_mint, start, end, bucket="4H") or []
+                lst_price_df = pd.DataFrame(price_points)
+                if not lst_price_df.empty:
+                    lst_price_df["time"] = pd.to_datetime(lst_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
+                    lst_price_df = lst_price_df.sort_values("time")[["time", "price"]]
+                else:
+                    lst_price_df = pd.DataFrame(columns=["time", "price"])
+            else:
+                lst_price_df = pd.DataFrame(columns=["time", "price"])
+                
+            # LST staking using existing utilities
+            if lst_mint and info.get("hasStakingYield"):
+                staking_raw = fetch_hourly_staking(lst_mint, int(lookback_hours)) or []
+                if staking_raw:
+                    d = pd.DataFrame(staking_raw)
+                    d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
+                    d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
+                    # 4H centered aggregation
+                    lst_staking_df = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
+                else:
+                    lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
+            else:
+                lst_staking_df = pd.DataFrame(columns=["time", "staking_pct"])
+                
+            # SOL price using existing API
+            sol_mint = (token_config.get("SOL", {}) or {}).get("mint")
+            if sol_mint:
+                sol_points = fetch_birdeye_history_price(sol_mint, start, end, bucket="4H") or []
+                sol_price_df = pd.DataFrame(sol_points)
+                if not sol_price_df.empty:
+                    sol_price_df["time"] = pd.to_datetime(sol_price_df["t"], unit="s", utc=True).dt.tz_convert(None)
+                    sol_price_df = sol_price_df.sort_values("time")[["time", "price"]].rename(columns={"price": "sol_price"})
+                else:
+                    sol_price_df = pd.DataFrame(columns=["time", "sol_price"])
+            else:
+                sol_price_df = pd.DataFrame(columns=["time", "sol_price"])
+                
+            # Funding series using existing builder
             funding_df = _fetch_funding_series(perps_exchange, lookback_hours)
-            sol_price_df = _fetch_sol_price(token_config, lookback_hours)
+            
         except Exception as e:
             st.error(f"Failed to load historical series: {e}")
             if st.button("Retry loading data"):

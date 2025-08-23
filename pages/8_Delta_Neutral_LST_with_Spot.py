@@ -19,6 +19,7 @@ from data.spot_perps.helpers import (
 from data.spot_perps.spot_history import build_spot_history_series
 from data.spot_perps.spot_wallet_short import find_eligible_short_variants, build_wallet_short_series, compute_allocation_split
 from data.money_markets_processing import get_staking_rate_by_mint
+from utils.dataframe_utils import aggregate_to_4h_buckets, compute_implied_apy, compute_capital_allocation_ratios
 
 
 ## Removed legacy local builders in favor of shared implementations
@@ -158,7 +159,7 @@ def display_delta_neutral_lst_spot_page() -> None:
         st.markdown("**Metrics**")
         short_net_initial = float(initial_usdc_lent) - float(initial_short_borrow_usd)
         total_hours = float(len(plot_df) * 4.0)
-        implied_apy = ((total_pnl / base_f) / (total_hours / (365.0 * 24.0)) * 100.0) if (base_f > 0 and total_hours > 0) else 0.0
+        implied_apy = compute_implied_apy(total_pnl, base_f, total_hours)
 
         # Row 1: ROE and APY
         r1c1, r1c2 = st.columns([1, 3])
@@ -204,8 +205,7 @@ def display_delta_neutral_lst_spot_page() -> None:
             d["time"] = pd.to_datetime(d["hourBucket"], utc=True).dt.tz_convert(None)
             d["staking_pct"] = pd.to_numeric(d.get("avgApy", 0), errors="coerce") * 100.0
             # 4H centered aggregation
-            d["time_4h"] = pd.to_datetime(d["time"]).dt.floor("4h") + pd.Timedelta(hours=2)
-            wal_stk = d.groupby("time_4h", as_index=False)[["staking_pct"]].mean().rename(columns={"time_4h": "time"})
+            wal_stk = aggregate_to_4h_buckets(d, "time", ["staking_pct"])
         else:
             wal_stk = pd.DataFrame(columns=["time", "staking_pct"])
         # Coerce dtypes and align when missing (e.g., SOL wallet -> zeros)
@@ -235,8 +235,9 @@ def display_delta_neutral_lst_spot_page() -> None:
         st.subheader("Net APY over Time")
         # Weighted by initial capital allocation ratios
         try:
-            wallet_ratio = float(wallet_amount_usd) / float(base_usd) if float(base_usd) > 0 else 0.0
-            short_ratio = float(used_capital_usd) / float(base_usd) if float(base_usd) > 0 else 0.0
+            wallet_ratio, short_ratio = compute_capital_allocation_ratios(
+                float(wallet_amount_usd), float(used_capital_usd), float(base_usd)
+            )
         except Exception:
             wallet_ratio, short_ratio = 0.0, 0.0
         apy_df["net_apy_pct"] = apy_df["staking_pct"].fillna(0.0) * wallet_ratio - apy_df["spot_rate_pct"].fillna(0.0) * short_ratio
